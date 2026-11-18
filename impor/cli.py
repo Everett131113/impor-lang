@@ -1956,6 +1956,118 @@ BENCH_SCRIPT = ('important<<DAY<<english("English"):\n'
                 'print("sum =", s)\n')
 
 
+def _proc_rss_kb(proc):
+    """当前进程常驻内存（KB）；Windows 用 psapi，POSIX 用 resource。"""
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        psapi = ctypes.WinDLL("psapi")
+        counters = PROCESS_MEMORY_COUNTERS()
+        handle = int(proc._handle)
+        if psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters),
+                                       ctypes.sizeof(counters)):
+            return counters.WorkingSetSize // 1024
+        return 0
+    try:
+        import resource
+        kb = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+        return kb if sys.platform.startswith("linux") else kb // 1024
+    except Exception:
+        return 0
+
+
+def cmd_bench_spec(args):
+    """impor bench-spec FILE.impor —— 体积 / 冷启动 / 常驻内存 / 构建耗时（v3.11）。"""
+    import json
+    import subprocess
+    import tempfile
+    import time
+
+    if not args or args[0].startswith("-"):
+        _err("用法：impor bench-spec FILE.impor [--runs N] [--json]")
+        return EXIT_USAGE
+    src = args[0]
+    if not os.path.isfile(src):
+        _err(f"文件不存在：{src}")
+        return EXIT_USAGE
+    runs = 30
+    as_json = "--json" in args
+    if "--runs" in args:
+        try:
+            runs = max(1, int(args[args.index("--runs") + 1]))
+        except (IndexError, ValueError):
+            _err("--runs 需要正整数")
+            return EXIT_USAGE
+
+    fd, exe = tempfile.mkstemp(suffix=".exe" if os.name == "nt" else "")
+    os.close(fd)
+    try:
+        t0 = time.perf_counter()
+        rc = cmd_build([src, "-o", exe, "--no-cache"])
+        build_s = time.perf_counter() - t0
+        if rc != EXIT_OK or not os.path.isfile(exe):
+            _err("bench-spec：构建失败")
+            return rc if rc else EXIT_RUNTIME
+
+        size_b = os.path.getsize(exe)
+
+        cold = []
+        for _ in range(runs):
+            t0 = time.perf_counter()
+            r = subprocess.run([exe], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, timeout=120)
+            cold.append((time.perf_counter() - t0) * 1000)
+            if r.returncode != 0:
+                _err(f"bench-spec：exe 运行失败 rc={r.returncode}")
+                return EXIT_RUNTIME
+
+        peak = 0
+        p = subprocess.Popen([exe], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        while p.poll() is None:
+            peak = max(peak, _proc_rss_kb(p))
+            time.sleep(0.002)
+        peak = max(peak, _proc_rss_kb(p))
+
+        cold_ms = sum(cold) / len(cold)
+        result = {
+            "exe_size_kb": round(size_b / 1024.0, 1),
+            "cold_start_ms": round(cold_ms, 1),
+            "rss_kb": peak,
+            "build_s": round(build_s, 2),
+            "runs": runs,
+        }
+        if as_json:
+            print(json.dumps(result, ensure_ascii=False))
+        else:
+            print(f"Impor (I++) {__version__} 规格实测：{os.path.basename(src)}")
+            print(f"  exe 体积        ：{result['exe_size_kb']:.1f} KB")
+            print(f"  冷启动（{runs} 次均值）：{result['cold_start_ms']:.1f} ms")
+            print(f"  常驻内存        ：{result['rss_kb']} KB")
+            print(f"  构建耗时        ：{result['build_s']:.2f} s")
+        return EXIT_OK
+    finally:
+        try:
+            os.unlink(exe)
+        except OSError:
+            pass
+
+
 def cmd_bench(args):
     """impor bench —— 性能基准：解释器 vs C 后端原生 exe（v2.16）。"""
     import tempfile
@@ -2113,6 +2225,7 @@ SUBCOMMAND_HELP = {
     "demo": "impor demo [名字]\n  列出内置示例；impor demo 名字 一键运行（snake 为图形窗口）。",
     "env": "impor env\n  环境诊断：版本/平台/C 编译器/tcc/自举状态/缓存目录。",
     "bench": "impor bench\n  性能基准：解释器 vs C 后端原生 exe，输出耗时与加速比。",
+    "bench-spec": "impor bench-spec FILE.impor [--runs N] [--json]\n  规格实测：exe 体积 / 冷启动均值 / 常驻内存 / 构建耗时。",
     "mem": "impor mem [FILE]\n  自动内存管理概览（无参数）或运行脚本并输出运行前后内存变化、分配/峰值/回收统计。",
     "version": "impor version\n  显示版本与 C 后端/自举状态。",
     "explain": "impor explain [E1001|ZeroDivisionError]\n  解释错误码：为什么发生、怎么修、最小示例；不带参数列出全部错误码。",
@@ -2385,6 +2498,7 @@ _COMMANDS = {
     "demo": cmd_demo,
     "env": cmd_env,
     "bench": cmd_bench,
+    "bench-spec": cmd_bench_spec,
     "mem": cmd_mem,
     "explain": cmd_explain,
     "syntax": cmd_syntax,

@@ -1,6 +1,6 @@
 # Impor (I++)
 
-[![C ABI x64](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml/badge.svg)](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml)
+[![C ABI matrix](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml/badge.svg)](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml)
 
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
@@ -10,6 +10,17 @@
 > 用 C demo 链接调用，输出 `add(2, 3) = 5`。字符串返回值用 `impor_free_str()` 释放。完整可复现步骤见 `examples/c_abi/README.md`。
 > 需要 64 位 DLL 时改用 `impor build --lib --c-source ... -o out/`，再用 `build_msvc.bat` 或 `build_gcc.bat` 编译（内置 tcc 只产 32 位）。
 > `lib.c` 是纯库源码，不含 `main`；`impor run`（64 位 Python）加载 32 位库会抛 `FFIArchError`，不再伪装成签名不匹配。
+
+## 规格（实测，`impor bench-spec`）
+
+| 指标 | Impor 3.10（Windows x64 宿主 / 32 位 tcc 产物） | 说明 |
+|---|---|---|
+| 单文件体积 | **121.5 KB** | `examples/hello.impor` 的独立 exe；不含 Python |
+| 冷启动 | **约 28 ms**（30 次均值） | 进程启动到输出 |
+| 运行时依赖 | **无** | 不依赖 Python、VC 运行库或第三方 DLL |
+| 可被 C 调用 | **是** | `--lib` 产出 `.dll` + `.h` + `.def`；x64 用 `--c-source` 交给 `cl` / `gcc -m64` |
+
+复现：`python Impor.py bench-spec examples/hello.impor --runs 30 --json`
 
 > **新手教程**：docs/新手教程.md（30 分钟从零入门，示例全部实测通过）
 
