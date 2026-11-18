@@ -4,7 +4,24 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本（主版本.次版本.修订号）。
 
-> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `3.9.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `3.11.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+
+## [3.11.0] - 2026-11-18
+
+### 新增：C ABI 六格矩阵
+
+- `.github/workflows/c-abi-x64.yml` 扩为六格：win32（内置 tcc）、win64（MSVC）、
+  linux64（gcc -m64）、linux-arm64（aarch64 交叉）、macos-arm64（clang 交叉）、
+  macos-x64（clang）。
+- 每格校验产物机器类型（PE `0x14c` / `0x8664`、ELF x86-64 / AArch64、
+  Mach-O x86_64 / arm64）与四个导出符号 `impor_add / impor_sub / impor_mul / impor_greet`。
+- 新增 `tools/check_artifact.py`，本地与 CI 共用同一套 PE / ELF / Mach-O 解析。
+
+### 新增：`impor bench-spec`
+
+- `impor bench-spec FILE.impor [--runs N] [--json]` 输出四项：
+  exe 体积、冷启动均值、常驻内存、构建耗时。
+- README 首页规格表只列体积 / 启动 / 依赖 / 可被 C 调用四列，数字可用命令复现。
 
 ## [3.9.0] - 2026-11-18
 

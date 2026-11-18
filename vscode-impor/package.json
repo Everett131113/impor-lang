@@ -2,7 +2,7 @@
   "name": "vscode-impor",
   "displayName": "Impor (I++) Language",
   "description": "Impor (I++) 语言支持：语法高亮 + LSP（语法诊断/跳转定义/悬停提示/文档符号/格式化）",
-  "version": "3.9.0",
+  "version": "3.11.0",
   "publisher": "impor-lang",
   "license": "MIT",
   "icon": "icon.png",

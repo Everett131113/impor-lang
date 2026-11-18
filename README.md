@@ -4,7 +4,7 @@
 
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
-版本：**3.9.0**（64 位入口 + C 后端 FFI：`--lib --c-source` 产出可交给 `cl` / `gcc -m64` 的 C 源码包；`ffi_open` / `ffi_call` 在 C 后端可用；允许清单同时接受 `,` 与 `;`。）
+版本：**3.11.0**（六格 C ABI 矩阵 + `bench-spec`：win32 / win64 / linux64 / linux-arm64 / macos-arm64 / macos-x64 每格校验机器类型与四个导出符号；`impor bench-spec` 输出体积 / 冷启动 / 常驻内存 / 构建耗时。）
 
 > **C ABI 最小验收**：`impor build --lib examples/c_abi/lib.impor -o lib.dll` 产出 `lib.dll + lib.h + lib.def`；
 > 用 C demo 链接调用，输出 `add(2, 3) = 5`。字符串返回值用 `impor_free_str()` 释放。完整可复现步骤见 `examples/c_abi/README.md`。
@@ -122,7 +122,7 @@ python3 Impor.py repl
 
 ## 完整语法
 
-见 [docs/语言规范.md](docs/语言规范.md)（当前 3.9.0 语法规范，与实现一致）。
+见 [docs/语言规范.md](docs/语言规范.md)（当前 3.11.0 语法规范，与实现一致）。
 
 ## 目录结构
 
