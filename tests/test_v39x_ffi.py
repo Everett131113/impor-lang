@@ -153,6 +153,22 @@ class TestFfiCBackend(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn("产物位宽：32 位(i386)", p.stdout)
 
+    def test_stdcall_and_i32_c_source(self):
+        src = os.path.join(self.tmp, "stdcall.impor")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write('export func demo(x: int) -> int {\n'
+                    '    return ffi_call("lib.dll", "f", [x], "int", '
+                    '["i32"], "stdcall")\n'
+                    '}\n')
+        out = os.path.join(self.tmp, "stdcall_out")
+        p = _run([sys.executable, IMPOR_PY, "build", "--lib", "--c-source",
+                  src, "-o", out, "--no-cache"], ROOT)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        with open(os.path.join(out, "stdcall.c"), encoding="utf-8") as f:
+            c = f.read()
+        self.assertIn("IMPOR_STDCALL *FN", c)
+        self.assertIn("(int)_args.a->items[0].i", c)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,6 +90,9 @@ BUILTINS = {
     "exedir": "rt_exedir",
     "ffi_open": "rt_ffi_open",
     "ffi_call": "rt_ffi_call",
+    "ffi_alloc": "rt_ffi_alloc",
+    "ffi_read_i64": "rt_ffi_read_i64",
+    "ffi_read_str_at": "rt_ffi_read_str_at",
     "__module__": "rt_module_new",
 }
 
@@ -1878,9 +1881,20 @@ class CGen:
         这里直接拒绝，而不是生成一个会在运行时崩溃的弱类型调用。
         """
         from impor.ast_nodes import Str, ListLit, Null
-        if len(n.args) < 2 or len(n.args) > 5:
-            raise UnsupportedFeature("ffi_call 需要 2–5 个参数", n.lineno, n.col)
+        if len(n.args) < 2 or len(n.args) > 6:
+            raise UnsupportedFeature("ffi_call 需要 2–6 个参数", n.lineno, n.col)
         self._ffi_check_literal(n.args[0])
+        calling = ""
+        if len(n.args) >= 6:
+            cnode = n.args[5]
+            if isinstance(cnode, Str):
+                calling = cnode.val.lower()
+            elif not isinstance(cnode, Null):
+                raise UnsupportedFeature(
+                    "C 后端 ffi_call 的 calling 必须是字符串字面量", n.lineno, n.col)
+            if calling not in ("", "stdcall", "cdecl"):
+                raise UnsupportedFeature("calling 只支持 stdcall / cdecl",
+                                         n.lineno, n.col)
         args_node = n.args[2] if len(n.args) >= 3 else None
         if args_node is None or isinstance(args_node, Null):
             args_count = 0
@@ -1917,6 +1931,9 @@ class CGen:
             if t in ("int", "int64", "i64"):
                 carg.append("long long")
                 arg_exprs.append("(long long)_args.a->items[%d].i" % i)
+            elif t in ("i32", "int32"):
+                carg.append("int")
+                arg_exprs.append("(int)_args.a->items[%d].i" % i)
             elif t == "bool":
                 carg.append("int")
                 arg_exprs.append("(int)_args.a->items[%d].i" % i)
@@ -1927,6 +1944,10 @@ class CGen:
                 carg.append("const char *")
                 arg_exprs.append(
                     "(_args.a->items[%d].s ? _args.a->items[%d].s : \"\")" % (i, i))
+            elif t in ("addr", "address", "uintptr"):
+                carg.append("void *")
+                arg_exprs.append(
+                    "(void *)(intptr_t)_args.a->items[%d].i" % i)
             elif t in ("ptr", "pointer", "void*"):
                 raise UnsupportedFeature(
                     "C 后端不接收任意指针参数（遵守 FFI 只做调用的硬约束）",
@@ -1947,6 +1968,9 @@ class CGen:
         elif ret in ("cstr", "str", "string"):
             rtyp = "const char *"
             rexpr = 'v_str(r ? r : "")'
+        elif ret in ("ptr", "pointer", "void*"):
+            rtyp = "void *"
+            rexpr = "v_int((long long)(intptr_t)r)"
         elif ret in ("void", "none", "null"):
             rtyp = "void"
             rexpr = "v_null()"
@@ -1958,10 +1982,11 @@ class CGen:
         self._ffi_site_cnt += 1
         self.ffi_protos.append(
             "static Val %s(Val _lib, Val _func, Val _args);" % site)
+        conv = "IMPOR_STDCALL" if calling == "stdcall" else ""
         lines = [
             "static Val %s(Val _lib, Val _func, Val _args) {" % site,
-            "    typedef %s (*FN)(%s);" % (
-                rtyp, ", ".join(carg) if carg else "void"),
+            "    typedef %s (%s *FN)(%s);" % (
+                rtyp, conv, ", ".join(carg) if carg else "void"),
             "    FN fn = (FN)rt_ffi_sym(_lib, _func);",
         ]
         if args_count:

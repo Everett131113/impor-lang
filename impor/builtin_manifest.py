@@ -37,7 +37,7 @@ HOST_BUILTINS = frozenset({
 INTERPRETER_ONLY_BUILTINS = frozenset({
     "autogc", "div", "ffi_alloc", "ffi_alloc_str", "ffi_buffer_size",
     "ffi_buffers", "ffi_read_f64", "ffi_read_i64",
-    "ffi_read_str", "ffi_write_f64", "ffi_write_i64", "ffi_write_str",
+    "ffi_read_str", "ffi_read_str_at", "ffi_write_f64", "ffi_write_i64", "ffi_write_str",
     "filesize", "filewritebytes", "gc", "mem", "memstats",
     "regex_find", "regex_replace", "reload", "run_tasks",
     "system", "task_status",

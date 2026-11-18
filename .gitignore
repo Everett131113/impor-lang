@@ -72,3 +72,11 @@ _ver.*
 *.zip
 Impor(I++) 3.6.*/
 
+# 顶层临时/调试产物（_ 开头文件与目录、根目录 exe）
+/_*
+/*.exe
+
+# 示例允许清单必须随包交付，不能被上面的 .impor/ 规则忽略
+!examples/ffi/.impor/
+!examples/ffi/.impor/ffi_allow.json
+

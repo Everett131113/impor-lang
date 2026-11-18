@@ -7,10 +7,16 @@
 #include <ctype.h>
 #include <time.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <setjmp.h>
 #include <limits.h>
 #ifdef _WIN32
 #include <windows.h>
+#define IMPOR_STDCALL __stdcall
+#else
+#define IMPOR_STDCALL
+#endif
+#ifdef _WIN32
 /* TCC 自带的最小 Windows 头没有声明 winnls 接口，手动补上。
    仅用于把 UTF-8 路径转成 UTF-16，避免中文目录被 ANSI 代码页误读。 */
 #ifndef CP_UTF8
@@ -56,6 +62,9 @@ static int g_cls_n = 0;
    argtypes 生成强类型包装（见 ctrans._gen_ffi_call），这里提供符号解析。 */
 static Val rt_ffi_open(Val path);
 static Val rt_ffi_call(Val lib, Val func, Val args, Val ret, Val argtypes);
+static Val rt_ffi_alloc(Val size);
+static Val rt_ffi_read_i64(Val addr);
+static Val rt_ffi_read_str_at(Val addr);
 static void *rt_ffi_sym(Val lib, Val func);
 
 static void rt_report_abort(const char *msg);
@@ -2296,6 +2305,31 @@ static void *rt_ffi_sym(Val lib, Val func) {
         rt_throw("FFIError", msg);
     }
     return p;
+}
+
+/* v3.10：最小指针桥。只提供“分配一块输出缓冲区 / 读一个地址 / 读一个 C 字符串”，
+   不提供结构体布局、指针运算或把任意对象暴露给原生侧。 */
+static Val rt_ffi_alloc(Val size) {
+    long long n = size.i;
+    if (size.t != V_INT || n <= 0)
+        rt_throw("FFIError", "ffi_alloc 大小必须是正整数");
+    void *p = calloc(1, (size_t)n);
+    if (!p)
+        rt_throw("FFIError", "ffi_alloc 分配失败");
+    return v_int((long long)(intptr_t)p);
+}
+
+static Val rt_ffi_read_i64(Val addr) {
+    if (addr.t != V_INT || addr.i == 0)
+        rt_throw("FFIError", "ffi_read_i64 的地址必须是非零整数");
+    return v_int(*(long long *)(intptr_t)addr.i);
+}
+
+static Val rt_ffi_read_str_at(Val addr) {
+    if (addr.t != V_INT || addr.i == 0)
+        return v_str("");
+    const char *p = (const char *)(intptr_t)addr.i;
+    return v_str(p ? p : "");
 }
 
 /* 动态 argtypes 无法安全生成 C 调用；代码生成器会在编译期拦截并给出明确报错。 */

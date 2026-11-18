@@ -697,6 +697,24 @@ def make_builtins(interp):
         raw = bytes(buf)[off:]
         return raw.split(b"\x00", 1)[0].decode("utf-8", "replace")
 
+    def builtin_ffi_read_str_at(addr):
+        """ffi_read_str_at(addr)：读取原生侧返回的 char* 地址（v3.10）。
+
+        这是给 sqlite3_column_text 这类“返回指针”的 API 用的最小能力：
+        只读一个 NUL 结尾字符串，不提供结构体布局或指针运算。
+        """
+        try:
+            p = int(addr)
+        except Exception:
+            raise ImporException("FFIError", "ffi_read_str_at 的地址必须是整数", 0)
+        if p == 0:
+            return ""
+        try:
+            value = ctypes.cast(ctypes.c_void_p(p), ctypes.c_char_p).value
+        except Exception as e:
+            raise ImporException("FFIError", "读取原生字符串失败：%s" % e, 0)
+        return (value or b"").decode("utf-8", "replace")
+
     def builtin_ffi_write_str(token, value, offset=0):
         buf = _ffi_buffer(token)
         off = int(offset)
@@ -709,8 +727,8 @@ def make_builtins(interp):
     def builtin_ffi_buffers():
         return len(_ffi_buffers)
 
-    def builtin_ffi_call(lib, func, args=None, ret="int", argtypes=None):
-        """ffi_call(handle, "func", [args], "int|float|str|bool|ptr|cstr|void", [types])。
+    def builtin_ffi_call(lib, func, args=None, ret="int", argtypes=None, calling=None):
+        """ffi_call(handle, "func", [args], "int|float|str|bool|ptr|addr|cstr|void", [types], "stdcall"?)。
 
         3.6.2 起支持受控指针：`ptr` 参数必须是 ffi_alloc / ffi_alloc_str 返回的 token，
         不接受任意整数地址；`cstr` 参数接受普通字符串。C 字符串返回值用 `cstr`。
@@ -718,6 +736,8 @@ def make_builtins(interp):
         target = str(lib)
         if target not in _ffi_libs:
             target = builtin_ffi_open(target)
+        if calling not in (None, "", "stdcall", "cdecl"):
+            raise ImporException("FFIError", "calling 只支持 stdcall / cdecl", 0)
         fn = getattr(_ffi_libs[target], str(func), None)
         if fn is None:
             raise ImporException("FFIError", "原生库没有函数 %s" % func, 0)
@@ -730,10 +750,21 @@ def make_builtins(interp):
             spec = str(specs[i]).lower() if i < len(specs) else ""
             if spec == "ptr":
                 pyargs.append(ctypes.c_void_p(_ffi_addr(v)))
+            elif spec == "addr":
+                # v3.10：裸地址。若给的是 ffi_alloc token，就转成该缓冲区地址；
+                # 否则当作原生侧返回的整数地址直接透传。不提供指针运算。
+                try:
+                    iv = int(v)
+                except Exception:
+                    raise ImporException("FFIError", "addr 参数必须是整数地址或 ffi_alloc token", 0)
+                pyargs.append(ctypes.c_void_p(
+                    _ffi_addr(iv) if iv in _ffi_buffers else iv))
             elif spec == "cstr":
                 pyargs.append(ctypes.c_char_p(str(v).encode("utf-8")))
             elif spec == "float":
                 pyargs.append(ctypes.c_double(float(v)))
+            elif spec in ("i32", "int32"):
+                pyargs.append(ctypes.c_int(int(v)))
             elif spec in ("int", "bool"):
                 pyargs.append(ctypes.c_longlong(1 if (spec == "bool" and v) else int(v)))
             elif isinstance(v, bool):
@@ -815,6 +846,7 @@ def make_builtins(interp):
         "ffi_read_i64": builtin_ffi_read_i64, "ffi_write_i64": builtin_ffi_write_i64,
         "ffi_read_f64": builtin_ffi_read_f64, "ffi_write_f64": builtin_ffi_write_f64,
         "ffi_read_str": builtin_ffi_read_str, "ffi_write_str": builtin_ffi_write_str,
+        "ffi_read_str_at": builtin_ffi_read_str_at,
         "ffi_buffers": builtin_ffi_buffers,
     }
     missing, extra = check_interpreter_names(builtins_map)
