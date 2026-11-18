@@ -8,11 +8,12 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 
 ## [3.11.0] - 2026-11-18
 
-### 新增：C ABI 六格矩阵
+### 新增：C ABI 矩阵（4 格 push 门禁 + macOS 2 格手动）
 
-- `.github/workflows/c-abi-x64.yml` 扩为六格：win32（内置 tcc）、win64（MSVC）、
-  linux64（gcc -m64）、linux-arm64（aarch64 交叉）、macos-arm64（clang 交叉）、
-  macos-x64（clang）。
+- `.github/workflows/c-abi-x64.yml` 每次 push 跑四格：win32（内置 tcc）、win64（MSVC）、
+  linux64（gcc -m64）、linux-arm64（aarch64 交叉）。
+- macOS arm64 / x64 两格在 `.github/workflows/c-abi-macos.yml`，`workflow_dispatch` 手动触发。
+  当前账号的 macOS runner 分钟数不可用，push 触发会排队后被取消，因此不挂在 push 门禁上。
 - 每格校验产物机器类型（PE `0x14c` / `0x8664`、ELF x86-64 / AArch64、
   Mach-O x86_64 / arm64）与四个导出符号 `impor_add / impor_sub / impor_mul / impor_greet`。
 - 新增 `tools/check_artifact.py`，本地与 CI 共用同一套 PE / ELF / Mach-O 解析。

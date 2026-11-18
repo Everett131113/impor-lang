@@ -5,9 +5,11 @@
 #   win64  ：MSVC (cl /LD) 编 64 位 DLL，校验 PE Machine=0x8664 与四个导出符号
 #   linux64：gcc -shared -m64 编 .so，校验 ELF x86-64 与四个导出符号
 #   linux-arm64：aarch64 交叉编译 .so，校验 ELF AArch64 与四个导出符号
-#   macos-arm64 / macos-x64：clang 编 dylib，校验 Mach-O cputype 与四个导出符号
+#   macos-arm64 / macos-x64：见 c-abi-macos.yml（手动触发）。
+#     当前账号的 macOS runner 分钟数不可用，push 触发会排队后被取消；
+#     因此不把 macOS 两格挂在 push 门禁上，避免 badge 长期红。
 #
-# 不依赖本机工具链；每次 push / PR 自动跑。
+# 不依赖本机工具链；每次 push / PR 自动跑 Windows/Linux 四格。
 name: C ABI matrix
 
 on:
@@ -157,55 +159,4 @@ jobs:
           done
           echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"
 
-  macos-arm64:
-    name: Clang macos-arm64 (macos-15-intel 交叉)
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 设置 Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 生成 C 源码包
-        run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
-
-      - name: 用 clang 交叉编 arm64 dylib
-        run: clang -arch arm64 -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
-
-      - name: 校验 Mach-O 机器类型与导出符号
-        run: |
-          python tools/check_artifact.py --expect macos-arm64 out/libci_lib.dylib
-          file out/libci_lib.dylib | grep -q 'arm64'
-          for s in impor_add impor_sub impor_mul impor_greet; do
-            nm -gU out/libci_lib.dylib | grep -Eq " _${s}$"
-          done
-          echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"
-
-  macos-x64:
-    name: Clang macos-x64 (macos-15-intel)
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 设置 Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: 生成 C 源码包
-        run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
-
-      - name: 用 clang 编 x86_64 dylib
-        run: clang -arch x86_64 -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
-
-      - name: 校验 Mach-O 机器类型与导出符号
-        run: |
-          python tools/check_artifact.py --expect macos-x64 out/libci_lib.dylib
-          file out/libci_lib.dylib | grep -q 'x86_64'
-          for s in impor_add impor_sub impor_mul impor_greet; do
-            nm -gU out/libci_lib.dylib | grep -Eq " _${s}$"
-          done
-          echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"
 

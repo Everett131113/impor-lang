@@ -1,0 +1,70 @@
+# Impor C ABI：macOS 两格（手动触发，可选）
+#
+# 为什么不在 push 门禁里：当前账号的 macOS runner 分钟数不可用，
+# 排队后会被取消，会让主 badge 长期变红。工具链与校验步骤已就绪，
+# 有 macOS 额度时在 Actions 页面点 “Run workflow” 即可补跑。
+#
+# 目标：
+#   macos-arm64：clang -arch arm64 编 dylib，校验 Mach-O cputype 与四个导出符号
+#   macos-x64  ：clang -arch x86_64 编 dylib，同上
+name: C ABI macOS (optional)
+
+on:
+  workflow_dispatch:
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  macos-arm64:
+    name: Clang macos-arm64 (macos-15-intel 交叉)
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 生成 C 源码包
+        run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
+
+      - name: 用 clang 交叉编 arm64 dylib
+        run: clang -arch arm64 -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
+
+      - name: 校验 Mach-O 机器类型与导出符号
+        run: |
+          python tools/check_artifact.py --expect macos-arm64 out/libci_lib.dylib
+          file out/libci_lib.dylib | grep -q 'arm64'
+          for s in impor_add impor_sub impor_mul impor_greet; do
+            nm -gU out/libci_lib.dylib | grep -Eq " _${s}$"
+          done
+          echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"
+
+  macos-x64:
+    name: Clang macos-x64 (macos-15-intel)
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 生成 C 源码包
+        run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
+
+      - name: 用 clang 编 x86_64 dylib
+        run: clang -arch x86_64 -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
+
+      - name: 校验 Mach-O 机器类型与导出符号
+        run: |
+          python tools/check_artifact.py --expect macos-x64 out/libci_lib.dylib
+          file out/libci_lib.dylib | grep -q 'x86_64'
+          for s in impor_add impor_sub impor_mul impor_greet; do
+            nm -gU out/libci_lib.dylib | grep -Eq " _${s}$"
+          done
+          echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"

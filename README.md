@@ -4,7 +4,7 @@
 
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
-版本：**3.11.0**（六格 C ABI 矩阵 + `bench-spec`：win32 / win64 / linux64 / linux-arm64 / macos-arm64 / macos-x64 每格校验机器类型与四个导出符号；`impor bench-spec` 输出体积 / 冷启动 / 常驻内存 / 构建耗时。）
+版本：**3.11.0**（C ABI 矩阵 + `bench-spec`：push 门禁覆盖 win32 / win64 / linux64 / linux-arm64，每格校验机器类型与四个导出符号；macOS arm64 / x64 两格在 `c-abi-macos.yml` 手动触发（当前 macOS runner 额度不可用，不挂 push 门禁）。`impor bench-spec` 输出体积 / 冷启动 / 常驻内存 / 构建耗时。）
 
 > **C ABI 最小验收**：`impor build --lib examples/c_abi/lib.impor -o lib.dll` 产出 `lib.dll + lib.h + lib.def`；
 > 用 C demo 链接调用，输出 `add(2, 3) = 5`。字符串返回值用 `impor_free_str()` 释放。完整可复现步骤见 `examples/c_abi/README.md`。
@@ -13,7 +13,7 @@
 
 ## 规格（实测，`impor bench-spec`）
 
-| 指标 | Impor 3.10（Windows x64 宿主 / 32 位 tcc 产物） | 说明 |
+| 指标 | Impor 3.11（Windows x64 宿主 / 32 位 tcc 产物） | 说明 |
 |---|---|---|
 | 单文件体积 | **121.5 KB** | `examples/hello.impor` 的独立 exe；不含 Python |
 | 冷启动 | **约 28 ms**（30 次均值） | 进程启动到输出 |
