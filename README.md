@@ -1,5 +1,7 @@
 # Impor (I++)
 
+[![C ABI x64](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml/badge.svg)](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml)
+
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
 版本：**3.9.0**（64 位入口 + C 后端 FFI：`--lib --c-source` 产出可交给 `cl` / `gcc -m64` 的 C 源码包；`ffi_open` / `ffi_call` 在 C 后端可用；允许清单同时接受 `,` 与 `;`。）
