@@ -61,7 +61,7 @@ class TestLauncher(unittest.TestCase):
             frozenset({
                 "run", "run-dbg", "repl", "compile", "build", "check", "new",
                 "list-modules", "reload", "check-imports", "fmt", "check-fmt",
-                "lint", "doc", "lsp", "pkg", "test", "demo", "env", "bench", "mem",
+                "lint", "doc", "lsp", "pkg", "test", "demo", "env", "bench", "bench-spec", "mem",
                 "dap", "explain", "doctor", "teach", "conformance", "migrate-cn",
                 "release-check", "sys-check", "syntax",
             }),
