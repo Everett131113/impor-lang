@@ -76,13 +76,13 @@ class TestUnimplementedRejected(unittest.TestCase):
             f.write(text)
         return path
 
-    def _assert_rejected(self, name, text, needle):
+    def _assert_rejected(self, name, text, needle, plan="v3.12 计划"):
         path = self._write(name, text)
         proc = _run([sys.executable, IMPOR_PY, "run", path])
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         out = proc.stdout + proc.stderr
         self.assertIn(needle, out)
-        self.assertIn("v3.9 计划", out)
+        self.assertIn(plan, out)
 
     def test_yield_is_compile_error(self):
         self._assert_rejected("yield.impor", YIELD_SRC, "yield 尚未实现")
@@ -94,13 +94,17 @@ class TestUnimplementedRejected(unittest.TestCase):
         self._assert_rejected("default.impor", DEFAULT_PARAM_SRC,
                               "默认参数尚未实现")
 
+    def test_variadic_param_is_compile_error(self):
+        self._assert_rejected("variadic.impor", "func h(*args)\n    return 1\n",
+                              "变参尚未实现")
+
     def test_list_comprehension_is_compile_error(self):
         self._assert_rejected("listcomp.impor", LIST_COMP_SRC,
-                              "列表推导式尚未实现")
+                              "列表推导式尚未实现", plan="v3.9 计划")
 
     def test_dict_comprehension_is_compile_error(self):
         self._assert_rejected("dictcomp.impor", DICT_COMP_SRC,
-                              "字典推导式尚未实现")
+                              "字典推导式尚未实现", plan="v3.9 计划")
 
 
 class TestCBackendTryCatch(unittest.TestCase):

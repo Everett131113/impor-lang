@@ -852,6 +852,7 @@ class Parser:
             self.consume()
             self._skip_fill()
             while not self._is_op(")"):
+                self._reject_unsupported_param()
                 params.append(self._param_name())
                 self._reject_unsupported_param()
                 self._skip_fill()
@@ -867,21 +868,24 @@ class Parser:
             return params
         # 无括号形式
         if self.peek().type == TOK_ID and self.peek().value not in ("then", "do"):
+            self._reject_unsupported_param()
             params.append(self._param_name())
             self._reject_unsupported_param()
             while self._is_op(","):
                 self.consume()
                 self._skip_fill()
+                self._reject_unsupported_param()
                 params.append(self._param_name())
                 self._reject_unsupported_param()
         return params
 
     def _reject_unsupported_param(self):
         t = self.peek()
-        if t.type == TOK_OP and t.value in ("=", "...", "?"):
-            name = {"=": "默认参数", "...": "变参", "?": "可选参数"}[t.value]
+        if t.type == TOK_OP and t.value in ("=", "...", "?", "*", "**"):
+            name = {"=": "默认参数", "...": "变参", "?": "可选参数",
+                    "*": "变参", "**": "关键字变参"}[t.value]
             raise ImporSyntaxError(
-                f"{name}尚未实现（v3.9 计划）", t.line, t.col,
+                f"{name}尚未实现（v3.12 计划）", t.line, t.col,
                 self.filename, hint_for("stmt_start"))
 
     def _param_name(self):
@@ -895,7 +899,7 @@ class Parser:
 
     def _unimplemented(self, t, name):
         raise ImporSyntaxError(
-            f"{name} 尚未实现（v3.9 计划）；v3.8.4 不再把它当成 null 静默执行",
+            f"{name} 尚未实现（v3.12 计划）；v3.8.4 不再把它当成 null 静默执行",
             t.line, t.col, self.filename, hint_for("stmt_start"))
 
     def stmt(self):
