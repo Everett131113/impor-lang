@@ -158,8 +158,8 @@ jobs:
           echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"
 
   macos-arm64:
-    name: Clang macos-arm64 (macos-14)
-    runs-on: macos-14
+    name: Clang macos-arm64 (macos-13 交叉)
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
@@ -171,8 +171,8 @@ jobs:
       - name: 生成 C 源码包
         run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
 
-      - name: 用 clang 编 arm64 dylib
-        run: clang -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
+      - name: 用 clang 交叉编 arm64 dylib
+        run: clang -arch arm64 -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
 
       - name: 校验 Mach-O 机器类型与导出符号
         run: |
@@ -198,7 +198,7 @@ jobs:
         run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
 
       - name: 用 clang 编 x86_64 dylib
-        run: clang -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
+        run: clang -arch x86_64 -dynamiclib -O2 out/ci_lib.c -o out/libci_lib.dylib -lm
 
       - name: 校验 Mach-O 机器类型与导出符号
         run: |
