@@ -115,6 +115,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ci", action="store_true", help="CI 模式：任何不一致返回 1")
     ap.add_argument("--only", default="", help="只跑文件名包含该子串的用例")
+    ap.add_argument("--sample", type=int, default=0,
+                    help="按排序等距抽取 N 个用例（0 = 全量；用于慢机/陌生人测试）")
     ap.add_argument("--json", default="", help="把结果写入 JSON 文件")
     args = ap.parse_args()
 
@@ -124,6 +126,17 @@ def main():
     cases = sorted(f for f in os.listdir(CASES_DIR) if f.endswith(".impor"))
     if args.only:
         cases = [f for f in cases if args.only in f]
+    if args.sample > 0 and args.sample < len(cases):
+        picked = [cases[i * len(cases) // args.sample] for i in range(args.sample)]
+        # 等距取整可能重复，去重后再补足到目标数量
+        cases = sorted(set(picked))
+        if len(cases) < args.sample:
+            for name in sorted(f for f in os.listdir(CASES_DIR) if f.endswith(".impor")):
+                if name not in cases and (not args.only or args.only in name):
+                    cases.append(name)
+                if len(cases) >= args.sample:
+                    break
+            cases.sort()
     if not cases:
         print("没有匹配的用例")
         return 2

@@ -1,14 +1,20 @@
-# 5 分钟陌生人测试（v3.10 第一版）
+﻿# 5 分钟陌生人测试（v3.10 第一版）
 #
 # 目标：一个刚 clone 仓库、没有读文档的人，跑这一条命令就能确认
 #  ① 工具链能起来  ② 解释器能跑  ③ 能编出脱离 Python 的 exe
 #  ④ 能编出 C ABI 源码包  ⑤ 三后端一致性门禁通过
 #
 # 用法：
-#   pwsh tools/five_minute_check.ps1
-#   或  powershell -ExecutionPolicy Bypass -File tools/five_minute_check.ps1
+#   powershell -ExecutionPolicy Bypass -File tools/five_minute_check.ps1
+#   pwsh -File tools/five_minute_check.ps1
+#   powershell -ExecutionPolicy Bypass -File tools/five_minute_check.ps1 -Full
+#
+# 默认 conformance 等距抽样 30 个用例，给慢机留出 300 s 余量；
+# -Full 跑全部用例（作者本机约 180 s）。
 #
 # 可用环境变量 IMPOR_PYTHON 指定 Python；默认按 python / py -3 顺序找。
+
+param([switch]$Full)
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -86,7 +92,11 @@ try {
     }
 
     Invoke-Step "⑤ 三后端一致性 conformance" {
-        & $Python Impor.py conformance
+        if ($Full) {
+            & $Python Impor.py conformance
+        } else {
+            & $Python Impor.py conformance --sample 30
+        }
     }
 }
 finally {

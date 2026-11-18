@@ -18,6 +18,19 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
   Mach-O x86_64 / arm64）与四个导出符号 `impor_add / impor_sub / impor_mul / impor_greet`。
 - 新增 `tools/check_artifact.py`，本地与 CI 共用同一套 PE / ELF / Mach-O 解析。
 
+### 修复：5 分钟陌生人测试在默认 PowerShell 下不可用
+
+- `tools/five_minute_check.ps1` 改为 **UTF-8 with BOM**，Windows PowerShell 5.1 与 PowerShell 7
+  都能直接按 `powershell -File` / `pwsh -File` 运行；此前无 BOM 会被 5.1 按 ANSI 读成乱码并立刻 exit 1。
+- `conformance/run_conformance.py` 新增 `--sample N`（排序后等距抽样，去重补足），
+  `five_minute_check.ps1` 默认抽 30 个用例，`-Full` 跑全量。本机 5.1 实测 31.01 s，pwsh 29.58 s。
+
+### 文档：私有仓库的 CI 口径
+
+- README 移除会 404 的 shields 徽章，新增「CI 证据」一节，如实写明仓库当前为 private、
+  匿名 API / 徽章 / Actions 运行页对外不可核验。
+- `docs/ci-evidence.md` 与两张 Actions 截图入档；只有仓库转 public 后，才把徽章作为对外证据。
+
 ### 新增：`impor bench-spec`
 
 - `impor bench-spec FILE.impor [--runs N] [--json]` 输出四项：

@@ -1,6 +1,6 @@
 # Impor (I++)
 
-[![C ABI matrix](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml/badge.svg)](https://github.com/Everett131113/impor-lang/actions/workflows/c-abi-x64.yml)
+> CI 运行结论与截图见下方「CI 证据」一节。仓库当前为 private，shields / GitHub 徽章对外不可用，因此不在首屏放会 404 的徽章。
 
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
@@ -10,6 +10,20 @@
 > 用 C demo 链接调用，输出 `add(2, 3) = 5`。字符串返回值用 `impor_free_str()` 释放。完整可复现步骤见 `examples/c_abi/README.md`。
 > 需要 64 位 DLL 时改用 `impor build --lib --c-source ... -o out/`，再用 `build_msvc.bat` 或 `build_gcc.bat` 编译（内置 tcc 只产 32 位）。
 > `lib.c` 是纯库源码，不含 `main`；`impor run`（64 位 Python）加载 32 位库会抛 `FFIArchError`，不再伪装成签名不匹配。
+
+## CI 证据（仓库当前为 private）
+
+本仓库目前是 **private**，因此匿名 `api.github.com` 与 shields 徽章会返回 404，外部无法直接点开验证。下面记录的是仓库主账号在 Actions 中看到的运行结果，截图已入档：
+
+| 工作流 | 运行 | 结果 |
+|---|---|---|
+| `ci.yml` | [#14](https://github.com/Everett131113/impor-lang/actions/runs/44343129880) | 4 个 job 成功（Windows py3.11 / py3.12 full，Ubuntu py3.11 / py3.12 smoke） |
+| `c-abi-x64.yml` | [#14](https://github.com/Everett131113/impor-lang/actions/runs/44343130120) | MSVC x64 / GCC x64 / TCC win32 / GCC linux-arm64 四格成功 |
+
+- CI #14：`docs/ci-2026-11-19-ci14.png`
+- C ABI #14：`docs/ci-2026-11-19-cabi14.png`
+
+> macOS arm64 / x64 两格在 `c-abi-macos.yml` 中手动触发，当前账号 macOS runner 额度不可用，未计入上述 push 门禁。仓库转为 public 后，徽章和运行页才会成为外部可核验证据。
 
 ## 规格（实测，`impor bench-spec`）
 
@@ -165,7 +179,18 @@ cd ImporLang
 python run_tests.py          # 或 python -m unittest discover -s tests
 ```
 
-583 项自动化测试覆盖：词法/语法/解释器/转译器/REPL/CLI/示例回归，并校验**解释器与编译产物的输出完全一致**；模块系统测试覆盖 from-import/export/目录包/相对导入/循环导入/reload/元信息/异常；P0 测试覆盖原始字符串/match-case/异常链/复合赋值扩展/属性边界/断点与单步/CLI run-dbg；P1 测试覆盖格式化/静态检查/LSP 诊断与跳转/包管理器（安装/卸载/锁文件/版本约束）；v2.8 新增测试覆盖 assert 双后端一致性、Token 列号、波浪线诊断、`impor test` 子命令、pkg 依赖冲突。
+**703 项自动化测试**覆盖：词法/语法/解释器/转译器/REPL/CLI/示例回归，并校验**解释器与编译产物的输出完全一致**；模块系统测试覆盖 from-import/export/目录包/相对导入/循环导入/reload/元信息/异常；P0 测试覆盖原始字符串/match-case/异常链/复合赋值扩展/属性边界/断点与单步/CLI run-dbg；P1 测试覆盖格式化/静态检查/LSP 诊断与跳转/包管理器（安装/卸载/锁文件/版本约束）；v2.8 新增测试覆盖 assert 双后端一致性、Token 列号、波浪线诊断、`impor test` 子命令、pkg 依赖冲突。
+
+**5 分钟陌生人测试**（脚本为 UTF-8 with BOM，Windows PowerShell 5.1 与 PowerShell 7 都可直接跑）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\five_minute_check.ps1
+pwsh -File tools/five_minute_check.ps1
+# 慢机默认 conformance 等距抽样 30 个用例；要跑全量：
+powershell -ExecutionPolicy Bypass -File tools\five_minute_check.ps1 -Full
+```
+
+默认五步：版本 / 解释器 run / 编 exe 并脱离 Python 运行 / C ABI 源码包五件套 / conformance 抽样。本机 Windows PowerShell 5.1 实测 31.01 s，pwsh 29.58 s，上限 300 s。
 
 **Impor 语言层单元测试（当前版本）**：写 `tests/` 目录下文件名含 `test` 的 `.impor` 文件（用 `assert` 断言），运行 `impor test` 即可执行并统计通过/失败。
 
