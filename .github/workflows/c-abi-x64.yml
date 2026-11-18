@@ -74,7 +74,7 @@ jobs:
         run: python Impor.py build --lib --c-source examples/c_abi/ci_lib.impor -o out
 
       - name: 用 gcc -shared -m64 编 64 位 .so
-        run: gcc -shared -m64 -O2 out/ci_lib.c -o out/libci_lib.so -lm -ldl
+        run: gcc -shared -fPIC -m64 -O2 out/ci_lib.c -o out/libci_lib.so -lm -ldl
 
       - name: 校验 ELF 位宽与导出符号
         run: |

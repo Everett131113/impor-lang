@@ -32,6 +32,7 @@ Impor (I++) 命令行入口。
 
 import os
 import re
+import shutil
 import sys
 import time
 
@@ -508,6 +509,7 @@ def cmd_build(args):
     fast = False
     lib = False
     c_source = False
+    target = None
     rest = list(args)
     while rest:
         a = rest.pop(0)
@@ -520,6 +522,11 @@ def cmd_build(args):
             lib = True
         elif a == "--c-source":
             c_source = True
+        elif a == "--target":
+            if not rest:
+                _err("--target 需要目标名：win64 / linux64 / linux-arm64 / macos-arm64 / macos-x64")
+                return EXIT_USAGE
+            target = rest.pop(0)
         elif a == "--no-cache":
             use_cache = False
         elif a == "--cache":
@@ -550,6 +557,15 @@ def cmd_build(args):
             out = stem + (".dll" if lib else ".exe")
     if c_source and not lib:
         _err("--c-source 必须与 --lib 一起使用：impor build --lib --c-source FILE.impor -o out/")
+        return EXIT_USAGE
+    if target and not lib:
+        _err("--target 目前只用于 --lib：impor build --lib --c-source FILE.impor --target win64 -o out/")
+        return EXIT_USAGE
+    if target and target not in ("win64", "linux64", "linux-arm64", "macos-arm64", "macos-x64"):
+        _err("未知目标 %s；可选：win64 / linux64 / linux-arm64 / macos-arm64 / macos-x64" % target)
+        return EXIT_USAGE
+    if target and not c_source:
+        _err("--target 需要与 --lib --c-source 一起使用：先生成源码包，再调用目标平台编译器")
         return EXIT_USAGE
     if lib and fast:
         _err("--lib 不支持 --fast：导出函数走完整 C 后端（装箱值模型）")
@@ -686,6 +702,63 @@ def cmd_build(args):
         except OSError as exc:
             _err("写出 C 源码包失败：%s" % exc)
             return EXIT_RUNTIME
+
+        # v3.10：--target 直接调用目标平台编译器，不再让用户手写 build_msvc.bat。
+        # 缺工具链时必须明确拒绝，不静默退回 32 位 tcc。
+        if target:
+            import subprocess
+            if target == "win64":
+                cc = shutil.which("cl")
+                if not cc:
+                    _err("目标 win64 需要 MSVC 的 cl，但当前 PATH 中没有 cl。\n"
+                         "  请安装 Visual Studio Build Tools（含 C++ x64 工具链），"
+                         "或在 CI 中先执行 ilammy/msvc-dev-cmd@v1。\n"
+                         "  本命令不会静默退回 32 位 tcc。")
+                    return EXIT_USAGE
+                lib_name = stem + ".dll"
+                out_lib = os.path.abspath(os.path.join(out_dir, lib_name))
+                cmd = [cc, "/nologo", "/LD", stem + ".c", "/Fe:" + out_lib,
+                       "/link", "/DEF:" + stem + ".def"]
+                proc = subprocess.run(cmd, cwd=out_dir, text=True,
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                if proc.returncode != 0:
+                    _err("MSVC x64 编译失败（退出码 %d）：\n%s" % (proc.returncode, proc.stdout[-2000:]))
+                    return EXIT_RUNTIME
+                try:
+                    from .runtime import _pe_machine
+                    machine = _pe_machine(out_lib)
+                except Exception:
+                    machine = None
+                if machine != 0x8664:
+                    _err("MSVC 产物不是 x64 PE（Machine=%s）；拒绝把 32 位库当作 win64 交付。" % machine)
+                    return EXIT_RUNTIME
+                print("目标 win64 编译成功：%s" % out_lib)
+                print("  PE Machine=0x8664（x64）")
+                print("  导出：%s" % ", ".join("impor_" + e["name"] for e in (cabi_info.get("exports") or [])))
+                print("  耗时：%.2fs" % (time.perf_counter() - t0))
+                return EXIT_OK
+            if target == "linux64":
+                cc = shutil.which("gcc")
+                if not cc:
+                    _err("目标 linux64 需要 gcc，但当前 PATH 中没有 gcc。\n"
+                         "  请安装 gcc（x86-64），或使用 CI 的 ubuntu-latest。"
+                         "  本命令不会静默退回 32 位 tcc。")
+                    return EXIT_USAGE
+                lib_name = "lib" + stem + ".so"
+                out_lib = os.path.abspath(os.path.join(out_dir, lib_name))
+                cmd = [cc, "-shared", "-fPIC", "-m64", "-O2", stem + ".c", "-o", out_lib, "-lm", "-ldl"]
+                proc = subprocess.run(cmd, cwd=out_dir, text=True,
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                if proc.returncode != 0:
+                    _err("GCC x64 编译失败（退出码 %d）：\n%s" % (proc.returncode, proc.stdout[-2000:]))
+                    return EXIT_RUNTIME
+                print("目标 linux64 编译成功：%s" % out_lib)
+                print("  导出：%s" % ", ".join("impor_" + e["name"] for e in (cabi_info.get("exports") or [])))
+                print("  耗时：%.2fs" % (time.perf_counter() - t0))
+                return EXIT_OK
+            _err("目标 %s 尚未实现（v3.11 计划）：当前只支持 win64 / linux64。" % target)
+            return EXIT_USAGE
+
         total = time.perf_counter() - t0
         print("C 源码包已生成：%s" % out_dir)
         print("  源码：%s" % c_path)
@@ -2022,7 +2095,7 @@ SUBCOMMAND_HELP = {
                "  b 行号 [if 表达式] 条件断点 / d 行号 删除 / p 表达式 求值 / bt 栈 / l 局部变量 / q 退出。",
     "repl": "impor repl\n  启动交互式 REPL（历史持久化到 ~/.impor_history）。",
     "compile": "impor compile FILE [-o OUT] [--exe]\n  开发兼容：Impor → Python（仅用于本地调试，不是发布路径）。发布请用 impor build。",
-    "build": "impor build FILE.impor [-o OUT.exe] [--lib [-o OUT.dll]] [--c-source -o DIR]\n  C 后端编译（唯一发布路径）：Impor → C → tcc。\n  默认产出独立 exe；--lib 产出 C ABI 共享库：OUT.dll + OUT.h + OUT.def。\n  --lib --c-source 产出 C 源码包：lib.c/lib.h/lib.def/build_msvc.bat/build_gcc.bat。\n  内置 tcc 产出 32 位（i386）产物；64 位工程请用 --c-source 以 cl 或 gcc -m64 自行编译。\n  字符串返回值用 impor_free_str() 释放；类型支持 int/float/bool/str/void/size_t/handle/ptr。",
+    "build": "impor build FILE.impor [-o OUT.exe] [--lib [-o OUT.dll]] [--c-source -o DIR]\n  C 后端编译（唯一发布路径）：Impor → C → tcc。\n  默认产出独立 exe；--lib 产出 C ABI 共享库：OUT.dll + OUT.h + OUT.def。\n  --lib --c-source 产出 C 源码包：lib.c/lib.h/lib.def/build_msvc.bat/build_gcc.bat。\n  加 --target win64 / linux64 可直接调用 cl / gcc -m64 生成 64 位库；缺工具链明确报错，不静默降级。\n  内置 tcc 产出 32 位（i386）产物；64 位工程请用 --target 或 --c-source 以 cl 或 gcc -m64 自行编译。\n  字符串返回值用 impor_free_str() 释放；类型支持 int/float/bool/str/void/size_t/handle/ptr。",
     "check": "impor check FILE\n  语法检查（解析并报告错误，不执行）。",
     "test": "impor test [目录|文件] [--filter 关键字] [--no-isolate] [--keep]\n  运行单元测试：默认扫描 tests/ 下文件名含 test 的 .impor 文件，\n  每个文件在独立临时目录执行（IMPOR_TEST_TMP 可取路径）；\n  assert / expect 失败或运行异常计为失败；退出码 0 全部通过 / 1 有失败。",
     "new": "impor new NAME [--template script|lib|game]\n  生成项目模板（默认 script）。",
@@ -2188,9 +2261,14 @@ def cmd_doctor(args):
         except Exception as e:
             checks.append((False, "模块", "impor.%s：%s" % (m, e)))
     for name, path in (("自举编译器", os.path.join(here, "imporc.exe")),
-                       ("自举种子", os.path.join(root, "bootstrap", "imporc.impor")),
-                       ("自举产物 B", os.path.join(root, "imporc_self.exe"))):
+                       ("自举种子", os.path.join(root, "bootstrap", "imporc.impor"))):
         checks.append((os.path.isfile(path), "产物", name))
+    # 自举产物 B 是本地构建缓存，不是干净 clone 的必需交付物；
+    # 有就报告，没有不能让 doctor 失败（否则 CI 每次都会红）。
+    self_b = os.path.join(root, "imporc_self.exe")
+    checks.append((True, "产物",
+                   "自举产物 B" if os.path.isfile(self_b)
+                   else "自举产物 B（可选，未构建）"))
     tcc = _find_tcc()
     checks.append((bool(tcc), "C 后端", os.path.basename(tcc) if tcc else "未找到 tcc.exe"))
 
