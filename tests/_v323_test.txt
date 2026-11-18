@@ -1,0 +1,15 @@
+test_collect_clean_source (tests.test_v323.TestAsyncDiagnostics.test_collect_clean_source) ... ok
+test_collect_reports_syntax_error (tests.test_v323.TestAsyncDiagnostics.test_collect_reports_syntax_error) ... ok
+test_coverage_exec_lines (tests.test_v323.TestAsyncDiagnostics.test_coverage_exec_lines) ... ok
+test_resolve_build (tests.test_v323.TestConflictParser.test_resolve_build) ... ok
+test_segments_and_hunks (tests.test_v323.TestConflictParser.test_segments_and_hunks) ... ok
+test_install_meta_enable_and_uninstall (tests.test_v323.TestPluginManager.test_install_meta_enable_and_uninstall) ... ok
+test_install_zip (tests.test_v323.TestPluginManager.test_install_zip) ... ok
+test_zip_traversal_rejected (tests.test_v323.TestPluginManager.test_zip_traversal_rejected) ... ok
+test_kinds_and_precedence (tests.test_v323.TestSemanticSymbols.test_kinds_and_precedence) ... ok
+test_unknown_member_not_declared (tests.test_v323.TestSemanticSymbols.test_unknown_member_not_declared) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.128s
+
+OK

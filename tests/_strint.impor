@@ -1,0 +1,5 @@
+var a = str(42)
+var b = int("7")
+var c = int(3.9)
+print(a, b, c)
+print(str(1) + "x")

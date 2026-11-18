@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impor (I++) 3.2.3 — 写下来。编译它。交付出去。</title>
+<meta name="description" content="Impor（I++）3.2.3：运行时行覆盖率、插件面板跨进程 builder、后台索引与可取消搜索、UIA 逐控件 provider、诊断 Quick Fix 扩面；底座保持带载荷 ADT、async/await、三端 JSON/正则/lambda 对齐、受控 FFI 与应用层安全策略。">
+<meta name="theme-color" content="#070A09">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23070A09'/%3E%3Cpath d='M17 18 L9 32 L17 46' stroke='%23EDEFE7' stroke-width='4' fill='none'/%3E%3Cpath d='M47 18 L55 32 L47 46' stroke='%23EDEFE7' stroke-width='4' fill='none'/%3E%3Crect x='27' y='27' width='10' height='10' fill='%23FF4F1E'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#070A09;
+  --bg-2:#0B100D;
+  --bg-3:#101612;
+  --fg:#EDEFE7;
+  --fg-2:#C4CBC1;
+  --muted:#8F978D;
+  --line:rgba(237,239,231,.14);
+  --line-strong:rgba(237,239,231,.28);
+  --paper:#E7EAE2;
+  --ink:#0A0D0B;
+  --ink-2:#3E453F;
+  --ink-3:#6C746D;
+  --line-dark:rgba(10,13,11,.16);
+  --hot:#FF4F1E;
+  --mint:#A8E6C1;
+  --mono:"Cascadia Code","JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --ui:"Bahnschrift","DIN Alternate","Segoe UI","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+  --display:"Source Han Serif SC","Noto Serif SC","Songti SC","SimSun",Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:86px}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:16px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(237,239,231,.085) .7px,transparent .8px);
+  background-size:30px 30px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.75),rgba(0,0,0,.18) 48%,transparent 82%);
+  opacity:.5;
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.042;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+}
+::selection{background:var(--hot);color:var(--ink)}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer}
+svg{display:block}
+.wrap{width:min(1280px,calc(100% - 48px));margin:0 auto;position:relative;z-index:1}
+.skip{position:absolute;left:-9999px;top:10px;z-index:99;background:var(--fg);color:var(--ink);padding:10px 16px}
+.skip:focus{left:10px}
+:focus-visible{outline:2px solid var(--hot);outline-offset:3px}
+
+/* header */
+.site-head{position:sticky;top:0;z-index:50;background:rgba(7,10,9,.96);border-bottom:1px solid var(--line)}
+.head-in{height:74px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:baseline;gap:10px;font-family:var(--ui);font-weight:700;font-size:20px;letter-spacing:.14em}
+.brand-mark{width:27px;height:27px;display:grid;place-items:center;border:1px solid var(--line-strong);position:relative;top:3px}
+.brand-mark svg{width:15px;height:15px}
+.brand .plus{font-family:var(--mono);font-size:11px;color:var(--hot);letter-spacing:0;margin-left:-4px}
+.nav{display:flex;align-items:center;gap:2px}
+.nav a{font-size:13.5px;color:var(--fg-2);padding:8px 13px;border-bottom:1px solid transparent}
+.nav a:hover{color:var(--fg);border-bottom-color:var(--line-strong)}
+.nav .cta{background:var(--fg);color:var(--ink);border:0;margin-left:12px;padding:10px 18px;font-weight:700}
+.nav .cta:hover{background:var(--hot);color:var(--ink)}
+.menu{display:none;width:46px;height:46px;padding:0;border:1px solid var(--line-strong);background:transparent;align-items:center;justify-content:center}
+.menu svg{width:20px;height:20px}
+
+/* hero */
+.hero{position:relative;overflow:hidden;padding:70px 0 0}
+.hero::before{
+  content:"3.1";position:absolute;right:-2vw;top:-64px;font-family:var(--ui);font-weight:800;
+  font-size:clamp(280px,38vw,620px);line-height:.8;letter-spacing:-.08em;color:rgba(237,239,231,.028);pointer-events:none;
+}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.28fr) minmax(340px,.72fr);gap:clamp(36px,6vw,92px);align-items:start}
+.edition{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.03em}
+.edition .pulse{width:7px;height:7px;background:var(--hot);box-shadow:0 0 0 5px rgba(255,79,30,.12)}
+.edition b{color:var(--fg);font-weight:500}
+.edition .sep{width:28px;height:1px;background:var(--line-strong)}
+h1{
+  font-family:var(--display);font-weight:800;font-size:clamp(54px,8.4vw,116px);line-height:1.02;
+  letter-spacing:-.055em;margin:26px 0 0;max-width:8em;
+}
+h1 span{display:block}
+h1 .hollow{color:transparent;-webkit-text-stroke:1.1px rgba(237,239,231,.52)}
+h1 .hot{color:var(--hot);position:relative;padding-bottom:.04em}
+h1 .hot::after{content:"";position:absolute;left:0;bottom:-.08em;width:34%;height:2px;background:var(--hot)}
+.lede{max-width:34em;margin:30px 0 0;font-size:17px;line-height:1.86;color:var(--fg-2)}
+.lede strong{color:var(--fg);font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:32px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 22px;
+  border:1px solid var(--fg);background:var(--fg);color:var(--ink);font-size:13.5px;font-weight:700;
+  letter-spacing:.01em;transition:background .18s,color .18s,border-color .18s,transform .18s;
+}
+.btn:hover{background:var(--hot);border-color:var(--hot);transform:translateY(-2px)}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line-strong);font-weight:500}
+.btn.ghost:hover{background:transparent;border-color:var(--fg);color:var(--fg);transform:none}
+.btn svg{width:16px;height:16px}
+.hero-note{display:flex;align-items:center;gap:10px;margin-top:22px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.hero-note i{width:14px;height:1px;background:var(--line-strong);display:block}
+.manifest{border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line);padding-top:14px}
+.manifest-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.manifest-head span{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.06em}
+.manifest-head b{font-family:var(--ui);font-size:44px;line-height:.9;font-weight:800;letter-spacing:-.04em}
+.manifest-list{list-style:none;margin:18px 0 0;padding:0}
+.manifest-list li{display:grid;grid-template-columns:88px 1fr;gap:14px;padding:12px 0;border-top:1px solid var(--line);font-size:12.5px;line-height:1.55}
+.manifest-list li span:first-child{font-family:var(--mono);font-size:10.5px;color:var(--hot);padding-top:2px}
+.manifest-list li span:last-child{color:var(--fg-2)}
+.manifest-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;padding:11px 0 0;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--muted)}
+.manifest-foot b{color:var(--mint);font-weight:400}
+.spine{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin-top:18px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.spine-line{height:1px;background:var(--line-strong);position:relative}
+.spine-line::before,.spine-line::after{content:"";position:absolute;top:-2px;width:5px;height:5px;background:var(--muted)}
+.spine-line::before{left:0}
+.spine-line::after{right:0;background:var(--hot)}
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:60px}
+.stat{padding:22px 24px 24px;border-right:1px solid var(--line);min-width:0}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:var(--ui);font-size:clamp(25px,2.8vw,34px);line-height:1;letter-spacing:-.04em;font-weight:800;font-feature-settings:"tnum"}
+.stat b em{font-style:normal;font-size:.48em;color:var(--muted);letter-spacing:0;margin-left:4px}
+.stat span{display:block;margin-top:8px;font-size:11.5px;color:var(--muted);line-height:1.45}
+
+/* section language */
+section{position:relative;z-index:1}
+.sec{padding:94px 0;border-top:1px solid var(--line)}
+.sec-head{display:grid;grid-template-columns:180px 1fr;gap:44px;align-items:start;margin-bottom:44px}
+.sec-tag{font-family:var(--mono);font-size:11px;color:var(--hot);letter-spacing:.04em;padding-top:8px}
+.sec-tag::before{content:"";display:inline-block;width:18px;height:1px;background:var(--hot);vertical-align:middle;margin-right:8px}
+h2{font-family:var(--display);font-size:clamp(34px,4.4vw,62px);line-height:1.16;letter-spacing:-.04em;margin:0;font-weight:800}
+.sec-head p{max-width:44em;margin:16px 0 0;font-size:14.5px;line-height:1.85;color:var(--muted)}
+.sec-head p strong{color:var(--fg-2);font-weight:500}
+.lang-grid{display:grid;grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);gap:clamp(32px,5vw,72px);align-items:start}
+.lang-side p{font-size:14px;line-height:1.88;color:var(--fg-2);margin:0 0 18px;max-width:30em}
+.lang-side p:last-of-type{margin-bottom:0}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-top:30px;flex-wrap:wrap}
+.tab{position:relative;border:0;background:transparent;color:var(--muted);padding:12px 17px 13px;font-family:var(--mono);font-size:11.5px}
+.tab:hover{color:var(--fg)}
+.tab.active{color:var(--fg)}
+.tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--hot)}
+.panel{display:none;grid-template-columns:minmax(0,1.12fr) minmax(260px,.88fr);border:1px solid var(--line);border-top:0;background:var(--bg-2)}
+.panel.on{display:grid}
+.codebox{min-width:0;border-right:1px solid var(--line)}
+.codebox-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.codebox-top b{color:var(--fg-2);font-weight:400}
+.codebox pre{margin:0;padding:18px 18px 22px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.78;color:#CED5CA;tab-size:2}
+.ln{display:inline-block;width:28px;color:#505850;user-select:none;text-align:right;margin-right:14px}
+.k{color:#9CC9FF}
+.f{color:#F0C179}
+.t{color:#A8E6C1}
+.n{color:#FF9B7A}
+.c{color:#748073}
+.bad{color:#FF6A48}
+.diag{padding:24px 22px;min-width:0;background:#0A0F0D}
+.diag-code{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;color:var(--hot);border:1px solid rgba(255,79,30,.35);padding:5px 8px}
+.diag-code::before{content:"";width:5px;height:5px;background:var(--hot)}
+.diag h3{font-size:19px;line-height:1.35;margin:18px 0 7px;font-weight:700;letter-spacing:-.01em}
+.diag .where{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.diag dl{margin:20px 0 0;display:grid;grid-template-columns:44px 1fr;gap:12px 10px;font-size:12px;line-height:1.68}
+.diag dt{color:var(--hot);font-family:var(--mono);font-size:10.5px;padding-top:2px}
+.diag dd{margin:0;color:var(--fg-2)}
+.diag dd code{font-family:var(--mono);color:var(--fg);font-size:11.5px;background:rgba(237,239,231,.07);padding:1px 4px}
+.diag-foot{margin-top:22px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.note-line{display:flex;align-items:flex-start;gap:12px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;line-height:1.7;color:var(--muted)}
+.note-line b{color:var(--fg-2);font-weight:500}
+.note-line svg{width:16px;height:16px;flex:none;margin-top:3px;color:var(--hot)}
+
+/* evidence light */
+.evidence{background:var(--paper);color:var(--ink);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.evidence .wrap{color:var(--ink)}
+.evidence .sec-tag{color:#B8320B}
+.evidence .sec-tag::before{background:#B8320B}
+.evidence h2{color:var(--ink)}
+.evidence .sec-head p{color:var(--ink-2)}
+.evidence .sec-head p strong{color:var(--ink)}
+.proof-grid{display:grid;grid-template-columns:minmax(260px,.82fr) minmax(0,1.18fr);gap:clamp(34px,5vw,80px);align-items:start}
+.figure{font-family:var(--ui);font-weight:800;font-size:clamp(90px,13vw,178px);line-height:.82;letter-spacing:-.08em;font-feature-settings:"tnum"}
+.figure small{display:block;font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:.02em;color:var(--ink-3);margin-top:20px}
+.proof-copy{font-size:14px;line-height:1.9;color:var(--ink-2);max-width:38em;margin:0}
+.proof-copy strong{color:var(--ink)}
+.engine-list{border-top:1px solid var(--line-dark);margin-top:26px}
+.engine-row{display:grid;grid-template-columns:150px 1fr 180px;gap:18px;padding:16px 0;border-bottom:1px solid var(--line-dark);align-items:baseline}
+.engine-row b{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink)}
+.engine-row p{margin:0;font-size:12.5px;line-height:1.6;color:var(--ink-2)}
+.engine-row span{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);text-align:right}
+.cmd{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:24px;background:var(--ink);color:var(--fg);padding:12px 14px 12px 16px;font-family:var(--mono);font-size:12px;border:1px solid var(--ink)}
+.cmd b{color:var(--mint);font-weight:400}
+.cmd .prompt{color:var(--hot);margin-right:8px}
+.copy{border:0;background:transparent;color:var(--muted);font-family:var(--mono);font-size:10px;padding:7px 8px;border:1px solid rgba(237,239,231,.22);min-height:34px;white-space:nowrap}
+.copy:hover{color:var(--fg);border-color:var(--fg)}
+.cache{border-top:1px solid var(--line-dark);margin-top:58px;padding-top:28px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(30px,5vw,70px);align-items:start}
+.cache h3{font-family:var(--display);font-size:clamp(28px,3vw,40px);line-height:1.2;letter-spacing:-.03em;margin:0;color:var(--ink)}
+.cache p{margin:14px 0 0;font-size:13.5px;line-height:1.85;color:var(--ink-2)}
+.cache-pair{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;padding-top:8px}
+.cache-time{display:flex;flex-direction:column;gap:4px}
+.cache-time b{font-family:var(--ui);font-size:clamp(45px,6vw,76px);line-height:.9;letter-spacing:-.06em;font-weight:800;font-feature-settings:"tnum"}
+.cache-time span{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.cache-arrow{font-family:var(--mono);color:#B8320B;font-size:20px;padding-bottom:16px}
+.cache-foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:18px;padding-top:12px;border-top:1px solid var(--line-dark);font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+.cache-foot b{color:#B8320B;font-weight:400}
+.version-track{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line-dark);margin-top:54px}
+.vnode{padding:18px 18px 0 0;position:relative}
+.vnode::before{content:"";position:absolute;top:-4px;left:0;width:7px;height:7px;background:#B8320B}
+.vnode b{display:block;font-family:var(--ui);font-size:20px;letter-spacing:-.02em}
+.vnode span{display:block;margin-top:3px;font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.vnode p{margin:8px 0 0;font-size:11.5px;line-height:1.6;color:var(--ink-2);max-width:16em}
+
+/* studio */
+.studio{background:#080C0A;border:1px solid var(--line);margin-top:6px}
+.studio-bar{height:46px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.studio-bar .title{display:flex;align-items:center;gap:10px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.studio-bar .sig{display:flex;gap:4px;flex:none}
+.studio-bar .sig i{width:6px;height:6px;display:block;background:var(--muted)}
+.studio-bar .sig i:nth-child(1){background:var(--hot)}
+.studio-bar .sig i:nth-child(2){background:#8A6B35}
+.studio-bar .sig i:nth-child(3){background:var(--mint)}
+.studio-bar .right{display:flex;gap:12px;align-items:center;flex:none}
+.studio-body{display:grid;grid-template-columns:194px minmax(0,1fr) 164px;min-height:430px}
+.tree{border-right:1px solid var(--line);padding:14px 0;font-family:var(--mono);font-size:10.5px;color:var(--muted);min-width:0}
+.tree-title{padding:0 14px 10px;color:#6F786F;letter-spacing:.03em}
+.tree ul{list-style:none;padding:0;margin:0}
+.tree li{padding:6px 14px;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree li.on{background:rgba(255,79,30,.1);color:var(--fg);border-left:2px solid var(--hot);padding-left:12px}
+.tree svg{width:11px;height:11px;flex:none;opacity:.55}
+.tree .folder{color:#A9B1A7}
+.editor-pane{min-width:0;display:flex;flex-direction:column}
+.file-tab{display:flex;align-items:center;gap:9px;padding:10px 16px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10.5px;color:var(--fg-2)}
+.file-tab i{width:5px;height:5px;background:var(--hot);display:block}
+.editor-code{flex:1;overflow:auto;padding:16px 0 20px;font-family:var(--mono);font-size:11.5px;line-height:1.8;color:#CED5CA;min-width:0}
+.editor-code .row{display:block;padding:0 16px;white-space:pre}
+.editor-code .row.cur{background:rgba(237,239,231,.045);box-shadow:inset 2px 0 0 rgba(255,79,30,.75)}
+.editor-code .row .ln{width:22px;margin-right:12px;text-align:right;color:#4E574E}
+.editor-code .row.cur .ln{color:#8E978D}
+.editor-code .wavy{border-bottom:1px dashed #FF6A48}
+.minimap{border-left:1px solid var(--line);padding:16px 12px;font-family:var(--mono);font-size:8px;line-height:1.38;color:#4B554C;overflow:hidden}
+.minimap b{display:block;color:#6B756C;font-weight:400;margin-bottom:8px;font-size:8px;letter-spacing:.03em}
+.problems{border-top:1px solid var(--line);padding:14px 16px 16px;min-width:0}
+.problems-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.problems-head b{color:var(--fg);font-weight:400}
+.problem{display:grid;grid-template-columns:18px 1fr auto;gap:9px;align-items:baseline;padding:5px 0;border-top:1px solid rgba(237,239,231,.07);font-size:10.5px;line-height:1.45}
+.problem:first-of-type{border-top:0}
+.problem .icon{color:var(--hot);font-family:var(--mono);font-size:10px}
+.problem code{font-family:var(--mono);color:var(--fg-2);font-size:10px;background:rgba(237,239,231,.05);padding:1px 4px;margin-right:5px}
+.problem .loc{font-family:var(--mono);color:#707A70;font-size:9.5px;white-space:nowrap}
+.problem .msg{color:#B4BCB2;min-width:0}
+.statusbar{height:28px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 12px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;color:#707A70;background:#060907}
+.statusbar b{color:var(--mint);font-weight:400}
+.cap-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:36px}
+.cap{padding:22px 24px 24px;border-right:1px solid var(--line);min-width:0}
+.cap:last-child{border-right:0}
+.cap .k{font-family:var(--mono);font-size:10px;color:var(--hot);letter-spacing:.04em}
+.cap h3{font-size:16px;line-height:1.35;margin:9px 0 6px;font-weight:600;letter-spacing:-.01em}
+.cap p{margin:0;font-size:12px;line-height:1.7;color:var(--muted)}
+.cap p code{font-family:var(--mono);font-size:10.5px;color:var(--fg-2);background:rgba(237,239,231,.06);padding:1px 4px}
+.legacy{display:flex;gap:10px 22px;flex-wrap:wrap;align-items:baseline;margin-top:18px;font-family:var(--mono);font-size:10.5px;color:#737D73}
+.legacy b{color:var(--fg-2);font-weight:400}
+
+/* ecosystem */
+.eco-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(34px,5vw,68px);align-items:start}
+.eco-label{font-family:var(--mono);font-size:10px;color:var(--hot);letter-spacing:.05em;margin-bottom:12px}
+.term{border:1px solid var(--line);background:#0A0F0D}
+.term-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 13px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;color:#788278}
+.term pre{margin:0;padding:16px 14px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.8;color:#C7CEC5;overflow:auto;white-space:pre}
+.term .dim{color:#6E786E}
+.term .ok{color:var(--mint)}
+.term .warn{color:#F1C078}
+.term .err{color:#FF6A48}
+.pkg-notes{margin-top:18px;font-size:12.5px;line-height:1.8;color:var(--muted)}
+.pkg-notes b{color:var(--fg-2);font-weight:500}
+.lessons{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.lesson{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;padding:11px 13px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.lesson .no{font-family:var(--mono);font-size:10px;color:var(--hot);padding-top:3px}
+.lesson b{display:block;font-size:12px;font-weight:600;line-height:1.4}
+.lesson small{display:block;margin-top:2px;font-size:10px;line-height:1.45;color:#798378}
+.lesson-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.lesson-foot b{color:var(--mint);font-weight:400}
+.demo-head{margin-top:62px;display:flex;justify-content:space-between;align-items:baseline;gap:18px}
+.demo-head h3{font-family:var(--display);font-size:clamp(24px,2.8vw,34px);line-height:1.25;letter-spacing:-.03em;margin:0;font-weight:700}
+.demo-head span{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.demo-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px}
+.demo-card{border:1px solid var(--line);background:var(--bg-2);padding:20px;display:flex;flex-direction:column;min-height:210px;min-width:0}
+.demo-kicker{font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.03em}
+.demo-card h4{font-size:17px;line-height:1.35;margin:10px 0 7px;font-weight:600}
+.demo-card p{margin:0;font-size:11.5px;line-height:1.65;color:var(--muted)}
+.demo-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:18px}
+.demo-links a{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:5px 9px;border:1px solid var(--line-strong);font-family:var(--mono);font-size:10px;color:var(--fg-2)}
+.demo-links a:hover{border-color:var(--hot);color:var(--fg)}
+.demo-links a.primary{background:var(--fg);color:var(--ink);border-color:var(--fg)}
+.demo-links a.primary:hover{background:var(--hot);border-color:var(--hot)}
+
+/* boundary */
+.boundary{background:var(--hot);color:var(--ink);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.boundary .wrap{color:var(--ink)}
+.boundary .sec{padding-top:80px;padding-bottom:80px}
+.boundary .sec-tag{color:#561300}
+.boundary .sec-tag::before{background:#561300}
+.boundary h2{color:var(--ink)}
+.boundary .sec-head p{color:rgba(10,13,11,.73)}
+.boundary .sec-head p strong{color:var(--ink)}
+.boundary-grid{display:grid;grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);gap:clamp(34px,5vw,76px);align-items:start}
+.boundary-note{font-family:var(--display);font-size:clamp(22px,2.5vw,32px);line-height:1.45;letter-spacing:-.03em;margin:0;font-weight:700;max-width:13em}
+.boundary-note small{display:block;margin-top:18px;font-family:var(--ui);font-size:11.5px;line-height:1.7;letter-spacing:0;font-weight:400;color:rgba(10,13,11,.66);max-width:26em}
+.unfinished{list-style:none;margin:0;padding:0;border-top:1px solid rgba(10,13,11,.28)}
+.unfinished li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid rgba(10,13,11,.22);font-size:12.5px;line-height:1.55}
+.unfinished li span{font-family:var(--mono);font-size:9.5px;padding-top:2px;color:rgba(10,13,11,.7)}
+.unfinished li b{font-weight:600}
+
+/* download */
+.download{padding:92px 0 96px}
+.dl-grid{display:grid;grid-template-columns:minmax(0,1.16fr) minmax(0,.84fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.dl-main,.dl-side{background:var(--bg-2);padding:clamp(24px,3.4vw,38px);min-width:0}
+.dl-main{position:relative;overflow:hidden}
+.dl-main::before{content:"3.1";position:absolute;right:-8px;bottom:-56px;font-family:var(--ui);font-size:250px;line-height:1;font-weight:800;color:rgba(237,239,231,.035);letter-spacing:-.07em;pointer-events:none}
+.dl-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--hot);border:1px solid rgba(255,79,30,.35);padding:5px 8px}
+.dl-badge::before{content:"";width:5px;height:5px;background:var(--hot)}
+.dl-main h3,.dl-side h3{font-family:var(--display);font-size:clamp(28px,3.4vw,44px);line-height:1.14;letter-spacing:-.04em;margin:18px 0 8px;font-weight:700}
+.dl-main p,.dl-side p{margin:0;font-size:12.5px;line-height:1.75;color:var(--muted);max-width:28em}
+.dl-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}
+.dl-meta{display:grid;grid-template-columns:88px 1fr;gap:8px 12px;margin-top:26px;padding-top:15px;border-top:1px solid var(--line);font-size:11.5px}
+.dl-meta dt{font-family:var(--mono);font-size:9.5px;color:var(--muted);padding-top:2px}
+.dl-meta dd{margin:0;color:var(--fg-2);font-family:var(--mono);font-size:10px;line-height:1.55;word-break:break-all}
+.dl-side .btn{width:100%;margin-top:20px}
+.install{list-style:none;counter-reset:s;padding:0;margin:24px 0 0;border-top:1px solid var(--line)}
+.install li{counter-increment:s;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11.5px;line-height:1.6;color:var(--fg-2);min-width:0}
+.install li::before{content:counter(s);font-family:var(--mono);font-size:9.5px;color:var(--hot);padding-top:2px}
+.install code{font-family:var(--mono);font-size:10.5px;color:var(--fg);background:rgba(237,239,231,.06);padding:1px 4px;word-break:break-all}
+.foot{border-top:1px solid var(--line);padding:28px 0 44px}
+.foot-in{display:flex;justify-content:space-between;gap:22px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.foot-in .brandline{font-family:var(--mono);color:var(--fg-2)}
+.foot-in a{border-bottom:1px solid var(--line-strong);padding-bottom:1px}
+.foot-in a:hover{color:var(--fg);border-color:var(--hot)}
+.toast{position:fixed;left:50%;bottom:24px;z-index:70;transform:translate(-50%,14px);background:var(--fg);color:var(--ink);padding:10px 16px;font-family:var(--mono);font-size:11px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:calc(100% - 28px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* expanded sections */
+.minor-head{display:grid;grid-template-columns:180px 1fr;gap:44px;align-items:start;margin:64px 0 28px;padding-top:28px;border-top:1px solid var(--line)}
+.minor-head h3{font-family:var(--display);font-size:clamp(28px,3.4vw,46px);line-height:1.18;letter-spacing:-.035em;margin:0;font-weight:700}
+.minor-head p{max-width:44em;margin:12px 0 0;font-size:13px;line-height:1.8;color:var(--muted)}
+.minor-head p strong{color:var(--fg-2);font-weight:500}
+@media (max-width:980px){.minor-head{grid-template-columns:1fr;gap:8px}}
+@media (max-width:640px){.minor-head{margin-top:46px}}
+.issue{padding:30px 0 0}
+.issue-head{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:0 0 14px;border-bottom:1px solid var(--line-strong);font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.03em}
+.issue-head b{color:var(--fg);font-weight:400}
+.toc{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.toc li{border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.toc a{display:grid;grid-template-columns:28px minmax(0,1fr);gap:2px 10px;padding:14px 15px 15px;min-height:70px;align-content:start}
+.toc .no{font-family:var(--mono);font-size:10px;color:var(--hot);grid-row:1/3;padding-top:2px}
+.toc b{font-size:13px;font-weight:600;line-height:1.35;transition:color .16s}
+.toc em{font-style:normal;font-size:10px;line-height:1.5;color:var(--muted)}
+.toc a:hover{background:rgba(255,79,30,.055)}
+.toc a:hover b{color:var(--hot)}
+.position-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:clamp(34px,5vw,72px);align-items:start}
+.position-copy p{font-size:14px;line-height:1.9;color:var(--fg-2);margin:0 0 18px;max-width:34em}
+.position-copy p strong{color:var(--fg);font-weight:600}
+.position-quote{margin:28px 0 0;padding:0 0 0 18px;border-left:2px solid var(--hot);font-family:var(--display);font-size:clamp(24px,3vw,38px);line-height:1.35;letter-spacing:-.03em;font-weight:700;max-width:16em}
+.position-quote small{display:block;margin-top:12px;font-family:var(--mono);font-size:10px;line-height:1.6;letter-spacing:0;color:var(--muted);font-weight:400}
+.principle-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.principle{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;padding:18px 0 19px;border-bottom:1px solid var(--line)}
+.principle .pn{font-family:var(--mono);font-size:10px;color:var(--hot);padding-top:3px}
+.principle h3{font-size:16px;line-height:1.35;margin:0 0 5px;font-weight:600;letter-spacing:-.01em}
+.principle p{margin:0;font-size:12px;line-height:1.7;color:var(--muted)}
+.principle p code{font-family:var(--mono);font-size:10.5px;color:var(--fg-2);background:rgba(237,239,231,.06);padding:1px 4px}
+.isnt{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:38px}
+.isnt div{padding:18px 20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.isnt span{font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.03em}
+.isnt p{margin:7px 0 0;font-size:12.5px;line-height:1.7;color:var(--fg-2)}
+.isnt div.no span{color:var(--muted)}
+.isnt div.no p{color:var(--muted)}
+.type-map{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:34px}
+.type-group{padding:17px 18px 18px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.type-label{font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.04em}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.chip{font-family:var(--mono);font-size:10.5px;color:var(--fg-2);border:1px solid var(--line);padding:2px 6px;background:rgba(237,239,231,.03)}
+.type-group p{margin:10px 0 0;font-size:10.5px;line-height:1.6;color:var(--muted)}
+.type-rules{list-style:none;margin:26px 0 0;padding:0;border-top:1px solid var(--line)}
+.type-rules li{display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:12px;line-height:1.65;color:var(--muted)}
+.type-rules b{font-family:var(--mono);font-size:10px;color:var(--fg-2);font-weight:400;padding-top:2px}
+.type-rules code{font-family:var(--mono);color:var(--fg-2);font-size:10.5px}
+.table-scroll{overflow-x:auto;margin-top:34px;border-top:1px solid var(--line)}
+.spec-table{width:100%;min-width:720px;border-collapse:collapse;table-layout:fixed}
+.spec-table th{text-align:left;padding:10px 12px 9px;border-bottom:1px solid var(--line-strong);font-family:var(--mono);font-size:9.5px;color:var(--muted);font-weight:400;letter-spacing:.03em}
+.spec-table td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top;font-size:12px;line-height:1.65;color:var(--muted)}
+.spec-table td:first-child{color:var(--fg-2);font-weight:500}
+.spec-table code{font-family:var(--mono);font-size:10.5px;color:var(--fg);background:rgba(237,239,231,.06);padding:1px 4px;word-break:break-word}
+.spec-table .mono{font-family:var(--mono);font-size:10.5px;color:var(--fg-2)}
+.paper-table th{color:var(--ink-3);border-bottom-color:var(--line-dark)}
+.paper-table td{color:var(--ink-2);border-bottom-color:var(--line-dark)}
+.paper-table td:first-child{color:var(--ink)}
+.paper-table code{color:var(--ink);background:rgba(10,13,11,.07)}
+.paper-table .mono{color:var(--ink-2)}
+.ledger-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:14px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.ledger-head b{color:var(--fg);font-weight:400}
+.pipeline{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:36px}
+.stage{padding:20px 22px 22px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.stage-num{font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.05em}
+.stage h3{font-size:17px;line-height:1.35;margin:9px 0 6px;font-weight:600;letter-spacing:-.01em}
+.stage p{margin:0;font-size:12px;line-height:1.7;color:var(--muted);max-width:25em}
+.stage .io{display:block;margin-top:12px;padding-top:9px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;line-height:1.6;color:#778177}
+.stage .io b{color:var(--fg-2);font-weight:400}
+.output-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:34px}
+.output{padding:18px 20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.output b{display:block;font-family:var(--mono);font-size:11px;color:var(--mint);font-weight:400;word-break:break-all}
+.output span{display:block;margin-top:7px;font-size:11px;line-height:1.6;color:var(--muted)}
+.exit-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:18px}
+.exit{padding:13px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--muted)}
+.exit b{display:block;color:var(--hot);font-size:15px;font-weight:400;margin-bottom:3px}
+.diagnostics{background:var(--paper);color:var(--ink);border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
+.diagnostics .wrap{color:var(--ink)}
+.diagnostics .sec-tag{color:#B8320B}
+.diagnostics .sec-tag::before{background:#B8320B}
+.diagnostics h2{color:var(--ink)}
+.diagnostics .sec-head p{color:var(--ink-2)}
+.diagnostics .sec-head p strong{color:var(--ink)}
+.evidence .minor-head{border-top-color:var(--line-dark)}
+.evidence .minor-head h3{color:var(--ink)}
+.evidence .minor-head p{color:var(--ink-2)}
+.evidence .minor-head p strong{color:var(--ink)}
+.diag-layers{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line-dark);border-left:1px solid var(--line-dark);margin-top:34px}
+.diag-layer{padding:18px 20px;border-right:1px solid var(--line-dark);border-bottom:1px solid var(--line-dark);min-width:0}
+.diag-layer span{font-family:var(--mono);font-size:9.5px;color:#B8320B}
+.diag-layer b{display:block;margin-top:7px;font-size:15px;line-height:1.35}
+.diag-layer p{margin:5px 0 0;font-size:11px;line-height:1.6;color:var(--ink-2)}
+.diag-quote{margin:30px 0 0;font-family:var(--display);font-size:clamp(22px,2.7vw,34px);line-height:1.45;letter-spacing:-.03em;font-weight:700;max-width:22em}
+.diag-quote small{display:block;margin-top:10px;font-family:var(--ui);font-size:11px;line-height:1.7;letter-spacing:0;font-weight:400;color:var(--ink-3)}
+.ledger-table .tag{font-family:var(--mono);font-size:9.5px;color:var(--hot)}
+.release-grid{display:grid;grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);gap:clamp(34px,5vw,72px);align-items:start}
+.release-copy p{font-size:14px;line-height:1.9;color:var(--fg-2);margin:0 0 18px;max-width:34em}
+.release-copy p strong{color:var(--fg)}
+.lineage-list{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.lineage{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;padding:11px 13px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.lineage b{font-family:var(--mono);font-size:10px;color:var(--hot);font-weight:400;padding-top:2px}
+.lineage span{font-size:11px;line-height:1.55;color:var(--muted)}
+.lineage span strong{color:var(--fg-2);font-weight:500}
+.workflow-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:36px}
+.workflow{padding:20px 22px 22px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.workflow .wk{font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.03em}
+.workflow h3{font-size:17px;line-height:1.35;margin:8px 0 6px;font-weight:600}
+.workflow p{margin:0;font-size:11.5px;line-height:1.7;color:var(--muted)}
+.workflow-code{margin:14px 0 0;padding:12px 13px;border:1px solid var(--line);background:#0A0F0D;font-family:var(--mono);font-size:10px;line-height:1.7;color:#BFC7BD;overflow:auto;white-space:pre}
+.workflow-code b{color:var(--mint);font-weight:400}
+.workflow-code .dim{color:#6E786E}
+.boundary code{font-family:var(--mono);font-size:9.5px;background:rgba(10,13,11,.08);padding:1px 3px}
+.workflow-foot{margin-top:12px;padding-top:9px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;color:#778177}
+.arc-strip{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:26px}
+.arc{padding:15px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.arc span{font-family:var(--mono);font-size:9.5px;color:var(--hot)}
+.arc b{display:block;margin-top:6px;font-size:12.5px;line-height:1.4}
+.arc p{margin:3px 0 0;font-size:10px;line-height:1.5;color:var(--muted)}
+.atlas-board{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:24px}
+.atlas-cell{padding:15px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.atlas-cell span{font-family:var(--mono);font-size:9.5px;color:var(--hot)}
+.atlas-cell b{display:block;margin-top:6px;font-size:12.5px;line-height:1.4}
+.atlas-cell p{margin:3px 0 0;font-size:10px;line-height:1.5;color:var(--muted)}
+.atlas-code{margin-top:18px;border:1px solid var(--line);background:#0A0F0D}
+.atlas-code .term-bar{border-bottom-color:var(--line)}
+.atlas-code pre{margin:0;padding:15px 16px 17px;font-family:var(--mono);font-size:10.5px;line-height:1.72;color:#C7CEC5;overflow:auto}
+.atlas-code .dim{color:#6E786E}
+.atlas-code .c{color:#748073}
+.pkg-manifest{margin-top:24px;border:1px solid var(--line);background:#0A0F0D}
+.pkg-manifest .term-bar{border-bottom-color:var(--line)}
+.pkg-manifest pre{margin:0;padding:14px 15px 16px;font-family:var(--mono);font-size:10.5px;line-height:1.72;color:#C7CEC5;overflow:auto}
+.pkg-manifest .c{color:#748073}
+.grade-line{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:20px}
+.grade-step{padding:13px 14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:9.5px;color:var(--muted);line-height:1.6}
+.grade-step b{display:block;color:var(--fg-2);font-size:11px;font-weight:400;margin-bottom:3px}
+.boundary .unfinished li{grid-template-columns:26px minmax(0,1fr)}
+.boundary .debt{margin-top:34px;border-top:1px solid rgba(10,13,11,.28);padding-top:20px}
+.boundary .debt h3{font-family:var(--display);font-size:22px;line-height:1.3;margin:0 0 10px;letter-spacing:-.02em}
+.boundary .debt-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:0}
+.boundary .debt-table th{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid rgba(10,13,11,.25);font-family:var(--mono);font-size:9px;color:rgba(10,13,11,.65);font-weight:400}
+.boundary .debt-table td{padding:7px 8px 7px 0;border-bottom:1px solid rgba(10,13,11,.16);font-size:10.5px;line-height:1.5;color:rgba(10,13,11,.78);vertical-align:top}
+.boundary .debt-table td:first-child{font-family:var(--mono);font-size:9.5px}
+.boundary .boundary-rule{margin-top:24px;padding:14px 16px;border:1px solid rgba(10,13,11,.32);font-size:11.5px;line-height:1.7;color:rgba(10,13,11,.8)}
+.boundary .boundary-rule b{color:var(--ink)}
+.faq{border-top:1px solid var(--line);margin-top:30px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:start;padding:15px 0;min-height:48px;cursor:pointer;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .qno{font-family:var(--mono);font-size:10px;color:var(--hot);padding-top:3px}
+.faq summary b{font-size:13.5px;line-height:1.5;font-weight:500;color:var(--fg-2)}
+.faq summary .plus{font-family:var(--mono);font-size:16px;line-height:1;color:var(--muted);padding-top:2px}
+.faq summary .plus::before{content:"+"}
+.faq details[open] summary .plus::before{content:"−"}
+.faq details[open] summary b{color:var(--fg)}
+.faq details[open] summary .plus{color:var(--hot)}
+.faq .a{padding:0 0 18px 44px;font-size:12px;line-height:1.8;color:var(--muted);max-width:62em}
+.faq .a code{font-family:var(--mono);font-size:10.5px;color:var(--fg-2);background:rgba(237,239,231,.06);padding:1px 4px}
+.dl-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:20px}
+.dl-note{background:var(--bg-2);padding:22px 24px;min-width:0}
+.dl-note span{font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.03em}
+.dl-note h4{font-size:15px;line-height:1.35;margin:8px 0 6px;font-weight:600}
+.dl-note p{margin:0;font-size:11.5px;line-height:1.7;color:var(--muted)}
+.dl-note p code,.dl-note li code{font-family:var(--mono);font-size:10px;color:var(--fg-2);background:rgba(237,239,231,.06);padding:1px 4px}
+.req-list{list-style:none;margin:10px 0 0;padding:0}
+.req-list li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;color:var(--muted)}
+.req-list li b{color:var(--fg-2);font-weight:400}
+.colophon{padding:38px 0 40px;border-top:1px solid var(--line)}
+.colophon-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:clamp(24px,3vw,42px);align-items:start}
+.colophon span{display:block;font-family:var(--mono);font-size:9.5px;color:var(--hot);letter-spacing:.04em}
+.colophon b{display:block;margin-top:7px;font-size:14px;line-height:1.4;font-weight:600}
+.colophon p{margin:7px 0 0;font-size:10.5px;line-height:1.65;color:var(--muted)}
+.colophon .palette{display:flex;gap:6px;margin-top:9px}
+.colophon .palette i{width:18px;height:18px;display:block;border:1px solid var(--line-strong)}
+
+@media (max-width:980px){
+  .toc{grid-template-columns:repeat(2,1fr)}
+  .position-grid,.release-grid{grid-template-columns:1fr}
+  .type-map,.pipeline,.workflow-grid{grid-template-columns:repeat(2,1fr)}
+  .output-grid,.exit-strip,.arc-strip{grid-template-columns:repeat(2,1fr)}
+  .atlas-board{grid-template-columns:repeat(2,1fr)}
+  .lineage-list,.dl-notes,.colophon-grid{grid-template-columns:1fr}
+  .faq .a{padding-left:44px}
+}
+@media (max-width:640px){
+  .toc{grid-template-columns:1fr}
+  .type-map,.pipeline,.workflow-grid,.output-grid,.exit-strip,.arc-strip,.diag-layers,.isnt,.colophon-grid,.atlas-board{grid-template-columns:1fr}
+  .type-rules li{grid-template-columns:1fr;gap:3px}
+  .spec-table{min-width:760px}
+  .issue-head{display:block;line-height:1.8}
+  .issue-head span{display:block}
+  .faq summary{grid-template-columns:28px minmax(0,1fr) auto;gap:8px}
+  .faq .a{padding-left:0}
+  .boundary .debt-table{min-width:0}
+}
+
+@media (max-width:1100px){
+  .hero-grid{grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:40px}
+  .sec-head{grid-template-columns:150px 1fr;gap:30px}
+  .studio-body{grid-template-columns:170px minmax(0,1fr) 130px}
+}
+@media (max-width:980px){
+  .hero{padding-top:56px}
+  .hero-grid{grid-template-columns:1fr;gap:38px}
+  .manifest{max-width:560px}
+  .stat-strip{grid-template-columns:repeat(2,1fr);margin-top:44px}
+  .stat:nth-child(2){border-right:0}
+  .stat:nth-child(3){border-top:1px solid var(--line)}
+  .stat:nth-child(4){border-top:1px solid var(--line)}
+  .sec{padding:74px 0}
+  .sec-head{grid-template-columns:1fr;gap:8px}
+  .sec-tag{padding-top:0}
+  .lang-grid,.proof-grid,.cache,.eco-grid,.boundary-grid,.dl-grid{grid-template-columns:1fr}
+  .panel{grid-template-columns:1fr}
+  .codebox{border-right:0;border-bottom:1px solid var(--line)}
+  .studio-body{grid-template-columns:minmax(0,1fr)}
+  .tree,.minimap{display:none}
+  .studio-body{min-height:0}
+  .problem .loc{display:none}
+  .cap-grid{grid-template-columns:1fr}
+  .cap{border-right:0;border-bottom:1px solid var(--line)}
+  .cap:last-child{border-bottom:0}
+  .demo-row{grid-template-columns:1fr}
+  .version-track{grid-template-columns:repeat(2,1fr);row-gap:0}
+  .vnode{padding-top:18px}
+}
+@media (max-width:860px){
+  .head-in{height:66px}
+  .menu{display:flex}
+  .nav{display:none;position:absolute;left:0;right:0;top:66px;background:var(--bg);border-bottom:1px solid var(--line-strong);padding:10px 24px 18px;flex-direction:column;align-items:stretch;gap:0}
+  .nav.open{display:flex}
+  .nav a{padding:12px 0;border-bottom:1px solid var(--line);min-height:44px}
+  .nav .cta{margin:12px 0 0;text-align:center;padding:13px 16px}
+  .studio-body{grid-template-columns:1fr}
+  .dl-side .btn{margin-top:18px}
+}
+@media (max-width:640px){
+  .wrap{width:calc(100% - 32px)}
+  h1{font-size:clamp(51px,13vw,72px);letter-spacing:-.06em}
+  .lede{font-size:15px;line-height:1.82}
+  .actions .btn{width:100%}
+  .stat-strip{grid-template-columns:1fr}
+  .stat,.stat:nth-child(2),.stat:nth-child(4){border-right:0}
+  .stat{border-top:1px solid var(--line)}
+  .stat:first-child{border-top:0}
+  .manifest-head b{font-size:38px}
+  .manifest-list li{grid-template-columns:74px 1fr;gap:10px}
+  .sec{padding:60px 0}
+  h2{font-size:clamp(31px,8.8vw,44px)}
+  .engine-row{grid-template-columns:1fr;gap:4px}
+  .engine-row span{text-align:left}
+  .figure{font-size:clamp(78px,23vw,120px)}
+  .cache-pair{gap:8px}
+  .version-track{grid-template-columns:1fr}
+  .vnode{padding-right:0}
+  .studio-bar .right span{display:none}
+  .lessons{grid-template-columns:1fr}
+  .lesson{padding-right:12px}
+  .demo-head{display:block;margin-top:46px}
+  .demo-head span{display:block;margin-top:5px}
+  .dl-main,.dl-side{padding:22px}
+  .dl-main::before{font-size:190px}
+  .copy{min-height:44px}
+  .tab{min-height:44px}
+  .demo-links a{min-height:44px}
+  .lesson-foot{font-size:9.5px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .btn{transition:none}
+}
+</style>
+</head>
+<body>
+<div style="padding:10px 18px;background:#1f2937;border-bottom:2px solid #22c55e;color:#e5e7eb;font:14px/1.5 -apple-system,'Segoe UI',sans-serif;text-align:center">
+当前发行版：<b>3.6.17</b>（VERSION 是唯一真源）。本页是 3.2.3 技术专题存档，不是当前版本说明；下载与更新以 VERSION / 桌面包为准。
+</div>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="site-head">
+  <div class="wrap head-in">
+    <a class="brand" href="#top" aria-label="Impor 首页">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 5 3 12l5 7M16 5l5 7-5 7"/></svg></span>
+      IMPOR<span class="plus">(I++)</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <a href="#language">语言</a>
+      <a href="#evidence">证据</a>
+      <a href="#pipeline">流程</a>
+      <a href="#studio">编辑器</a>
+      <a href="#ecosystem">生态</a>
+      <a href="Impor社区.html">社区</a>
+      <a href="#boundary">边界</a>
+      <a class="cta" href="#download">获取 3.2.3</a>
+    </nav>
+    <button class="menu" id="menu" type="button" aria-label="打开导航" aria-expanded="false" aria-controls="nav">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+<!-- ===== Hero ===== -->
+<section class="hero wrap" id="top">
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <div class="edition"><span class="pulse"></span><b>3.2.3</b><span class="sep"></span><span>stable / 2026-11-14</span><span class="sep"></span><span>Windows x64</span></div>
+      <h1>写下来。<span class="hollow">编译它。</span><span class="hot">交付出去。</span></h1>
+      <p class="lede">Impor 不是“能跑就行”的实验语言。3.2.3 在 3.2.1 的语言与安全底座上，把<strong>符号级语义高亮、异步防抖诊断、覆盖率行号栏、Git 三方合并、插件管理器</strong>收进同一条可验证、可分发、也可以教给别人的链路。</p>
+      <div class="actions">
+        <a class="btn" href="#studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5l-4 7 4 7M16 5l4 7-4 7"/></svg>先看 3.2.3 编辑器五项</a>
+        <a class="btn ghost" href="#download">下载安装包</a>
+      </div>
+      <div class="hero-note"><i></i>中文诊断 · 中文文档 · 12 课中文教学</div>
+    </div>
+
+    <aside class="manifest" aria-label="3.2.3 发布清单">
+      <div class="manifest-head"><span>release manifest</span><b>3.2.3</b></div>
+      <ul class="manifest-list">
+        <li><span>语言</span><span>可选类型 / 枚举穷尽 / <code>private</code> 与 <code>protected</code></span></li>
+        <li><span>工具链</span><span>增量构建 / 一致性门禁 / 依赖审计</span></li>
+        <li><span>编辑器</span><span>语义高亮 / 异步诊断 / 覆盖率行号栏 / 三方合并 / 插件管理器</span></li>
+        <li><span>底座</span><span>ADT / async / 三端对齐 / 安全内核 / 12 课</span></li>
+        <li><span>标准库</span><span>700 个 <code>std.atlas</code> 微库 / 全量导入冒烟</span></li>
+        <li><span>交付</span><span>单文件 exe / 3.2.3 VSIX / 桌面镜像</span></li>
+      </ul>
+      <div class="manifest-foot"><span>impor doctor</span><b>18 / 18</b></div>
+      <div class="spine" aria-hidden="true"><span>source</span><span class="spine-line"></span><span>exe</span></div>
+    </aside>
+  </div>
+
+  <div class="stat-strip" aria-label="版本关键指标">
+    <div class="stat"><b>23<em>/ 23</em></b><span>解释器 / C 后端 / imporc<br>逐字节一致</span></div>
+    <div class="stat"><b>0.05<em>s</em></b><span>增量构建命中<br>首次 0.81 s</span></div>
+    <div class="stat"><b>983<em>ms</em></b><span>100 万次算术循环<br>门槛 3400 ms</span></div>
+    <div class="stat"><b>12<em>/ 12</em></b><span>教学答案与判题<br>全部通过</span></div>
+  </div>
+</section>
+
+<!-- ===== 目录 ===== -->
+<section class="issue wrap" id="issue" aria-label="本期目录">
+  <div class="issue-head"><span><b>IMPOR / RELEASE 3.2.3</b></span><span>12 chapters · technical release · 2026-11-14</span></div>
+  <ol class="toc">
+    <li><a href="#position"><span class="no">01</span><b>立场</b><em>为什么还要一门新语言</em></a></li>
+    <li><a href="#language"><span class="no">02</span><b>语言</b><em>先把错误拦在运行之前</em></a></li>
+    <li><a href="#evidence"><span class="no">03</span><b>证据</b><em>三个后端，同一个答案</em></a></li>
+    <li><a href="#pipeline"><span class="no">04</span><b>流程</b><em>从一行源码到一枚 exe</em></a></li>
+    <li><a href="#diagnostics"><span class="no">05</span><b>诊断</b><em>错误码是下一步动作</em></a></li>
+    <li><a href="#studio"><span class="no">06</span><b>编辑器</b><em>Code Studio 的完整地图</em></a></li>
+    <li><a href="#ecosystem"><span class="no">07</span><b>生态</b><em>依赖、课程与 700 库</em></a></li>
+    <li><a href="#release"><span class="no">08</span><b>变更</b><em>3.2.3 改了什么，没改什么</em></a></li>
+    <li><a href="#workflows"><span class="no">09</span><b>场景</b><em>课堂、工具与 CI</em></a></li>
+    <li><a href="#boundary"><span class="no">10</span><b>边界</b><em>没做完的，也摆在这里</em></a></li>
+    <li><a href="#faq"><span class="no">11</span><b>FAQ</b><em>十二个常被问的问题</em></a></li>
+    <li><a href="#download"><span class="no">12</span><b>交付</b><em>下载、校验与排错</em></a></li>
+  </ol>
+</section>
+
+<!-- ===== 立场 ===== -->
+<section class="sec wrap" id="position">
+  <div class="sec-head">
+    <div class="sec-tag">01 / 立场</div>
+    <div>
+      <h2>不是另一个脚本，是一条交付链路。</h2>
+      <p>大多数语言先给你一个 REPL，再让你自己想办法把东西交出去。Impor 的顺序相反：<strong>先定义交付物，再倒推语法、诊断、编辑器与课程。</strong></p>
+    </div>
+  </div>
+
+  <div class="position-grid">
+    <div class="position-copy">
+      <p>交付物很具体：一个双击就能运行的 <code>.exe</code>，不需要目标机器装 Python，不需要解释器随行，也不把运行环境藏进安装脚本。3.2.3 的 C 后端把 AST 转成 C，再交给随包的 TCC，产物约 100 KB。</p>
+      <p>但“能生成 exe”只是结果。为了让它可维护，3.1 同时补了三件事：<strong>写错能在运行前发现</strong>、<strong>三个后端必须给同一个答案</strong>、<strong>新人不看源码也能从 12 课进入</strong>。这三件事分别落在类型检查、conformance 门禁与教学判题上。</p>
+      <p>所以这个网站不按“功能列表”组织，而按一条真实链路组织：语言怎么表述，证据怎么产生，流程怎么走，编辑器怎么接，边界在哪里，最后怎么交付。</p>
+      <div class="position-quote">先能解释，再能编译，最后能交付。<small>这是一门语言的门槛，也是一套工具链的验收顺序。</small></div>
+    </div>
+
+    <ol class="principle-list">
+      <li class="principle"><span class="pn">A</span><div><h3>可读，不靠中文关键字。</h3><p>关键字保持英文，代码可以离开中文环境；诊断、文档、命令行与课程用中文。中文是<strong>理解层</strong>，不是语法层。</p></div></li>
+      <li class="principle"><span class="pn">B</span><div><h3>可验，不靠口头承诺。</h3><p>23/23 三端一致、18/18 体检、12/12 判题、563 项单测的失败数，全部有命令或报告。数字不藏在发布说明里。</p></div></li>
+      <li class="principle"><span class="pn">C</span><div><h3>可交付，不停在示例。</h3><p>从 <code>impor run</code> 到 <code>impor build</code>，再到 VSIX 与桌面镜像，同一条链路覆盖课堂、工具与单文件分发。</p></div></li>
+    </ol>
+  </div>
+
+  <div class="isnt">
+    <div><span>IS / 是</span><p>一门教学优先、但以交付为终点的语言；一个 Windows x64 工具链；一次把自举编译器放进一致性门禁的工程实验。</p></div>
+    <div class="no"><span>ISN'T / 不是</span><p>不是 Python 的替代品；不是完整的静态类型系统；也不是一个已经有 <code>async/await</code> 的并发运行时。</p></div>
+  </div>
+</section>
+
+<section class="sec wrap" id="language">
+  <div class="sec-head">
+    <div class="sec-tag">02 / 语言 · 3.2.3 内核</div>
+    <div>
+      <h2>先把错误，拦在运行之前。</h2>
+      <p>类型标注是可选的，检查是动真格的。变量、参数、返回值都能写类型；<strong>int / float 互通、T? 可空、any 放行</strong>，为渐进迁移留出口，而不是给迁移添堵。</p>
+    </div>
+  </div>
+
+  <div class="lang-grid">
+    <div class="lang-side">
+      <p>3.2.1 把三件真正影响交付的事做进了编译器：<strong>带载荷的结果类型</strong>、<strong>可验证的 async 状态</strong>、<strong>跨文件可见性</strong>。ADT 让 Ok/Err 能携带数据；async 与 C 后端同步语义对齐，状态不再一边 new、一边 done；private 不再只在本文件生效。类型、穷尽性与访问控制在 <code>impor check</code> 与诊断面板同时给出。3.2.3 保留这套语义，不重塑语言。</p>
+      <p>这让“能跑”与“写对”分开：运行前能发现的问题，不必留到用户双击 exe 的那一刻。</p>
+      <div class="tabs" role="tablist" aria-label="诊断示例">
+        <button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="p-type" id="t-type" data-tab="p-type">类型不匹配</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="p-enum" id="t-enum" data-tab="p-enum">枚举穷尽</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="p-access" id="t-access" data-tab="p-access">访问控制</button>
+      </div>
+    </div>
+
+    <div class="tab-area">
+      <div class="panel on" id="p-type" role="tabpanel" aria-labelledby="t-type">
+        <div class="codebox">
+          <div class="codebox-top"><b>main.impor</b><span>可选类型</span></div>
+          <pre><span class="ln">1</span><span class="k">var</span> count<span class="t">: int</span> = 3
+<span class="ln">2</span><span class="k">var</span> ratio<span class="t">: float</span> = 0.75
+<span class="ln">3</span><span class="k">var</span> maybe<span class="t">: int?</span> = <span class="n">null</span>
+<span class="ln">4</span>
+<span class="ln">5</span><span class="k">func</span> <span class="f">add</span>(a<span class="t">: int</span>, b<span class="t">: int</span>) <span class="k">-&gt;</span> <span class="t">int</span>
+<span class="ln">6</span>    <span class="k">return</span> a + b
+<span class="ln">7</span>
+<span class="ln">8</span><span class="k">var</span> broken<span class="t">: int</span> = <span class="bad">"three"</span></pre>
+        </div>
+        <div class="diag">
+          <span class="diag-code">type-mismatch</span>
+          <h3>声明是整数，收到的却是文本。</h3>
+          <span class="where">第 8 行 · main.impor</span>
+          <dl>
+            <dt>原因</dt><dd><code>"three"</code> 是 <code>str</code>，不会隐式转成 <code>int</code>。</dd>
+            <dt>修法</dt><dd>把值改成 <code>3</code>，或把声明改为 <code>var broken: str = "three"</code>。</dd>
+          </dl>
+          <div class="diag-foot"><span>impor check</span><b>exit 1</b></div>
+        </div>
+      </div>
+
+      <div class="panel" id="p-enum" role="tabpanel" aria-labelledby="t-enum">
+        <div class="codebox">
+          <div class="codebox-top"><b>color.impor</b><span>enum + match</span></div>
+          <pre><span class="ln">1</span><span class="k">enum</span> Color { RED, GREEN, BLUE }
+<span class="ln">2</span>
+<span class="ln">3</span><span class="k">func</span> <span class="f">label</span>(c)
+<span class="ln">4</span>    <span class="k">match</span> c
+<span class="ln">5</span>        <span class="k">case</span> Color.RED:
+<span class="ln">6</span>            <span class="k">return</span> <span class="bad">"红"</span>
+<span class="ln">7</span>        <span class="k">case</span> Color.GREEN:
+<span class="ln">8</span>            <span class="k">return</span> <span class="bad">"绿"</span></pre>
+        </div>
+        <div class="diag">
+          <span class="diag-code">match-exhaustive</span>
+          <h3>少了一个分支：BLUE。</h3>
+          <span class="where">第 4 行 · color.impor</span>
+          <dl>
+            <dt>原因</dt><dd><code>match</code> 没有 <code>else</code>、<code>default</code> 或通配分支，必须覆盖全部枚举成员。</dd>
+            <dt>修法</dt><dd>补 <code>case Color.BLUE:</code>，或加 <code>_</code> 兜底。</dd>
+          </dl>
+          <div class="diag-foot"><span>绑定模式</span><b>视为兜底</b></div>
+        </div>
+      </div>
+
+      <div class="panel" id="p-access" role="tabpanel" aria-labelledby="t-access">
+        <div class="codebox">
+          <div class="codebox-top"><b>box.impor</b><span>private / protected</span></div>
+          <pre><span class="ln">1</span><span class="k">class</span> <span class="f">Box</span>
+<span class="ln">2</span>    <span class="k">private var</span> secret<span class="t">: str</span> = <span class="bad">"hidden"</span>
+<span class="ln">3</span>
+<span class="ln">4</span>    <span class="k">def</span> <span class="f">get_secret</span>()
+<span class="ln">5</span>        <span class="k">return</span> self.secret
+<span class="ln">6</span>
+<span class="ln">7</span><span class="k">var</span> b = <span class="k">new</span> Box()
+<span class="ln">8</span>print(b.<span class="bad">secret</span>)</pre>
+        </div>
+        <div class="diag">
+          <span class="diag-code">access-private</span>
+          <h3>类外直接读了私有字段。</h3>
+          <span class="where">第 8 行 · box.impor</span>
+          <dl>
+            <dt>原因</dt><dd><code>secret</code> 只在 <code>Box</code> 内部可读；运行时也会抛 <code>AccessError</code>。</dd>
+            <dt>修法</dt><dd>调用 <code>get_secret()</code>，不要把私有字段暴露成公开 API。</dd>
+          </dl>
+          <div class="diag-foot"><span>静态 + 运行时</span><b>双层检查</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-line">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+    <span><b>一句实话：</b>3.2.3 的关键字仍以英文为主。中文能力体现在诊断、文档、命令行输出与 12 课教学，不再宣称“中文关键字”仍然可用。</span>
+  </div>
+
+  <div class="minor-head">
+    <div class="sec-tag">类型地图 / surface</div>
+    <div>
+      <h3>类型不是装饰，是一张可读的地图。</h3>
+      <p>标注可写可不写；写上去，<code>impor check</code> 就按标注检查。它不改变运行时语义，也不把语言变成一套需要先通过类型考试才能运行的系统。<strong>渐进迁移，是设计的一部分。</strong></p>
+    </div>
+  </div>
+
+  <div class="type-map" aria-label="3.1 类型地图">
+    <div class="type-group"><div class="type-label">dynamic / escape</div><div class="chips"><span class="chip">any</span><span class="chip">?</span></div><p>跳过静态检查的出口。用于迁移旧代码，也用于暂时无法标注的边界。</p></div>
+    <div class="type-group"><div class="type-label">numeric</div><div class="chips"><span class="chip">int</span><span class="chip">float</span></div><p>同属数值，允许双向赋值；字符串不会隐式变成数字。</p></div>
+    <div class="type-group"><div class="type-label">text / truth</div><div class="chips"><span class="chip">str</span><span class="chip">string</span><span class="chip">文本</span><span class="chip">bool</span><span class="chip">boolean</span></div><p>别名互通。中文是数据，不是关键字；<code>"文本"</code> 只是字符串。</p></div>
+    <div class="type-group"><div class="type-label">nullable</div><div class="chips"><span class="chip">T?</span><span class="chip">null</span><span class="chip">nil</span><span class="chip">none</span></div><p>可空类型接受空值；非可空类型拒绝 <code>null</code>。</p></div>
+    <div class="type-group"><div class="type-label">aggregate</div><div class="chips"><span class="chip">list</span><span class="chip">dict</span><span class="chip">struct</span><span class="chip">class</span><span class="chip">enum</span><span class="chip">func</span></div><p>容器、记录、对象、整型常量枚举与函数值。</p></div>
+  </div>
+
+  <ul class="type-rules">
+    <li><b>int / float</b><span>同属数值，允许双向赋值；<code>str</code> 不会隐式变成 <code>int</code>。</span></li>
+    <li><b>T? / ADT</b><span><code>T?</code> 表示可空；需要携带数据时用 <code>enum Result { Ok(value) }</code>，不要用可空类型硬凑。</span></li>
+    <li><b>any / ?</b><span>是迁移出口，不是长期类型方案。收紧标注，才是把检查变成资产。</span></li>
+    <li><b>静态检查</b><span>只覆盖写了标注的位置；没有标注的代码仍按动态语义运行。</span></li>
+  </ul>
+
+  <div class="minor-head">
+    <div class="sec-tag">语言表面 / one file</div>
+    <div>
+      <h3>一门语言该有的，先看它怎么写。</h3>
+      <p>下面不是 API 大全，而是一张“写一个真实文件”所需的表面：变量、函数、对象、枚举、异常、集合、模块、闭包。每一行都来自 3.2.3 可运行的示例。</p>
+    </div>
+  </div>
+
+  <div class="table-scroll">
+    <table class="spec-table">
+      <colgroup><col style="width:14%"><col style="width:46%"><col style="width:40%"></colgroup>
+      <thead><tr><th>面</th><th>3.2.3 写法</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>变量 / 赋值</td><td><code>var count: int = 3</code><br><code>set total = total + i</code></td><td>类型标注可选；赋值用 <code>set</code>，读起来就知道它在改状态。</td></tr>
+        <tr><td>函数</td><td><code>func add(a: int, b: int) -&gt; int</code><br><code>return a + b</code></td><td>返回类型参与 <code>return-type</code> 检查；参数按位置传入。</td></tr>
+        <tr><td>类</td><td><code>class Box</code><br><code>private var secret: str</code><br><code>protected var shared: int</code></td><td><code>private</code> 类内可读，<code>protected</code> 子类可读；类外越界有静态诊断与运行时 <code>AccessError</code>。</td></tr>
+        <tr><td>结构体</td><td><code>struct Point</code><br><code>var x = 0</code><br><code>var p = new Point(3, 4)</code></td><td>记录类型，字段可读可写；适合坐标、配置、行记录。</td></tr>
+        <tr><td>枚举 / ADT</td><td><code>enum Result { Ok(value), Err(message) }</code><br><code>return Result.Ok(41)</code></td><td>成员可带字段；运行时是 tagged dict，模式按字段名绑定，解释器与 C 后端一致。</td></tr>
+        <tr><td>匹配</td><td><code>match r</code><br><code>case Result.Ok(v)</code><br><code>case _</code></td><td>ADT 按 tag 与字段名解构；没有 <code>else</code> / <code>_</code> 时必须覆盖全部 tag。</td></tr>
+        <tr><td>异常</td><td><code>exception ScoreError</code><br><code>raise ScoreError("非法成绩")</code><br><code>try / catch ScoreError e / finally</code></td><td>异常是值，也是控制流；<code>finally</code> 负责收尾。</td></tr>
+        <tr><td>集合</td><td><code>var a = [1, 2, 3]</code><br><code>var d = {"apple": 3}</code><br><code>d.get("pear", 0)</code></td><td>数组用下标与 <code>len</code>；字典有 <code>get</code> / <code>has</code> / <code>keys</code>。</td></tr>
+        <tr><td>字符串</td><td><code>upper(s)</code> <code>lower(s)</code><br><code>s[0:3]</code></td><td>大小写与切片是标准库能力；Unicode 是数据，不是标识符。</td></tr>
+        <tr><td>循环 / 分支</td><td><code>for i in range(1, 11)</code><br><code>if score &gt;= 90</code><br><code>elseif score &gt;= 80</code></td><td>缩进块；<code>range</code> 右端不包含；分数分级这类逻辑不需要额外语法糖。</td></tr>
+        <tr><td>模块</td><td><code>import std.text</code><br><code>use std.mathx</code><br><code>export greet</code></td><td>标准库、Python 标准模块与项目内模块共用导入语法；导出决定模块表面。</td></tr>
+        <tr><td>闭包</td><td><code>func make_counter(start)</code><br><code>def next_value()</code></td><td>内层函数捕获外层局部变量；每次调用 <code>make_counter</code> 都保留自己的计数。</td></tr>
+        <tr><td>异步</td><td><code>async func work(n)</code><br><code>await work(7)</code><br><code>run_tasks([t1, t2])</code></td><td>单线程任务；解释器与 C 后端均返回 <code>done</code> 与结果数组。真正的并发仍留给后续版本。</td></tr>
+        <tr><td>原生调用</td><td><code>ffi_open("kernel32.dll")</code><br><code>ffi_call(h, "GetTickCount", [], "int")</code></td><td>默认拒绝；只有白名单库与 int/float/str/bool 参数可用，不做指针与结构体。</td></tr>
+        <tr><td>高阶函数</td><td><code>map([1, 2, 3], double)</code><br><code>filter(nums, is_even)</code><br><code>reduce(nums, add_all, 0)</code></td><td>函数可以作为参数；标准库提供 <code>map</code> / <code>filter</code> / <code>reduce</code>。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cmd" style="margin-top:24px"><span><span class="prompt">&gt;</span>impor check main.impor</span><button class="copy" type="button" data-copy="impor check main.impor">复制</button></div>
+</section>
+
+<!-- ===== 证据 ===== -->
+<section class="evidence" id="evidence">
+  <div class="sec wrap">
+    <div class="sec-head">
+      <div class="sec-tag">03 / 证据 · 实测</div>
+      <div>
+        <h2>三个后端，必须给出同一个答案。</h2>
+        <p>解释器负责语义，C 后端负责独立 exe，<strong>imporc</strong> 负责自举。3.2.3 把 ADT、async、JSON、正则与 lambda 一起送进一致性比对：解释器与 C 产物的 9 行输出逐行相同。</p>
+      </div>
+    </div>
+
+    <div class="proof-grid">
+      <div>
+        <div class="figure">23<span style="font-size:.5em">/23</span><small>conformance · source + desktop · 0 失败</small></div>
+        <div class="cmd" style="margin-top:30px"><span><span class="prompt">&gt;</span>impor conformance <b>--ci</b></span><button class="copy" type="button" data-copy="impor conformance --ci">复制</button></div>
+      </div>
+      <div>
+        <p class="proof-copy"><strong>一致性不是一句口号，是一条命令。</strong>每个用例会同时在 Python 解释器、C 后端和自举编译器里运行，比较 stdout、退出码与产物字节。路径里带空格或括号也不会再让自举后端失败：runner 会先把用例复制到无空格临时目录。</p>
+        <div class="engine-list">
+          <div class="engine-row"><b>解释器</b><p>参考语义，中文四段式诊断，负责“为什么错、怎么修”。</p><span>python runtime</span></div>
+          <div class="engine-row"><b>C 后端</b><p>AST → C → TCC，产出约 100 KB 的独立 exe，不依赖 Python。</p><span>native exe</span></div>
+          <div class="engine-row"><b>imporc</b><p>用 Impor 自身写成的自举编译器，原生 C 产物，参与同一门禁。</p><span>self-hosted</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cache">
+      <div>
+        <h3>构建，应该只做一次。</h3>
+        <p><code>impor build</code> 默认启用增量缓存。缓存键包含源码内容、版本、输入输出绝对路径、TCC 的 mtime 与大小，以及被导入的 <code>.impor</code> 依赖。改后端代码后，用 <code>--no-cache</code> 强制全量。</p>
+        <div class="cmd"><span><span class="prompt">&gt;</span>impor build hello.impor -o hello.exe</span><button class="copy" type="button" data-copy="impor build hello.impor -o hello.exe">复制</button></div>
+      </div>
+      <div>
+        <div class="cache-pair">
+          <div class="cache-time"><b>0.81</b><span>首次构建 / 秒</span></div>
+          <div class="cache-arrow">→</div>
+          <div class="cache-time"><b>0.05</b><span>缓存命中 / 秒</span></div>
+        </div>
+        <div class="cache-foot"><span>产物约 100 KB</span><b>--no-cache 可强制全量</b></div>
+      </div>
+    </div>
+
+    <div class="version-track" aria-label="版本转折点">
+      <div class="vnode"><b>v2.13</b><span>2026-10-18</span><p>脱离 Python 宿主，C 后端产出独立 exe。</p></div>
+      <div class="vnode"><b>v2.19</b><span>2026-10-31</span><p>自举编译器 imporc 闭环，三代产物一致。</p></div>
+      <div class="vnode"><b>v6.1</b><span>2026-11-08</span><p>100 万次循环从 7.031 秒降到 0.581 秒。</p></div>
+      <div class="vnode"><b>v3.0</b><span>2026-11-12</span><p>类型、门禁、项目诊断与教学入口收口。</p></div>
+      <div class="vnode"><b>v3.1</b><span>2026-11-14</span><p>搜索替换、虚拟滚动、依赖审计、UIA、同步与插件隔离。</p></div>
+      <div class="vnode"><b>v3.2.3</b><span>2026-11-14</span><p>运行时覆盖率、跨进程插件面板、后台索引/搜索、UIA provider、Quick Fix 扩面。</p></div>
+    </div>
+
+    <div class="minor-head">
+      <div class="sec-tag">测量账本 / ledger</div>
+      <div>
+        <h3>每一个数字，都能回到一条命令。</h3>
+        <p>下表来自 3.2.3 测试矩阵与桌面镜像实测。这里不把“设计目标”写成“已完成”，也不把历史用例的失败藏起来。<strong>能复现，才算证据。</strong></p>
+      </div>
+    </div>
+
+    <div class="table-scroll" style="border-top-color:var(--line-dark)">
+      <table class="spec-table paper-table">
+        <colgroup><col style="width:20%"><col style="width:30%"><col style="width:15%"><col style="width:35%"></colgroup>
+        <thead><tr><th>测量</th><th>命令 / 方法</th><th>结果</th><th>备注</th></tr></thead>
+        <tbody>
+          <tr><td>三端一致性</td><td><code>impor conformance --ci</code></td><td><code>23 / 23</code></td><td><code>rc=(0,0,0)</code>，解释器 / C 后端 / imporc 逐字节比对。</td></tr>
+          <tr><td>3.2.3 运行时覆盖率</td><td><code>_t322</code> / <code>_gui322</code></td><td><code>6 / 6 · 100%</code></td><td>解释器逐语句命中；Treeview 6 行，首行 2 行 / 1 次 / 已执行。</td></tr>
+          <tr><td>3.2.3 插件面板</td><td><code>_plugin322</code> 子进程 builder</td><td><code>3 节点 / act_1</code></td><td>label / label / button 三层；按钮动作回调成功。</td></tr>
+          <tr><td>3.2.3 索引 / 搜索</td><td><code>_index322</code> / <code>_search322</code></td><td><code>120 文件 / 25→260</code></td><td>4 线程并发无异常；取消保留 25 文件；分页 200 → 260。</td></tr>
+          <tr><td>3.2.3 UIA</td><td><code>_uia322</code> / <code>_gui322</code></td><td><code>16 provider / 8 组</code></td><td>首控件“文档 / 已保存 / Ctrl+1”；焦点切换可读。</td></tr>
+          <tr><td>任务状态</td><td><code>_t_tasks.impor</code></td><td><code>done / [6, 8]</code></td><td>解释器与 C 后端状态一致。</td></tr>
+          <tr><td>桌面镜像</td><td>同一门禁，在含空格与括号的目录内运行</td><td><code>23 / 23</code></td><td>自举读取 <code>imporc_args.txt</code> 的空格路径问题已修复。</td></tr>
+          <tr><td>首次构建</td><td><code>impor build hello.impor -o hello.exe</code></td><td><code>0.66–0.81 s</code></td><td>不同轮次；转译 0.07 s、TCC 0.24 s。</td></tr>
+          <tr><td>缓存命中</td><td>同一命令第二次运行</td><td><code>0.05 s</code></td><td>第三次 0.03–0.04 s；<code>--no-cache</code> 强制全量。</td></tr>
+          <tr><td>解释器循环</td><td><code>impor bench --gate</code></td><td><code>983 ms</code></td><td>100 万次算术循环；门槛 3400 ms。</td></tr>
+          <tr><td>教学判题</td><td><code>impor teach grade 1..12</code></td><td><code>12 / 12</code></td><td>答案运行与判题全部通过。</td></tr>
+          <tr><td>体检</td><td><code>impor doctor</code></td><td><code>18 / 18</code></td><td>14 个模块 + 3 个自举产物 + TCC。</td></tr>
+          <tr><td>全量 unittest</td><td><code>python -X utf8 -m unittest discover -s tests -v</code></td><td><code>563 / 9F / 21E</code></td><td>9 failures、21 errors；历史用例为主，不能宣称全绿。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cache-foot" style="margin-top:22px;color:var(--ink-3)"><span>本轮修复：路径含空格 / 括号时自举读取参数失败</span><b>复制到无空格临时目录后 23 / 23</b></div>
+  </div>
+</section>
+<!-- ===== 流程 ===== -->
+<section class="sec wrap" id="pipeline">
+  <div class="sec-head">
+    <div class="sec-tag">04 / 流程 · 从源码到 exe</div>
+    <div>
+      <h2>从一行源码，到一枚 exe。</h2>
+      <p>编译不是黑箱。3.2.3 沿用 3.2.1 的流程：每一步的输入、输出和失败信号都写成命令：先解析，再分析，再检查类型，最后才决定交给解释器、Python 还是 C。<strong>每一步都能单独停下来。</strong></p>
+    </div>
+  </div>
+
+  <div class="pipeline">
+    <div class="stage"><div class="stage-num">01 / parse</div><h3>解析</h3><p>源码进入 lexer 与 parser，变成 AST。缩进、字符串、注释与中文文本在这里分开处理。</p><span class="io"><b>输入</b> .impor 源码 · <b>输出</b> AST · <b>失败</b> exit 2</span></div>
+    <div class="stage"><div class="stage-num">02 / analyze</div><h3>分析</h3><p><code>impor lint</code> 先找未定义变量、未使用变量、未使用导入与死代码。它不替你做类型判断，只把可疑处标出来。</p><span class="io"><b>输入</b> AST · <b>输出</b> lint 诊断 · <b>失败</b> 报告</span></div>
+    <div class="stage"><div class="stage-num">03 / typecheck</div><h3>类型检查</h3><p>可选标注、返回类型、枚举穷尽、同文件访问控制。没有标注的位置按动态语义放行，<code>any</code> / <code>?</code> 是明确出口。</p><span class="io"><b>输入</b> AST + 标注 · <b>输出</b> 类型诊断 · <b>失败</b> exit 1</span></div>
+    <div class="stage"><div class="stage-num">04 / lower</div><h3>后端选择</h3><p>同一个 AST 可以交给解释器直接执行，也可以转成 Python 源码，或转成 C 再交给 TCC。选择不同，产物不同。</p><span class="io"><b>输出</b> 解释执行 / .py / .c</span></div>
+    <div class="stage"><div class="stage-num">05 / link</div><h3>链接</h3><p>C 后端把 AST 与运行时拼成独立可执行文件。TCC 随包提供，目标机器不需要 Python，也不需要编译器。</p><span class="io"><b>输出</b> 约 100 KB exe · <b>依赖</b> 无 Python</span></div>
+    <div class="stage"><div class="stage-num">06 / verify</div><h3>验证</h3><p>构建不是结束。<code>conformance</code> 比三端，<code>doctor</code> 比环境，<code>bench --gate</code> 比性能门槛。</p><span class="io"><b>门禁</b> 23/23 · 18/18 · 983 ms</span></div>
+  </div>
+
+  <div class="minor-head">
+    <div class="sec-tag">四个出口 / outputs</div>
+    <div>
+      <h3>同一份源码，四种交付方式。</h3>
+      <p>不是所有人都需要 exe。调试要快，教学要能看见中间产物，分发要不依赖环境。四个出口对应四种真实场景。</p>
+    </div>
+  </div>
+
+  <div class="output-grid">
+    <div class="output"><b>impor run</b><span>解释器直接执行。启动快，适合课堂演示与迭代；不产出独立文件。</span></div>
+    <div class="output"><b>impor compile hello.impor -o hello.py</b><span>转成 Python 源码。中间产物可读、可检查，适合排查转译问题。</span></div>
+    <div class="output"><b>impor build -o app.exe</b><span>C 后端 + TCC，生成独立 exe。约 100 KB，目标机器不需要 Python。</span></div>
+    <div class="output"><b>imporc</b><span>用 Impor 自身写成的自举编译器，原生 C 产物；参与同一套 conformance 门禁。</span></div>
+  </div>
+
+  <div class="term" style="margin-top:30px">
+    <div class="term-bar"><span>一条最小链路 / 命令序列</span><span>impor 3.2.3</span></div>
+    <pre><span class="dim">$</span> impor check hello.impor
+<span class="dim">$</span> impor build hello.impor -o hello.exe
+<span class="dim">$</span> impor conformance <b>--ci</b></pre>
+  </div>
+
+  <div class="exit-strip" aria-label="退出码">
+    <div class="exit"><b>0</b>成功</div>
+    <div class="exit"><b>1</b>运行 / 类型错误</div>
+    <div class="exit"><b>2</b>语法 / 文件错误</div>
+    <div class="exit"><b>3</b>用法错误</div>
+  </div>
+</section>
+
+<!-- ===== 诊断 ===== -->
+<section class="diagnostics" id="diagnostics">
+  <div class="sec wrap">
+    <div class="sec-head">
+      <div class="sec-tag">05 / 诊断 · 错误码</div>
+      <div>
+        <h2>错误码，不是标签，是下一步动作。</h2>
+        <p>3.2.3 的诊断分三层：语法 / 文件、类型 / 访问、运行时。每一条都带位置、原因与修法，而不是只说“出错了”。<strong>错误提示是产品的一部分。</strong></p>
+      </div>
+    </div>
+
+    <div class="diag-layers">
+      <div class="diag-layer"><span>layer 01</span><b>语法 / 文件</b><p>解析失败、文件不存在、缩进不合法。退出码 2，先修结构再谈语义。</p></div>
+      <div class="diag-layer"><span>layer 02</span><b>类型 / 访问</b><p><code>type-mismatch</code>、<code>return-type</code>、<code>match-exhaustive</code>、<code>access-private</code>。退出码 1。</p></div>
+      <div class="diag-layer"><span>layer 03</span><b>运行时</b><p><code>AccessError</code>、<code>E1001</code>、插件 <code>PermissionError</code>。能定位到成员名、行号或权限入口。</p></div>
+    </div>
+
+    <div class="table-scroll" style="border-top-color:var(--line-dark);margin-top:30px">
+      <table class="spec-table paper-table">
+        <colgroup><col style="width:19%"><col style="width:14%"><col style="width:34%"><col style="width:33%"></colgroup>
+        <thead><tr><th>诊断</th><th>层</th><th>触发</th><th>下一步</th></tr></thead>
+        <tbody>
+          <tr><td><code>type-mismatch</code></td><td>类型</td><td>声明是 <code>int</code>，值是 <code>str</code>；不做隐式转换。</td><td>改值，或改声明；不要用 <code>any</code> 掩盖它。</td></tr>
+          <tr><td><code>return-type</code></td><td>类型</td><td>函数写着返回 <code>str</code>，实际 <code>return</code> 了 <code>int</code>。</td><td>对齐返回值，或改返回类型；两者只能改一个。</td></tr>
+          <tr><td><code>match-exhaustive</code></td><td>类型</td><td>枚举少写分支，且没有 <code>else</code> / <code>default</code> / 绑定通配。</td><td>补 <code>case Color.BLUE:</code>，或加 <code>_</code> 兜底。</td></tr>
+          <tr><td><code>access-private</code></td><td>类型</td><td>同文件里，类外直接读 <code>private</code> 字段。</td><td>调用公开方法；不要把私有字段包成新的公开字段。</td></tr>
+          <tr><td><code>access-protected</code></td><td>类型</td><td>同文件里，非子类读取 <code>protected</code> 字段。</td><td>在子类中使用，或提供受控的公开入口。</td></tr>
+          <tr><td><code>AccessError</code></td><td>运行时</td><td>跨文件或绕过静态检查，直接读私有成员。</td><td>改用方法；静态检查只覆盖同文件，运行时仍会拦。</td></tr>
+          <tr><td><code>E1001</code></td><td>运行时</td><td>除零。除数是 0 或空值路径。</td><td><code>impor explain E1001</code> 查看原因、修复与示例。</td></tr>
+          <tr><td><code>PermissionError</code></td><td>编辑器</td><td>插件写文件，但未授权或路径越出工作区。</td><td>加 <code>plugin_write_allow</code>，或设置 <code>IMPOR_PLUGIN_PERMISSIONS=write</code>。</td></tr>
+          <tr><td><code>pkg audit</code></td><td>CI</td><td>缺 lock、缺 sha256、明文 HTTP 源、<code>requires</code> 缺失。</td><td>补 lock 与哈希，换 HTTPS 源，补齐依赖声明。</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cmd" style="margin-top:24px"><span><span class="prompt">&gt;</span>impor explain E1001</span><button class="copy" type="button" data-copy="impor explain E1001">复制</button></div>
+
+    <p class="diag-quote">不道歉，也不含糊。说清哪里错、为什么错、怎么修。<small>错误提示不是情绪，是定位工具。它应该让人少开一次搜索，多改对一个地方。</small></p>
+  </div>
+</section>
+<!-- ===== 编辑器 ===== -->
+<section class="sec wrap" id="studio">
+  <div class="sec-head">
+    <div class="sec-tag">06 / 编辑器 · Code Studio</div>
+    <div>
+      <h2>编辑器，不是语法高亮的壳。</h2>
+      <p>3.2.1 把编辑器从“能改代码”推到“能安全改一个项目”：全项目搜索与事务化替换、大文件虚拟滚动、依赖图与离线审计、屏幕阅读器语义桥接、设置同步与插件独立进程隔离，五项一起落地。3.2.3 再把运行时覆盖率、跨进程面板、后台索引与搜索、逐控件 UIA、Quick Fix 扩面接上。</p>
+    </div>
+  </div>
+
+  <div class="studio reveal" aria-label="Code Studio 3.1 界面示意">
+    <div class="studio-bar">
+      <div class="title"><span class="sig"><i></i><i></i><i></i></span><span>Impor (I++) 3.2.3 · Code Studio</span></div>
+      <div class="right"><span>UTF-8</span><span>problems 3</span></div>
+    </div>
+    <div class="studio-body">
+      <aside class="tree" aria-label="文件树">
+        <div class="tree-title">workspace /</div>
+        <ul>
+          <li class="folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h7l2 2h9v12H3z"/></svg>src</li>
+          <li class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h10l4 4v16H5z"/></svg>main.impor</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h10l4 4v16H5z"/></svg>color.impor</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h10l4 4v16H5z"/></svg>box.impor</li>
+          <li class="folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h7l2 2h9v12H3z"/></svg>lessons</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h10l4 4v16H5z"/></svg>lesson12.impor</li>
+          <li class="folder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h7l2 2h9v12H3z"/></svg>.impor</li>
+        </ul>
+      </aside>
+
+      <div class="editor-pane">
+        <div class="file-tab"><i></i>src / main.impor</div>
+        <div class="editor-code">
+          <span class="row"><span class="ln">1</span><span class="k">class</span> <span class="f">Score</span></span>
+          <span class="row"><span class="ln">2</span>    <span class="k">private var</span> total<span class="t">: int</span> = 0</span>
+          <span class="row"><span class="ln">3</span></span>
+          <span class="row"><span class="ln">4</span>    <span class="k">def</span> <span class="f">add</span>(value<span class="t">: int</span>)</span>
+          <span class="row"><span class="ln">5</span>        self.total = self.total + value</span>
+          <span class="row"><span class="ln">6</span></span>
+          <span class="row"><span class="ln">7</span><span class="k">var</span> s = <span class="k">new</span> Score()</span>
+          <span class="row cur"><span class="ln">8</span>s.add(<span class="bad">"ninety"</span>)</span>
+          <span class="row"><span class="ln">9</span>print(s.<span class="wavy">total</span>)</span>
+          <span class="row"><span class="ln">10</span></span>
+          <span class="row"><span class="ln">11</span><span class="k">func</span> <span class="f">label</span>(c)</span>
+          <span class="row"><span class="ln">12</span>    <span class="k">match</span> c</span>
+          <span class="row"><span class="ln">13</span>        <span class="k">case</span> Color.RED:</span>
+          <span class="row"><span class="ln">14</span>            <span class="k">return</span> <span class="bad">"红"</span></span>
+          <span class="row"><span class="ln">15</span>        <span class="k">case</span> Color.GREEN:</span>
+          <span class="row"><span class="ln">16</span>            <span class="k">return</span> <span class="bad">"绿"</span></span>
+        </div>
+        <div class="problems">
+          <div class="problems-head"><b>问题 · 类型 + lint</b><span>最多 300 条 · 自动切到面板</span></div>
+          <div class="problem"><span class="icon">×</span><span class="msg"><code>type-mismatch</code>参数 value 需要 int，收到 str</span><span class="loc">main 8:22</span></div>
+          <div class="problem"><span class="icon">×</span><span class="msg"><code>match-exhaustive</code>缺少 BLUE 分支</span><span class="loc">color 4:5</span></div>
+          <div class="problem"><span class="icon">×</span><span class="msg"><code>access-private</code>类外读取 private 字段</span><span class="loc">box 8:16</span></div>
+        </div>
+      </div>
+
+      <aside class="minimap" aria-hidden="true">
+        <b>minimap</b>
+        <span style="display:block;width:72%;height:2px;background:#384339;margin:5px 0"></span>
+        <span style="display:block;width:88%;height:2px;background:#435044;margin:5px 0"></span>
+        <span style="display:block;width:55%;height:2px;background:#384339;margin:5px 0"></span>
+        <span style="display:block;width:94%;height:2px;background:#FF4F1E;margin:5px 0"></span>
+        <span style="display:block;width:66%;height:2px;background:#384339;margin:5px 0"></span>
+        <span style="display:block;width:81%;height:2px;background:#435044;margin:5px 0"></span>
+        <span style="display:block;width:48%;height:2px;background:#384339;margin:5px 0"></span>
+        <span style="display:block;width:76%;height:2px;background:#384339;margin:5px 0"></span>
+      </aside>
+    </div>
+    <div class="statusbar"><span>Impor 3.2.3 · Windows x64</span><span>doctor <b>18 / 18</b> · UTF-8 · LF</span></div>
+  </div>
+
+  <div class="cap-grid">
+    <div class="cap"><div class="k">可预览</div><h3>全项目替换，先看 diff 再落盘。</h3><p>正则 / 大小写 / 全词；按文件勾选；unified diff 预览；写入前建事务备份，失败按 manifest 回滚，撤销整批。</p></div>
+    <div class="cap"><div class="k">可浏览</div><h3>大文件只装一窗，不是全量高亮。</h3><p>超过 2,000 KB 默认虚拟只读：内存保留全文，Tk 只装 3,000 行窗口，行号仍是绝对行号，可一键转完整编辑。</p></div>
+    <div class="cap"><div class="k">可审计</div><h3>文件图、包图、离线审计，一个窗口。</h3><p>循环依赖、未解析导入、自导入、孤立文件、重复模块名；包图复用 <code>pkgmgr</code>，双击节点直接打开。</p></div>
+  </div>
+  <div class="minor-head">
+    <div class="sec-tag">3.2.3 增量 / editor</div>
+    <div>
+      <h3>这一版只做编辑器，五项都接上真实运行路径。</h3>
+      <p>不是把旧静态近似换个标题，而是把覆盖率、插件面板、索引、搜索、UIA 与 Quick Fix 都改成可运行的闭环，并用 GUI 与跨进程用例逐项验证。</p>
+    </div>
+  </div>
+  <div class="cap-grid">
+    <div class="cap"><div class="k">运行时覆盖率</div><h3>解释器逐语句命中，不再猜“测试有没有引用函数”。</h3><p>解释器按 <code>lineno</code> 累加命中，AST 语句行做分母；视图给出“行 / 命中 / 状态 / 源码”，双击跳转，可运行、清空、重算。</p></div>
+    <div class="cap"><div class="k">跨进程面板</div><h3>builder 在子进程里跑，控件树交父进程渲染。</h3><p>Frame / Label / Button / Entry / Text / Checkbutton / Treeview 被序列化成 UI 描述；动作按 <code>act_N</code> 回调子进程，不再跨进程传 Tk 对象。</p></div>
+    <div class="cap"><div class="k">后台索引</div><h3>启动和切工作区不再被全量扫描卡住。</h3><p><code>refresh_index_async</code> 用代次合并请求；<code>ProjectIndex</code> 加可重入锁，刷新与定义、引用、补全、重命名并发时仍拿到一致结果。</p></div>
+    <div class="cap"><div class="k">搜索可取消</div><h3>扫描到一半可以停，已扫结果保留。</h3><p>后台线程按 <code>should_cancel</code> 逐文件检查；“取消 / 加载更多”按钮与滚动续接共用 token，过期结果不会覆盖新搜索。</p></div>
+    <div class="cap"><div class="k">逐控件 UIA</div><h3>16 个 provider，角色、状态、快捷键、边界都可读。</h3><p>控件树按 group 分组，<code>Control+Tab</code> 循环焦点，Enter 执行；同时导出 <code>control_providers.json</code>，外部工具可按稳定 id 枚举。</p></div>
+  </div>
+  <div class="legacy"><b>3.2.3 同时扩面：</b><span>Quick Fix 覆盖关键字拼写、条件误用 =、括号/引号/大括号未闭合</span><span>诊断知识库补 return / 穷尽 match / 重复定义 / 类型不匹配 / async / ADT 载荷 / FFI</span><span>批量修复加入 undo 分隔</span></div>
+
+  <div class="legacy"><b>3.2.1 底座：</b><span>UIA 语义桥接（原生 EDIT）</span><span>设置同步（newer/local/remote）</span><span>插件独立进程隔离</span><span>命令/格式化器/主题 RPC</span><span>写权限仍由父进程校验</span></div>
+
+  <div class="minor-head">
+    <div class="sec-tag">命令地图 / surface</div>
+    <div>
+      <h3>不是功能列表，是一张可执行的编辑器地图。</h3>
+      <p>下面这些入口都能在 Code Studio 里找到。它们不是“有就行”的复选框：项目检查会遍历工作区，插件写入要授权，教学入口直接连到判题。</p>
+    </div>
+  </div>
+
+  <div class="table-scroll">
+    <table class="spec-table">
+      <colgroup><col style="width:24%"><col style="width:48%"><col style="width:28%"></colgroup>
+      <thead><tr><th>入口</th><th>作用</th><th>约束 / 边界</th></tr></thead>
+      <tbody>
+        <tr><td>项目质量检查</td><td>遍历工作区 <code>.impor</code>，先 <code>analyze</code> 再 <code>typecheck</code>，诊断聚合到问题面板。</td><td>最多 300 条；排除 <code>.git</code>、<code>build</code>、<code>dist</code>、<code>node_modules</code>、<code>__pycache__</code>。</td></tr>
+        <tr><td>单文件保存</td><td>把类型诊断并入 lint 面板，打开文件就能看到标注、返回类型、穷尽性与同文件访问问题。</td><td>静态访问控制只覆盖同一文件；跨文件靠运行时。</td></tr>
+        <tr><td>教学大纲（12 课）</td><td>命令面板打开 <code>docs/教学大纲.md</code>；命令行 <code>impor teach</code> 提供可判题版本。</td><td>讲义、练习、答案、判题共用同一份内容。</td></tr>
+        <tr><td>项目索引</td><td><code>ProjectIndex</code> 按 mtime 增量更新，启动与切工作区走后台线程，支撑定义、引用、重命名与调用层级。</td><td>索引是项目级；后台刷新期间读操作加锁，跨项目符号不在范围内。</td></tr>
+        <tr><td>符号跳转 / 重命名</td><td>跳转到定义、查找引用、安全重命名；重构入口与索引共用。</td><td>动态派发与字符串引用无法完全静态解析。</td></tr>
+        <tr><td>提取函数 / 快速修复</td><td>把选中代码提取成函数；Quick Fix 覆盖拼写、未声明变量、条件 <code>=</code>、括号/引号补齐与未使用变量。</td><td>复杂控制流仍需人工确认；一次 <code>Ctrl+Z</code> 撤销一个修复单元。</td></tr>
+        <tr><td>运行时行覆盖率</td><td>运行当前文件并统计解释器逐语句命中；AST 可执行行做分母，列出命中次数与未执行行。</td><td>只统计当前文件；表达式不单独计行。</td></tr>
+        <tr><td>插件面板</td><td>插件在隔离进程执行 builder，父进程按 UI 描述渲染控件；按钮通过 <code>panel_action</code> 回调子进程。</td><td>控件上限 240 个、层级 8 层；只支持已列出的控件类型。</td></tr>
+        <tr><td>UIA provider</td><td>逐控件暴露 id、角色、状态、快捷键、边界与 invoke；控件树可直接键盘遍历。</td><td>覆盖 16 个主入口；自定义插件控件尚未自动注册。</td></tr>
+        <tr><td>DAP 调试</td><td>断点、条件断点、日志点、单步与调用栈；调试 UI 在编辑器内。</td><td>窗口级验证需人工打开；没有自动化 GUI 测试。</td></tr>
+        <tr><td>测试浏览器</td><td>运行测试、查看失败与统一 diff；适合表驱动用例。</td><td>依赖项目自身的测试入口。</td></tr>
+        <tr><td>全项目搜索</td><td><code>Ctrl+Shift+F</code> 过滤并跳转到结果。</td><td>尚无带预览的批量替换面板。</td></tr>
+        <tr><td>插件写入</td><td><code>write_file(path, content)</code> / <code>write_current(content)</code>，默认拒绝。</td><td>需 <code>plugin_write_allow</code> 或环境变量；路径锁在工作区。</td></tr>
+        <tr><td>插件权限强制</td><td>子进程 audit hook：未声明 <code>write</code> / <code>net</code> / <code>process</code> 时，直接写文件、联网、起子进程抛 <code>PermissionError</code>。</td><td>只覆盖 Python 级事件；ctypes / 原生扩展仍可绕过。</td></tr>
+        <tr><td>LSP</td><td><code>impor lsp</code> 启动语言服务器，供 VS Code 或其他 LSP 客户端连接。</td><td>能力取决于客户端；不是所有编辑器都已验证。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pkg-manifest">
+    <div class="term-bar"><span>.impor/settings.json</span><span>plugin permission</span></div>
+    <pre>{
+  <span class="c">// 默认拒绝；列出的脚本才允许写</span>
+  "plugin_write_allow": ["demo.py", "*"]
+}</pre>
+  </div>
+  <div class="cmd" style="margin-top:12px"><span><span class="prompt">&gt;</span>set IMPOR_PLUGIN_PERMISSIONS=write</span><button class="copy" type="button" data-copy="set IMPOR_PLUGIN_PERMISSIONS=write">复制</button></div>
+
+  <div class="minor-head">
+    <div class="sec-tag">7.2 底座 / baseline</div>
+    <div>
+      <h3>3.1 不是从零开始，它站在 7.2 的编辑器底座上。</h3>
+      <p>类型、门禁与教学是这一版的增量；渐进式启动、自动更新、Git、DAP、测试浏览器与多光标，是已经交付的底座。</p>
+    </div>
+  </div>
+
+  <div class="arc-strip">
+    <div class="arc"><span>7.2</span><b>渐进式启动</b><p>先开窗口，再加载索引；大项目不必等全量扫描。</p></div>
+    <div class="arc"><span>7.2</span><b>自动更新与回滚</b><p>更新失败可回到上一份可用产物。</p></div>
+    <div class="arc"><span>7.2</span><b>项目配置</b><p>项目级设置、忽略规则与运行入口。</p></div>
+    <div class="arc"><span>7.2</span><b>Git 集成</b><p>状态、diff 与提交入口在编辑器内。</p></div>
+    <div class="arc"><span>7.2</span><b>终端与任务</b><p>多终端、任务模板与输出面板。</p></div>
+    <div class="arc"><span>7.2</span><b>编辑器智能</b><p>索引、跳转、调用层级、重命名、提取函数。</p></div>
+    <div class="arc"><span>7.2</span><b>DAP 调试</b><p>断点、条件断点、日志点、单步与调用栈。</p></div>
+    <div class="arc"><span>7.2</span><b>可访问性</b><p>高对比主题、区域跳转、字号缩放、大文件降级。</p></div>
+  </div>
+</section>
+
+<!-- ===== 生态 + 教学 + Demo ===== -->
+<section class="sec wrap" id="ecosystem">
+  <div class="sec-head">
+    <div class="sec-tag">07 / 生态 · 依赖与课堂</div>
+    <div>
+      <h2>能装依赖，也能教新人。</h2>
+      <p>一门语言如果只能跑 Hello World，它还没有进入真实项目。3.1 补上依赖图与审计，也把 12 课做成<strong>可以判题</strong>的课程，而不是一堆散落的示例。</p>
+    </div>
+  </div>
+
+  <div class="eco-grid">
+    <div>
+      <div class="eco-label">impor pkg graph / audit · 示意输出</div>
+      <div class="term">
+        <div class="term-bar"><span>package graph</span><span>impor 3.2.3</span></div>
+        <pre><span class="dim">$</span> impor pkg graph
+app
+├─ std.text
+├─ std.collections
+└─ auth@1.2.0
+   └─ crypto@0.9.1  <span class="warn">[未安装]</span>
+<span class="err">↺ devtools → app</span>
+
+<span class="dim">$</span> impor pkg audit
+<span class="err">[错误]</span> impor.lock 缺少 crypto@0.9.1 的 sha256
+<span class="err">[错误]</span> 源使用明文 HTTP：http://example.test
+<span class="warn">[警告]</span> requires 未声明 std.text
+<span class="dim">exit 1</span></pre>
+      </div>
+      <p class="pkg-notes"><b>graph</b> 从 lock 打印树形依赖，循环标 <b>↺</b>，未安装单独标出。<b>audit</b> 检查 lock、明文 HTTP、缺哈希与 requires 缺失；出现错误退出 1，可直接进 CI。</p>
+    </div>
+
+    <div>
+      <div class="eco-label">impor teach · 12 课</div>
+      <ol class="lessons">
+        <li class="lesson"><span class="no">01</span><div><b>第一行输出</b><small>print 与字符串</small></div></li>
+        <li class="lesson"><span class="no">02</span><div><b>变量与算术</b><small>声明、四则运算</small></div></li>
+        <li class="lesson"><span class="no">03</span><div><b>条件分支</b><small>if 分数分级</small></div></li>
+        <li class="lesson"><span class="no">04</span><div><b>循环累加</b><small>for 与 range</small></div></li>
+        <li class="lesson"><span class="no">05</span><div><b>数组</b><small>长度、求和、最大值</small></div></li>
+        <li class="lesson"><span class="no">06</span><div><b>函数</b><small>参数与返回</small></div></li>
+        <li class="lesson"><span class="no">07</span><div><b>字符串处理</b><small>大小写、切片</small></div></li>
+        <li class="lesson"><span class="no">08</span><div><b>字典</b><small>键值读写与 get</small></div></li>
+        <li class="lesson"><span class="no">09</span><div><b>类与对象</b><small>构造与方法</small></div></li>
+        <li class="lesson"><span class="no">10</span><div><b>枚举与匹配</b><small>enum + match 穷尽</small></div></li>
+        <li class="lesson"><span class="no">11</span><div><b>异常处理</b><small>抛出与捕获</small></div></li>
+        <li class="lesson"><span class="no">12</span><div><b>闭包与高阶函数</b><small>跨调用保留状态</small></div></li>
+      </ol>
+      <div class="lesson-foot"><span>impor teach grade 12 lesson12_answer.impor</span><b>12 / 12 通过</b></div>
+    </div>
+  </div>
+
+  <div class="minor-head">
+    <div class="sec-tag">07.1 / std.atlas</div>
+    <div>
+      <h3>700 个库，全部可导入。</h3>
+      <p><code>std.atlas</code> 按 10 族 × 7 套 API × 10 变体落成 <strong>700 个独立模块</strong>：每库一个函数、一个 <code>export</code>、无跨模块依赖。不是空文件，也不是同一个模板换 700 个名字；全量冒烟会逐个 import 并调用一次。</p>
+    </div>
+  </div>
+
+  <div class="atlas-board">
+    <div class="atlas-cell"><span>num / 70</span><b>数论与整数</b><p>倍数、数字根、模幂、质数、区间夹取。</p></div>
+    <div class="atlas-cell"><span>seq / 70</span><b>序列与窗口</b><p>步长、切片、窗口和、分块、旋转。</p></div>
+    <div class="atlas-cell"><span>txt / 70</span><b>文本与字符</b><p>前后缀、填充、掩码、凯撒位移。</p></div>
+    <div class="atlas-cell"><span>data / 70</span><b>列表与聚合</b><p>头部求和、极值、阈值计数、去重。</p></div>
+    <div class="atlas-cell"><span>geom / 70</span><b>几何与网格</b><p>多边形、圆/矩形/三角、加权距离。</p></div>
+    <div class="atlas-cell"><span>time / 70</span><b>时间与日历</b><p>闰年、时区偏移、时长、时钟夹角。</p></div>
+    <div class="atlas-cell"><span>codec / 70</span><b>编码与校验</b><p>奇偶位、进制转换、校验值、折叠混合。</p></div>
+    <div class="atlas-cell"><span>sim / 70</span><b>模拟与游戏</b><p>网格下标、循环折返、重力步进、碰撞。</p></div>
+    <div class="atlas-cell"><span>teach / 70</span><b>教学与评分</b><p>及格线、加权、token/行数、课程元数据。</p></div>
+    <div class="atlas-cell"><span>stat / 70</span><b>统计与换算</b><p>均值、方差、中位数、百分位、比例。</p></div>
+  </div>
+
+  <div class="atlas-code">
+    <div class="term-bar"><span>std.atlas / 700 micro-libraries</span><span>impor 3.2.3</span></div>
+    <pre><span class="dim">$</span> impor run tests/atlas_700_smoke.impor
+atlas-smoke 700 700
+
+import std.atlas as atlas
+import std.atlas.geom_circle_area_05 as ca
+print(atlas.count())         <span class="c">// 700</span>
+print(ca.circle_area_05(2))  <span class="c">// 12.566368</span></pre>
+  </div>
+  <p class="pkg-notes"><b>700/700</b> 模块全部导入并调用；<b>700</b> 个文件 SHA256 全不同；<b>0.82s</b> C 后端抽测构建，产物运行 <code>True</code>。<code>use std</code> 只注入 atlas 目录入口，不一次性加载 700 个子模块。</p>
+
+  <div class="minor-head">
+    <div class="sec-tag">项目骨架 / impor.toml</div>
+    <div>
+      <h3>依赖不是口头声明，是一份可锁定的清单。</h3>
+      <p><code>impor pkg init</code> 生成项目骨架：入口、模块搜索路径、依赖与私有源都写进 <code>impor.toml</code>。锁文件负责复现，<code>audit</code> 负责在 CI 里拦住缺哈希与明文 HTTP。</p>
+    </div>
+  </div>
+
+  <div class="pkg-manifest">
+    <div class="term-bar"><span>impor.toml / 由 pkg init 生成</span><span>project manifest</span></div>
+    <pre>[project]
+name = "impor_pkg"
+version = "0.1.0"
+entry = "main.impor"
+sandbox_default = false
+
+<span class="c"># 模块搜索路径（相对项目根）</span>
+[module_search_paths]
+paths = ["./lib"]
+
+<span class="c"># 依赖声明；锁文件负责复现</span>
+[dependencies]</pre>
+  </div>
+  <p class="pkg-notes"><b>init</b> 建骨架，<b>install</b> 拉依赖，<b>lock</b> 固定版本与哈希，<b>graph</b> 打印树，<b>audit</b> 把错误变成退出码 1。私有源令牌只从环境变量读取，不写进仓库。</p>
+
+  <div class="minor-head">
+    <div class="sec-tag">课程结构 / 4 arcs</div>
+    <div>
+      <h3>12 课不是 12 个孤立的例子。</h3>
+      <p>课程按四条弧线推进：先能输出与计算，再处理数据与文本，然后进入对象与枚举，最后用异常和闭包收口。</p>
+    </div>
+  </div>
+
+  <div class="arc-strip">
+    <div class="arc"><span>01–04</span><b>语法与流程</b><p>输出、变量、条件、循环。目标是写出一段能读懂的成绩分级。</p></div>
+    <div class="arc"><span>05–08</span><b>数据与文本</b><p>数组、函数、字符串、字典。开始处理一批数据，而不是一个值。</p></div>
+    <div class="arc"><span>09–10</span><b>对象与枚举</b><p>类、构造、方法、枚举与 match 穷尽。结构开始承担语义。</p></div>
+    <div class="arc"><span>11–12</span><b>异常与闭包</b><p>抛出、捕获、收尾；内层函数捕获外层状态。抽象开始闭合。</p></div>
+  </div>
+
+  <div class="grade-line">
+    <div class="grade-step"><b>--exercise</b>写出练习文件 <code>lessonNN_exercise.impor</code></div>
+    <div class="grade-step"><b>--answer</b>写出参考答案 <code>lessonNN_answer.impor</code></div>
+    <div class="grade-step"><b>grade</b>运行文件，与期望输出比对；不是“看起来像”。</div>
+  </div>
+
+  <div class="demo-head"><h3>三个可以拿走的例子。</h3><span>源码与 exe 都在 demos / 下</span></div>
+  <div class="demo-row reveal">
+    <article class="demo-card">
+      <div class="demo-kicker">终端 / 数学</div>
+      <h4>曼德博集合</h4>
+      <p>24 行代码，把复数迭代压成 78×24 的终端画面。改参数就能改出另一张图。</p>
+      <div class="demo-links"><a class="primary" href="demos/曼德博分形.exe" download>下载 exe</a><a href="demos/demo_曼德博分形.impor" download>源码 .impor</a></div>
+    </article>
+    <article class="demo-card">
+      <div class="demo-kicker">数据 / 统计</div>
+      <h4>成绩报告</h4>
+      <p>平均分、极值、及格率、优秀率，再加一张终端条形图。老师拿来就能改。</p>
+      <div class="demo-links"><a class="primary" href="demos/成绩报告.exe" download>下载 exe</a><a href="demos/demo_成绩报告.impor" download>源码 .impor</a></div>
+    </article>
+    <article class="demo-card">
+      <div class="demo-kicker">文本 / 词频</div>
+      <h4>词频统计</h4>
+      <p>不引第三方库，逐字扫描、计数、排序，最后输出一张词频条形图。</p>
+      <div class="demo-links"><a class="primary" href="demos/词频统计.exe" download>下载 exe</a><a href="demos/demo_词频统计.impor" download>源码 .impor</a></div>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 变更 ===== -->
+<section class="sec wrap" id="release">
+  <div class="sec-head">
+    <div class="sec-tag">08 / 变更 · 3.2.3</div>
+    <div>
+      <h2>改了什么，没改什么。</h2>
+      <p>3.2.3 在 3.2.1 的语言与安全底座上，把编辑器的五件事做成闭环：运行时行覆盖率、插件面板跨进程 builder、索引与搜索后台化、UIA 逐控件 provider、诊断 Quick Fix 扩面。语言、三端与安全策略保持 3.2.1 的结论，不重复宣称。<strong>增量要写清楚，遗留也要写清楚。</strong></p>
+    </div>
+  </div>
+
+  <div class="release-grid">
+    <div class="release-copy">
+      <p><strong>编辑器面</strong>补的是“编辑器自己可验证”：覆盖率不再用静态引用近似，插件面板不再是一个占位面板，索引不在启动时阻塞主线程，搜索可以中途取消并保留已扫结果，UIA 从整窗语义树细化到 16 个可执行控件。</p>
+      <p><strong>诊断面</strong>补的是“Quick Fix 扩面”：关键字拼写、未声明变量、条件 <code>=</code>、括号/引号/大括号补齐、未使用变量；解释窗口改为“原文 / 为什么 / 怎么修 / 最小示例”，标题带错误码。</p>
+      <div class="position-quote" style="font-size:clamp(21px,2.4vw,30px)">版本不是数字变大，是下一件事变得可做。<small>3.2.3 让编辑器五项都能在同一份代码上跑通；真正的并发搜索、OS 级沙箱与代码签名仍留给下一版。</small></div>
+    </div>
+
+    <div>
+      <div class="ledger-head"><b>3.2.3 ledger</b><span>增量 / 证据 / 遗留</span></div>
+      <div class="table-scroll" style="margin-top:0">
+        <table class="spec-table ledger-table">
+          <colgroup><col style="width:16%"><col style="width:46%"><col style="width:38%"></colgroup>
+          <thead><tr><th>面</th><th>3.2.3 增量</th><th>证据 / 边界</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag">覆盖率</span></td><td>解释器按语句行累加命中，AST 可执行行做分母；视图 6 行、100%（6/6），双击跳转，可清空与重跑。</td><td><code>_t322</code> 记录 6 个可执行行、8 次命中；<code>_gui322</code> 视图 6 行、标签 100.0%。</td></tr>
+            <tr><td><span class="tag">插件面板</span></td><td>builder 在真实子进程执行，生成 label/label/button 三层 UI 描述；按钮动作 <code>act_1</code> 回调子进程。</td><td><code>_plugin322</code>：<code>panel_count=1</code>、3 个节点、动作调用成功；旧插件 <code>tk.Label</code> 写法经 shim 兼容。</td></tr>
+            <tr><td><span class="tag">索引 / 搜索</span></td><td>索引启动与切工作区后台化，4 线程并发刷新无异常；搜索支持取消与“加载更多”，已扫结果保留。</td><td><code>_index322</code> 120 文件异步就绪；取消后 25 文件 / 75 处；分页 200 → 260 行。</td></tr>
+            <tr><td><span class="tag">UIA</span></td><td>16 个控件 provider，8 个分组；控件树显示角色/状态/快捷键，<code>Control+Tab</code> 循环焦点。</td><td><code>_uia322</code> <code>ok=true</code>、8 组；首控件“文档 / 已保存 / Ctrl+1”；导出 <code>control_providers.json</code>。</td></tr>
+            <tr><td><span class="tag">Quick Fix</span></td><td>拼写、声明、条件、括号、引号、未使用变量；解释窗口含原文/为什么/怎么修/最小示例。</td><td><code>_fix322</code> 把 <code>fuc</code> 修为 <code>func</code>；解释正文四段齐全。</td></tr>
+            <tr><td><span class="tag">语言</span></td><td>带载荷 ADT、穷尽 <code>match</code>、<code>async/await</code>、跨文件 <code>private/protected</code>、受控 FFI。</td><td><code>_t_adt</code> 解释器/C 一致；<code>_t_mod_priv_bad</code> 报 <code>AccessError [E1099]</code>；FFI 白名单实测。</td></tr>
+            <tr><td><span class="tag">三端</span></td><td>C 后端补 JSON 编解码、基础正则、lambda、<code>run_tasks</code> / <code>task_status</code>。</td><td><code>_t_parity</code> 9 行逐行一致；C 产物 114.5 KB。</td></tr>
+            <tr><td><span class="tag">编辑器</span></td><td>重构预览/撤销、测试失败内联、覆盖率、分块可编辑、插件崩溃重启/权限清单/面板宿主、UIA 控件树/高对比、搜索虚拟列表。</td><td>3,200 行 / 2.4 MB 文件插入一行后保存，磁盘 3200 → 3201；GUI 冒烟全绿。</td></tr>
+            <tr><td><span class="tag">安全</span></td><td>默认拒绝写/FFI/网络/子进程、路径围栏、原子写、SHA256 清单、JSONL 审计、进程加固、安全中心；插件子进程用 Python audit hook 强制权限。</td><td>启动/保存/插件写入均留审计；未授权 socket / 子进程 / 越界读写实测抛 <code>PermissionError</code>；威胁模型与残余风险公开。</td></tr>
+            <tr><td><span class="tag">标准库</span></td><td><code>std.atlas</code> 保持 700 库；新增 JSON / 正则 / FFI 内建进入标准表面。</td><td>全量 import + 调用 700/700；正则/JSON 用例通过。</td></tr>
+            <tr><td><span class="tag">分发</span></td><td>Windows ZIP、3.2.3 VSIX、项目 / site / 桌面 / 镜像 / 镜像 site 五处同步。</td><td>ZIP 与 VSIX 重新打包；解压目录可运行 <code>impor version</code> 输出 3.2.3。</td></tr>
+            <tr><td><span class="tag">修复</span></td><td>自举路径含空格 / 括号、<code>%errorlevel%</code> 早展开、<code>_walk</code> 崩溃、<code>int</code> 赋 <code>float</code> 误报。</td><td>桌面镜像 23/23；<code>impor check</code> 退出码实测 1；全仓扫描 0 issues。</td></tr>
+            <tr><td><span class="tag">未改</span></td><td>自举 imporc 的 ADT/async/lambda/JSON/正则、C 后端 FFI、OS 级沙箱、代码签名。</td><td>边界页逐条列出；不把子集能力说成全量。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ledger-head" style="margin-top:30px"><b>能力谱系 / lineage</b><span>按版本顺序，不按日期</span></div>
+      <div class="lineage-list">
+        <div class="lineage"><b>v2.13</b><span>脱离 Python 宿主，C 后端产出独立 exe。</span></div>
+        <div class="lineage"><b>v2.19</b><span><strong>imporc</strong> 自举闭环，三代产物一致。</span></div>
+        <div class="lineage"><b>v3.1</b><span>三端合一，class 支持补齐。</span></div>
+        <div class="lineage"><b>v3.2</b><span>自动内存管理与编辑器高级界面重构。</span></div>
+        <div class="lineage"><b>v3.4</b><span>语法宽容层：多写法、少报错。</span></div>
+        <div class="lineage"><b>v4.1</b><span>dict、切片、闭包、模块值补齐。</span></div>
+        <div class="lineage"><b>v5.2</b><span>中文关键字退场；中文转向诊断、文档与教学。</span></div>
+        <div class="lineage"><b>v6.1</b><span>性能拐点：100 万次循环进入毫秒级。</span></div>
+        <div class="lineage"><b>v7.2</b><span>渐进式启动、自动更新、Git、DAP 与可访问性。</span></div>
+        <div class="lineage"><b>v3.0</b><span>类型、门禁、项目诊断、教学入口与依赖审计收口。</span></div>
+        <div class="lineage"><b>v3.2.1</b><span>ADT、async、三端 JSON/正则/lambda、FFI、安全内核与编辑器全项。</span></div>
+        <div class="lineage"><b>v3.2.3</b><span>覆盖率、跨进程插件面板、后台索引/搜索、UIA provider、Quick Fix 扩面。</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 场景 ===== -->
+<section class="sec wrap" id="workflows">
+  <div class="sec-head">
+    <div class="sec-tag">09 / 场景 · 三条链路</div>
+    <div>
+      <h2>课堂、工具、CI，各走一条。</h2>
+      <p>同一门语言，三种使用方式，不需要三套入口。下面三条链路都用 3.2.3 的真实命令，失败信号也一致：退出码、诊断码、门禁结果。</p>
+    </div>
+  </div>
+
+  <div class="workflow-grid">
+    <div class="workflow">
+      <div class="wk">01 / classroom</div>
+      <h3>课堂：从讲义到判题。</h3>
+      <p>老师先写出一课，学生拿到练习，最后用同一条命令判题。讲与练不脱节。</p>
+      <div class="workflow-code"><span class="dim">$</span> impor teach 3 --write
+<span class="dim">$</span> impor teach grade 3 lesson03_answer.impor</div>
+      <div class="workflow-foot">适合：课堂教学 · 自学者 · 12 课完整路径</div>
+    </div>
+    <div class="workflow">
+      <div class="wk">02 / tool</div>
+      <h3>工具：从脚本到 exe。</h3>
+      <p>先建模板，格式化，跑通，再交给 C 后端。产物是单文件，不把 Python 带到目标机器。</p>
+      <div class="workflow-code"><span class="dim">$</span> impor new tool --template script
+<span class="dim">$</span> impor fmt tool.impor
+<span class="dim">$</span> impor build tool.impor -o tool.exe</div>
+      <div class="workflow-foot">适合：桌面小工具 · 数据处理 · 离线分发</div>
+    </div>
+    <div class="workflow">
+      <div class="wk">03 / ci</div>
+      <h3>CI：从检查到门禁。</h3>
+      <p>类型、三端一致、依赖审计、性能门槛，四条命令四个退出码；失败就停，不靠人盯输出。</p>
+      <div class="workflow-code"><span class="dim">$</span> impor check main.impor
+<span class="dim">$</span> impor conformance --ci
+<span class="dim">$</span> impor pkg audit
+<span class="dim">$</span> impor bench --gate</div>
+      <div class="workflow-foot">适合：提交前 · 发布前 · 桌面镜像验收</div>
+    </div>
+  </div>
+
+  <div class="note-line">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+    <span><b>同一条链路：</b>没有“演示模式”和“真实模式”两套命令。课堂上跑通的判题，和 CI 里跑的门禁，是同一套实现。</span>
+  </div>
+</section>
+
+<!-- ===== 边界 ===== -->
+<section class="boundary" id="boundary">
+  <div class="sec wrap">
+    <div class="sec-head">
+      <div class="sec-tag">10 / 边界 · 还没做的（3.2.3 残留）</div>
+      <div>
+        <h2>没做完的，也摆在这里。</h2>
+        <p>把边界写清楚，是工程的一部分，不是页脚的免责声明。<strong>3.2.3 不是终点</strong>，下面这些是明确遗留，而不是“以后再说”。</p>
+      </div>
+    </div>
+    <div class="boundary-grid">
+      <p class="boundary-note">“能交付”不等于“什么都会”。<small>不把未完成项说成已完成，也不把历史用例的失败藏起来。你看到的每个数字，都有对应的命令或报告。</small></p>
+      <ul class="unfinished">
+        <li><span>—</span><div><b>自举子集</b>　<code>imporc</code> 仍不支持带载荷 ADT、async/await、lambda、JSON、正则；版本号 3.2.3 但明确输出“子集模式”。</div></li>
+        <li><span>—</span><div><b>真正的并发</b>　async 目前是单线程即时求值，没有事件循环、抢占或并行；需要并发时应等任务调度器。</div></li>
+        <li><span>—</span><div><b>C 后端 FFI</b>　FFI 只在解释器可用；编译产物调用会报未定义。这是刻意保留的边界。</div></li>
+        <li><span>—</span><div><b>OS 级沙箱</b>　安全策略是应用层：路径围栏、原子写、审计、默认拒绝；插件写/网络/子进程由 audit hook 强制，但未启用 AppContainer / Job Object，ctypes 原生调用仍可绕过。</div></li>
+        <li><span>—</span><div><b>发布物签名</b>　更新通道只有 HTTPS 与 SHA256 清单，没有代码签名；安装前仍应自行核对哈希。</div></li>
+        <li><span>—</span><div><b>编辑器长尾</b>　覆盖率是静态调用近似，不是运行时行覆盖；UIA 是 Treeview 语义映射，不是逐控件 provider；搜索只有滚动加载，没有“加载更多”按钮。</div></li>
+        <li><span>—</span><div><b>全量 unittest</b>　563 项里仍有历史中文关键字与旧夹具导致的失败；3.2.3 新增能力用定向用例、GUI 冒烟与 conformance 验证，不宣称全绿。</div></li>
+        <li><span>—</span><div><b>GUI 自动化</b>　编辑器只做代码级与单元级验证；窗口级行为需人工打开确认，没有自动化 GUI 测试。</div></li>
+      </ul>
+    </div>
+
+    <div class="debt">
+      <h3>563 项里，具体欠了什么。</h3>
+      <table class="debt-table">
+        <colgroup><col style="width:24%"><col style="width:40%"><col style="width:36%"></colgroup>
+        <thead><tr><th>组</th><th>用例</th><th>当前状态</th></tr></thead>
+        <tbody>
+          <tr><td>历史中文关键字</td><td><code>test_v29</code> / <code>test_v32</code> / 部分 <code>test_v42</code> / <code>test_v43</code>、<code>test_v33</code> REPL</td><td>仍按旧语法断言，尚未迁移到 3.2.3 的英文关键字口径。</td></tr>
+          <tr><td>LSP 夹具</td><td><code>test_lsp</code> 的临时索引根</td><td>夹具路径与项目索引假设不一致，测试环境相关。</td></tr>
+          <tr><td>调用栈文案</td><td><code>test_v42_diag</code></td><td>断言旧文案，诊断格式已更新。</td></tr>
+          <tr><td>自举脚本</td><td><code>test_v38.test_selfhost_closure</code></td><td>自举闭包路径与当前产物布局不一致。</td></tr>
+        </tbody>
+      </table>
+      <div class="boundary-rule"><b>可用范围：</b>3.2.3 适合课堂、桌面小工具、离线分发、需要结果类型与受控原生调用的场景；不适合需要真正并发、OS 级隔离、自举全语法或代码签名的场景。边界不是免责声明，是选型依据。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="sec wrap" id="faq">
+  <div class="sec-head">
+    <div class="sec-tag">11 / FAQ · 十二个问题</div>
+    <div>
+      <h2>先把最容易误解的说清楚。</h2>
+      <p>下面这些问题来自真实使用与版本说明。答案尽量短，但不回避边界；能在命令行验证的，都给出命令。</p>
+    </div>
+  </div>
+
+  <div class="faq">
+    <details open>
+      <summary><span class="qno">01</span><b>中文关键字还能用吗？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">不能作为 3.2.3 的主路径。关键字保持英文，中文留在诊断、文档、12 课与命令行输出里。旧版中文语法不再作为卖点；历史中文关键字用例仍有失败，已在边界页列出。</div>
+    </details>
+    <details>
+      <summary><span class="qno">02</span><b>3.1 是一次重写吗？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">不是。它站在 7.2 的编辑器底座上，增量集中在类型检查、三端门禁、项目质量检查、教学入口与依赖审计。既有能力没有被推翻，只是被接进同一条可验证链路。</div>
+    </details>
+    <details>
+      <summary><span class="qno">03</span><b>它和 Python 是什么关系？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">不是替代关系。Python 的生态、库与并发能力远大于 Impor；Impor 的约束更窄：独立 exe、三端一致、12 课可判题、单文件自包含。选它，是选一条更小但更可控的交付链路。</div>
+    </details>
+    <details>
+      <summary><span class="qno">04</span><b>生成 exe 需要目标机器装 Python 吗？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">不需要。C 后端把 AST 与运行时编成独立可执行文件，TCC 随完整包提供。打包机需要 TCC；目标机器只需要 Windows x64。产物约 100 KB。</div>
+    </details>
+    <details>
+      <summary><span class="qno">05</span><b>为什么首次构建写了 0.66 s，也写了 0.81 s？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">这是不同轮次的实测区间，不是四舍五入。文档记录 0.66 s（转译 0.07 s、TCC 0.24 s），站内旧文记录 0.81 s。缓存命中后是 0.05 s，第三次 0.03–0.04 s；<code>--no-cache</code> 可强制全量。</div>
+    </details>
+    <details>
+      <summary><span class="qno">06</span><b>23 项 conformance 够证明什么？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">证明现有用例下，解释器、C 后端与 imporc 的输出与退出码一致；不证明所有语义都已覆盖。带载荷 ADT、async、跨后端 JSON / 正则 / lambda 不在门禁内，不能拿 23/23 代替完整正确性。</div>
+    </details>
+    <details>
+      <summary><span class="qno">07</span><b><code>doctor</code> 18/18 是什么？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">14 个模块、3 个自举产物与随包 TCC 的可用性检查。它证明环境能跑，不证明每个功能都对；功能正确性由定向测试、conformance 与教学判题分别覆盖。</div>
+    </details>
+    <details>
+      <summary><span class="qno">08</span><b>12 课怎么判题？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a"><code>impor teach 3 --write</code> 写出练习与答案；<code>impor teach grade 3 lesson03_answer.impor</code> 运行文件并与期望输出比对。判题看输出，不看代码是否长得像标准答案。</div>
+    </details>
+    <details>
+      <summary><span class="qno">09</span><b><code>pkg audit</code> 会拦住什么？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">缺 lock、缺 sha256、明文 HTTP 源、<code>requires</code> 缺失。错误退出 1，只有警告退出 0。<code>pkg graph</code> 从 lock 打印依赖树，并标记循环与未安装项。</div>
+    </details>
+    <details>
+      <summary><span class="qno">10</span><b>编辑器插件能直接写文件吗？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">默认拒绝。需要 <code>plugin_write_allow</code> 或 <code>IMPOR_PLUGIN_PERMISSIONS=write</code> 授权；路径用 <code>commonpath</code> 限制在工作区，越界抛 <code>PermissionError</code>。</div>
+    </details>
+    <details>
+      <summary><span class="qno">11</span><b>跨文件私有访问能静态拦住吗？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">不能。静态访问控制只覆盖同一文件；跨文件或绕过静态检查时，运行时仍会抛 <code>AccessError</code>。这是当前明确的边界。</div>
+    </details>
+    <details>
+      <summary><span class="qno">12</span><b>下一步做什么？</b><span class="plus" aria-hidden="true"></span></summary>
+      <div class="a">带载荷 ADT、<code>async/await</code>、C 后端与自举的 JSON / 正则 / lambda、跨文件静态访问、编辑器长尾。按版本推进；没做之前，不会写成“即将支持”。</div>
+    </details>
+  </div>
+</section>
+
+<!-- ===== 下载 ===== -->
+<section class="download wrap" id="download">
+  <div class="sec-head">
+    <div class="sec-tag">12 / 交付 · 现在可用</div>
+    <div>
+      <h2>下载，解压，跑起来。</h2>
+      <p>Windows 完整包带解释器、编辑器、C 后端、imporc 与 TCC 运行时；VS Code 扩展单独提供 VSIX。版本号、体检结果与哈希都写在下面。</p>
+    </div>
+  </div>
+
+  <div class="dl-grid reveal">
+    <div class="dl-main">
+      <span class="dl-badge">stable · 3.2.3</span>
+      <h3>Impor (I++)<br>Windows x64</h3>
+      <p>整个目录一起解压，不要只移动单个 exe。解压后运行 <code style="font-family:var(--mono);color:var(--fg-2)">impor version</code>，看到 3.2.3 即安装成功。</p>
+      <div class="dl-actions">
+        <a class="btn" href="Impor-3.2.3-Windows-x64.zip" download>下载 Windows 完整包</a>
+        <a class="btn ghost" href="vscode-impor-3.2.3.vsix" download>下载 VSIX</a>
+      </div>
+      <dl class="dl-meta">
+        <dt>版本</dt><dd>3.2.3</dd>
+        <dt>Windows 包</dt><dd>Impor-3.2.3-Windows-x64.zip</dd>
+        <dt>VSIX</dt><dd>482,215 B · SHA256 34CC975BB02E6BF275D1FBEC6FD99A2EF5E5E20CAE54B1C61BA730D566B63423</dd>
+        <dt>体检</dt><dd>impor doctor 18 / 18</dd>
+      </dl>
+    </div>
+
+    <aside class="dl-side">
+      <span class="eco-label">install / 四步</span>
+      <h3>到第一个 exe。</h3>
+      <p>不需要 Python，不需要配置环境变量。先验证版本，再编译。</p>
+      <ol class="install">
+        <li><div>解压整个 <code>Impor(I++) 3.2.3</code> 目录，保留 <code>impor\</code>、<code>bootstrap\</code> 与 <code>site\</code>。</div></li>
+        <li><div>在目录里运行 <code>impor version</code>，输出 <code>Impor (I++) 3.2.3</code>。</div></li>
+        <li><div>运行 <code>impor doctor</code>，应显示 18 / 18 通过。</div></li>
+        <li><div>新建 <code>hello.impor</code>，写 <code>print("你好，Impor")</code>，再运行 <code>impor build hello.impor -o hello.exe</code>。</div></li>
+      </ol>
+      <a class="btn ghost" href="#studio">回到编辑器导览</a>
+    </aside>
+  </div>
+
+  <div class="dl-notes">
+    <div class="dl-note">
+      <span>01 / contents</span>
+      <h4>包里有什么</h4>
+      <ul class="req-list">
+        <li><b>impor\</b><span>CLI / LSP / 教学</span></li>
+        <li><b>impor\std\atlas\</b><span>700 个标准库微库</span></li>
+        <li><b>bootstrap\</b><span>imporc / TCC</span></li>
+        <li><b>site\</b><span>离线站点 / 更新清单</span></li>
+        <li><b>examples\</b><span>标准库与示例</span></li>
+      </ul>
+    </div>
+    <div class="dl-note">
+      <span>02 / requirements</span>
+      <h4>运行条件</h4>
+      <ul class="req-list">
+        <li><b>系统</b><span>Windows x64</span></li>
+        <li><b>Python</b><span>不需要</span></li>
+        <li><b>目录</b><span>解压目录可写</span></li>
+        <li><b>网络</b><span>离线可用</span></li>
+      </ul>
+      <p style="margin-top:12px">可执行文件未做代码签名；Windows 可能提示“未知发布者”。这是分发状态，不是安装失败。</p>
+    </div>
+    <div class="dl-note">
+      <span>03 / verify</span>
+      <h4>下载后先校验</h4>
+      <p>完整包 <code>1,150</code> 个条目、约 <code>3.9 MB</code>；VSIX <code>482,215 B</code>。用 PowerShell 的 <code>Get-FileHash</code>，算法选 SHA256；ZIP 每次重打后哈希会变，页面不固化它。</p>
+      <dl class="dl-meta" style="margin-top:8px">
+        <dt>ZIP</dt><dd>1,150 entries · 约 3.9 MB</dd>
+        <dt>VSIX</dt><dd><code>34CC975BB02E6BF275D1FBEC6FD99A2EF5E5E20CAE54B1C61BA730D566B63423</code></dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 制作说明 ===== -->
+<section class="colophon wrap" id="colophon" aria-label="制作说明">
+  <div class="colophon-grid">
+    <div><span>colophon / 关于这份出版物</span><b>一份单文件的技术出版物。</b><p>12 章，无外部 CSS / JS、无框架、无 emoji；图标全部内联 SVG。数据来自 3.1 文档、CLI 实测与测试矩阵，不把设计目标写成已完成。</p></div>
+    <div><span>release</span><b>Impor (I++) 3.2.3</b><p>Windows x64 · 2026-11-14<br>ZIP / VSIX / 五处镜像</p></div>
+    <div><span>evidence</span><b>23/23 · 18/18 · 12/12 · 700/700</b><p>conformance · doctor<br>teach grade · atlas smoke</p></div>
+    <div><span>palette / type</span><b>夜间底，纸色证据。</b><div class="palette" aria-hidden="true"><i style="background:#070A09"></i><i style="background:#E7EAE2"></i><i style="background:#FF4F1E"></i><i style="background:#A8E6C1"></i><i style="background:#EDEFE7"></i></div><p>展示字：宋体系统栈；UI：Bahnschrift / DIN Alternate；代码：Cascadia Code。</p></div>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div><span class="brandline">IMPOR (I++)</span> · 3.2.3 · 2026-11-14</div>
+    <div>写下来。编译它。交付出去。 · <a href="#top">回到顶部</a></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var menu = document.getElementById('menu');
+  var nav = document.getElementById('nav');
+  if (menu && nav){
+    menu.addEventListener('click', function(){
+      var open = nav.classList.toggle('open');
+      menu.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menu.setAttribute('aria-label', open ? '关闭导航' : '打开导航');
+    });
+    nav.querySelectorAll('a').forEach(function(a){
+      a.addEventListener('click', function(){
+        nav.classList.remove('open');
+        menu.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-label', '打开导航');
+      });
+    });
+  }
+
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  function activate(id, focus){
+    tabs.forEach(function(t){
+      var on = t.getAttribute('data-tab') === id;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.setAttribute('tabindex', on ? '0' : '-1');
+      if (on && focus) t.focus();
+    });
+    document.querySelectorAll('.panel').forEach(function(p){
+      p.classList.toggle('on', p.id === id);
+    });
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ activate(t.getAttribute('data-tab'), false); });
+    t.addEventListener('keydown', function(e){
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      var next = (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      activate(tabs[next].getAttribute('data-tab'), true);
+    });
+  });
+
+  var toast = document.getElementById('toast');
+  var toastTimer = null;
+  function showToast(text){
+    if (!toast) return;
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 1600);
+  }
+
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = btn.getAttribute('data-copy');
+      function done(){
+        var old = btn.textContent;
+        btn.textContent = '已复制';
+        showToast('命令已复制到剪贴板');
+        setTimeout(function(){ btn.textContent = old; }, 1400);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+  });
+  function fallback(text, done){
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); done(); }
+    catch (e) { showToast('复制失败，请手动选择命令'); }
+    document.body.removeChild(area);
+  }
+
+  var reveals = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if (entry.isIntersecting){
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(function(el){ io.observe(el); });
+  } else {
+    reveals.forEach(function(el){ el.classList.add('in'); });
+  }
+
+  activate('p-type', false);
+})();
+</script>
+</body>
+</html>

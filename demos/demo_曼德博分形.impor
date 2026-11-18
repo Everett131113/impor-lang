@@ -1,0 +1,38 @@
+# Demo 1：终端里的曼德博集合
+# 运行：impor run demos\demo_曼德博分形.impor
+
+var w = 78
+var h = 24
+
+for y in range(0, h)
+    var line = ""
+    for x in range(0, w)
+        var cr = -2.2 + x * 3.4 / w
+        var ci = -1.2 + y * 2.4 / h
+        var zr = 0.0
+        var zi = 0.0
+        var n = 0
+        for k in range(0, 24)
+            if zr * zr + zi * zi < 4.0
+                var t = zr * zr - zi * zi + cr
+                set zi = 2.0 * zr * zi + ci
+                set zr = t
+                set n = n + 1
+        var mag = zr * zr + zi * zi
+        if mag < 1.0
+            set line = line + "@"
+        else
+            if mag < 4.0
+                set line = line + "%"
+            else
+                if mag < 20.0
+                    set line = line + "*"
+                else
+                    if mag < 200.0
+                        set line = line + "."
+                    else
+                        set line = line + " "
+    print(line)
+
+print("")
+print("曼德博集合 · 78x24 · Impor 4.3.0")

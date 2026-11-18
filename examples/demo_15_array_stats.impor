@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+// 数组统计：总和、最小值、最大值、平均值
+var data = [8, 3, 12, 5, 9]
+print("数据:", data)
+print("个数:", len(data))
+print("总和:", sum_arr(data))
+print("最小:", min_arr(data))
+print("最大:", max_arr(data))
+print("平均:", sum_arr(data) / len(data))

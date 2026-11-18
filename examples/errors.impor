@@ -1,0 +1,35 @@
+important<<DAY<<english("English"):
+// errors.impor — 异常处理：try / catch / finally / raise
+// 运行：impor run errors.impor
+
+// 自定义异常
+exception AgeError
+
+func check_age(age)
+    if age < 0
+        raise AgeError("年龄不能为负数！")
+    if age < 18
+        print("未成年，", age, "岁")
+    else
+        print("成年，", age, "岁")
+
+try
+    check_age(25)
+    check_age(-3)
+catch AgeError e
+    print("捕获到:", e.msg)
+finally
+    print("检查结束")
+
+// 捕获内置异常（按类型名）
+try
+    var arr = [1, 2, 3]
+    print(arr[99])
+catch IndexError err
+    print("下标越界:", err.msg)
+
+// 通配捕获
+try
+    print(1 / 0)
+catch err
+    print("任意异常:", err.msg)

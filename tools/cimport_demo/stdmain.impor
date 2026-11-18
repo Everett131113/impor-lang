@@ -1,0 +1,7 @@
+import std.algo
+print(std.algo.sorted([3, 1, 4, 1, 5]))
+print(std.algo.sorted_desc([3, 1, 4, 1, 5]))
+print(std.algo.index_of([7, 8, 9], 8))
+print(std.algo.bsearch([1, 3, 5, 7, 9], 7))
+print(std.algo.min_index([4, 2, 9]))
+print(std.algo.max_index([4, 2, 9]))

@@ -1,0 +1,4 @@
+import std.collections
+print(type_of([1, 2]))
+print(type_of("a"))
+print(std.collections.flatten([1, [2, 3], [4, [5]]]))

@@ -1,0 +1,57 @@
+<html style="margin:0;padding:0;">
+<div style="background-color:transparent;box-sizing:border-box;font-family:'Roboto','PingFang SC','Segoe UI',Arial,sans-serif;--accent:#A3D5E8;color:#1A1B1C;padding:4px 0;">
+  <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:12px;">Impor (I++) v2.3.0 · P1 工具链总览</div>
+
+  <!-- 内核 -->
+  <div style="border:1px solid rgba(0,0,0,0.08);border-left:3px solid #8BC8EA;border-radius:12px;background:rgba(139,200,234,0.08);padding:10px 14px;margin-bottom:10px;">
+    <div style="font-size:12px;color:#6B7280;">语言内核（v2.0–v2.2 沉淀）</div>
+    <div style="font-size:13px;margin-top:4px;">Lexer → Parser → <b>AST 树遍历解释器</b>（教学保留）＋ Transpiler → Python 运行时 · 模块系统 from-import / export / 目录包 / 循环导入 / reload / impor.toml · 调试系统 / 原始字符串 / match-case / 复合赋值 / 异常链</div>
+  </div>
+
+  <!-- 工具层 -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+    <div style="flex:1 1 220px;min-width:0;border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:10px 12px;box-sizing:border-box;background:linear-gradient(135deg, rgba(163,213,232,0.12), rgba(163,213,232,0.22));">
+      <div style="font-size:13px;font-weight:600;">LSP · impor lsp</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:4px;line-height:1.5;">stdio JSON-RPC 2.0<br/>语法诊断 · 跳转定义 · 悬停提示 · 文档符号<br/>随附 VS Code 扩展（高亮＋客户端）</div>
+    </div>
+    <div style="flex:1 1 220px;min-width:0;border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:10px 12px;box-sizing:border-box;background:linear-gradient(135deg, rgba(148,216,195,0.10), rgba(148,216,195,0.20));">
+      <div style="font-size:13px;font-weight:600;">格式化 · fmt / check-fmt</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:4px;line-height:1.5;">缩进统一 4 空格 · 运算符空格<br/>空行压缩 · 行尾清理<br/>字符串/注释原样 · CI 可用 --check</div>
+    </div>
+    <div style="flex:1 1 220px;min-width:0;border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:10px 12px;box-sizing:border-box;background:linear-gradient(135deg, rgba(233,168,178,0.10), rgba(233,168,178,0.20));">
+      <div style="font-size:13px;font-weight:600;">静态检查 · lint</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:4px;line-height:1.5;">未定义变量 · 未使用变量/导入<br/>不可达代码<br/>退出码 1 = 有问题（CI 可用）</div>
+    </div>
+    <div style="flex:1 1 220px;min-width:0;border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:10px 12px;box-sizing:border-box;background:linear-gradient(135deg, rgba(222,190,248,0.12), rgba(222,190,248,0.22));">
+      <div style="font-size:13px;font-weight:600;">包管理 · pkg</div>
+      <div style="font-size:12px;color:#6B7280;margin-top:4px;line-height:1.5;">本地目录 / git 源安装<br/>impor.lock 锁文件 · upgrade / remove<br/>缓存 ~/.impor/pkg 自动入搜索路径</div>
+    </div>
+  </div>
+
+  <!-- 数据流 -->
+  <div style="border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:10px 14px;background:rgba(244,243,238,0.6);margin-bottom:10px;">
+    <div style="font-size:12px;color:#6B7280;margin-bottom:6px;">数据流与复用</div>
+    <div style="font-size:12.5px;line-height:1.7;">
+      <b>analysis.py</b>（符号表＋检查器）← 内核 AST —— 同时供 <b>lint</b> 与 <b>LSP 诊断</b>复用<br/>
+      <b>fmt.py</b> ← 内核 Lexer（INDENT/DEDENT）重建缩进 · <b>pkgmgr.py</b> ← config.py 把包缓存并入模块搜索路径<br/>
+      <b>impor.toml</b>：项目名/版本/搜索路径/依赖 —— 被内核、LSP、pkg 共同读取
+    </div>
+  </div>
+
+  <!-- 验证状态 -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div style="flex:1 1 150px;min-width:0;border-radius:12px;border:1px solid rgba(82,196,26,0.3);background:rgba(82,196,26,0.08);padding:8px 12px;text-align:center;">
+      <div style="font-size:20px;font-weight:600;color:#52C41A;">157</div>
+      <div style="font-size:12px;color:#6B7280;">单元测试全绿</div>
+    </div>
+    <div style="flex:1 1 150px;min-width:0;border-radius:12px;border:1px solid rgba(82,196,26,0.3);background:rgba(82,196,26,0.08);padding:8px 12px;text-align:center;">
+      <div style="font-size:20px;font-weight:600;color:#52C41A;">端到端</div>
+      <div style="font-size:12px;color:#6B7280;">fmt/lint/lsp/pkg 真实 CLI 验证 PASS</div>
+    </div>
+    <div style="flex:1 1 150px;min-width:0;border-radius:12px;border:1px solid rgba(82,196,26,0.3);background:rgba(82,196,26,0.08);padding:8px 12px;text-align:center;">
+      <div style="font-size:20px;font-weight:600;color:#52C41A;">python -m impor</div>
+      <div style="font-size:12px;color:#6B7280;">__main__.py 补齐，impor.bat/扩展入口可用</div>
+    </div>
+  </div>
+</div>
+</html>

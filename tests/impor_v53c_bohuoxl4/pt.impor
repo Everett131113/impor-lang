@@ -1,0 +1,4 @@
+class P {
+    var x = 1
+}
+export P

@@ -1,0 +1,11 @@
+func f(x)
+    switch x
+        case 1
+            switch x
+                case 1
+                    return "aa"
+                default
+                    return "ab"
+    return "end"
+
+print(f(1))

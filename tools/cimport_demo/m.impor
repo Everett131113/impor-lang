@@ -1,0 +1,10 @@
+// m.impor
+func add(a, b) {
+    return a + b
+}
+func unused_bad() {
+    var s = "x"
+    return s.upper()
+}
+var G = 10
+export add, G

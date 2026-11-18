@@ -1,0 +1,8 @@
+from mod import add, base
+import pkg.util as u
+
+func calc(x)
+    import mod as m2
+    return add(x, base) + u.twice(x) + m2.base
+
+print(calc(1))

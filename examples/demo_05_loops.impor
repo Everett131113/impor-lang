@@ -1,0 +1,7 @@
+important<<DAY<<english("English"):
+// for 循环与累加
+var total = 0
+for i in range(1, 11)
+    set total = total + i
+    print("加入", i, "后总和", total)
+print("1 到 10 的总和:", total)

@@ -1,0 +1,13 @@
+important<<DAY<<english("English"):
+// enum 枚举
+enum Color { RED, GREEN, BLUE }
+
+func name_of(c)
+    if c == Color.RED
+        return "红色"
+    if c == Color.GREEN
+        return "绿色"
+    return "蓝色"
+
+print(Color.RED, Color.GREEN, Color.BLUE)
+print("当前颜色:", name_of(Color.GREEN))

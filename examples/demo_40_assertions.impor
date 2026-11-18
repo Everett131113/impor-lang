@@ -1,0 +1,8 @@
+important<<DAY<<english("English"):
+// 断言：示例程序的轻量自检
+func add(a, b)
+    return a + b
+
+assert add(2, 3) == 5
+assert add(-1, 1) == 0
+print("全部断言通过")

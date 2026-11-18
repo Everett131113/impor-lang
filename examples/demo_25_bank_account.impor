@@ -1,0 +1,20 @@
+important<<DAY<<english("English"):
+// 类与状态：银行卡账户
+class Account
+    def __init__(name, balance)
+        set self.name = name
+        set self.balance = balance
+    def deposit(amount)
+        set self.balance = self.balance + amount
+        return self.balance
+    def withdraw(amount)
+        if amount > self.balance
+            return -1
+        set self.balance = self.balance - amount
+        return self.balance
+
+var acc = new Account("小明", 100)
+print(acc.name, "初始余额:", acc.balance)
+print("存入 50 后:", acc.deposit(50))
+print("取出 30 后:", acc.withdraw(30))
+print("超额取款:", acc.withdraw(999))

@@ -1,0 +1,16 @@
+important<<DAY<<english("English"):
+// 猜数字（预设猜测序列版）
+// 网页里的可玩版是同一套规则；这里保留可运行的 Impor 源码。
+var answer = 42
+var guesses = [50, 25, 37, 42, 10]
+var i = 0
+while i < len(guesses)
+    var guess = guesses[i]
+    if guess == answer
+        print("第", i + 1, "次：猜中了", guess)
+        break
+    elseif guess < answer
+        print("第", i + 1, "次：", guess, "小了")
+    else
+        print("第", i + 1, "次：", guess, "大了")
+    i = i + 1

@@ -1,0 +1,5 @@
+important<<DAY<<english("English"):
+// 固定随机种子，掷 6 次骰子
+seed(42)
+for i in range(1, 7)
+    print("第", i, "次:", randi(1, 6))

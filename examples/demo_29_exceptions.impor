@@ -1,0 +1,16 @@
+important<<DAY<<english("English"):
+// 自定义异常与 try/catch/finally
+exception ScoreError
+
+func check(score)
+    if score < 0 or score > 100
+        raise ScoreError("非法成绩")
+    return score
+
+try
+    print("合法成绩:", check(88))
+    check(120)
+catch ScoreError e
+    print("捕获异常:", e.msg)
+finally
+    print("检查结束")

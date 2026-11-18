@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+// 变量、字符串、数字与输出
+var language = "Impor"
+var version = 6.6
+var users = 3
+print("语言:", language)
+print("版本:", version)
+print("用户数:", users)
+print("用户数 + 版本:", users + version)

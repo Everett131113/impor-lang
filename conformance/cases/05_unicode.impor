@@ -1,0 +1,6 @@
+var s = "你好世界"
+print(len(s))
+print(s[0])
+print(s[1])
+print(strcut(s, 1, 3))
+print(len("abc"))

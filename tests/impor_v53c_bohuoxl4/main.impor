@@ -1,0 +1,4 @@
+from pt import P
+var p = new P()
+print(type_of(p))
+print(p.x)

@@ -1,0 +1,134 @@
+{
+  "name": "vscode-impor",
+  "displayName": "Impor (I++) Language",
+  "description": "Impor (I++) 语言支持：语法高亮 + LSP（语法诊断/跳转定义/悬停提示/文档符号/格式化）",
+  "version": "3.9.0",
+  "publisher": "impor-lang",
+  "license": "MIT",
+  "icon": "icon.png",
+  "keywords": [
+    "impor",
+    "i++",
+    "language",
+    "lsp",
+    "formatter",
+    "linter"
+  ],
+  "galleryBanner": {
+    "color": "#101418",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onLanguage:impor",
+    "onDebug:impor"
+  ],
+  "main": "./client/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "impor",
+        "aliases": [
+          "Impor",
+          "I++",
+          "impor"
+        ],
+        "extensions": [
+          ".impor"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "impor",
+        "scopeName": "source.impor",
+        "path": "./syntaxes/impor.tmLanguage.json"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "impor",
+        "label": "Impor 调试",
+        "languages": [
+          "impor"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "要调试的 Impor 脚本",
+                "default": "${workspaceFolder}/main.impor"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "启动后立即在第一行暂停",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "impor",
+            "request": "launch",
+            "name": "调试当前 Impor 脚本",
+            "program": "${file}"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Impor: 调试当前脚本",
+            "body": {
+              "type": "impor",
+              "request": "launch",
+              "name": "调试当前 Impor 脚本",
+              "program": "${file}"
+            }
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "impor.runFile",
+        "title": "Impor: 运行当前脚本",
+        "when": "editorLangId == impor"
+      },
+      {
+        "command": "impor.formatFile",
+        "title": "Impor: 格式化当前脚本",
+        "when": "editorLangId == impor"
+      }
+    ],
+    "configuration": {
+      "title": "Impor",
+      "properties": {
+        "impor.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "启动 impor 命令所用的 Python 解释器（impor lsp 服务器）"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "node -e \"process.exit(0)\"",
+    "package": "vsce package",
+    "publish:marketplace": "vsce publish"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  }
+}

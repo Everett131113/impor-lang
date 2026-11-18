@@ -1,0 +1,27 @@
+# 自举子集测试程序：递归 + 字符串 + 循环 + 文件
+func fib(n)
+    if n < 2
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+func greet(name)
+    return "Hello, " + name
+
+var total = 0
+var i = 0
+while i < 5
+    set total = total + i
+    set i = i + 1
+
+var j = 0
+for j in range(1, 4)
+    print("j =", j)
+
+print("fib(10) =", fib(10))
+print(greet("Impor"))
+print("total =", total)
+print("strcut:", strcut("abcdef", 1, 3))
+print("upper:", upper("impor"))
+filewrite("_demo_out.txt", "written by imporc")
+var t = fileread("_demo_out.txt")
+print("file:", t)

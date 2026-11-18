@@ -1,0 +1,3 @@
+important<<DAY<<english("English"):
+print(6 > 6, 6 == 6, 6 != 6, 6 <= 6, 6 >= 6)
+print(true and false, true or false, not false)

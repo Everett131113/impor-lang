@@ -1,0 +1,115 @@
+// std/mathx.impor — Impor (I++) 内置标准库：数学工具（纯 Impor 实现）
+// 使用：use std.mathx 或 import std.mathx
+
+func _abs(x) {
+    if x < 0 {
+        return -x
+    }
+    return x
+}
+
+func gcd(a, b) {
+    a = _abs(a)
+    b = _abs(b)
+    while b != 0 {
+        var t = b
+        b = a % b
+        a = t
+    }
+    return a
+}
+
+func lcm(a, b) {
+    if a == 0 or b == 0 {
+        return 0
+    }
+    return _abs(a * b) / gcd(a, b)
+}
+
+func fact(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * fact(n - 1)
+}
+
+func fib(n) {
+    if n <= 1 {
+        return n
+    }
+    var a = 0
+    var b = 1
+    var i = 2
+    while i <= n {
+        var t = a + b
+        a = b
+        b = t
+        i += 1
+    }
+    return b
+}
+
+func is_prime(n) {
+    if n < 2 {
+        return false
+    }
+    var i = 2
+    while i * i <= n {
+        if n % i == 0 {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+func sum(lst) {
+    var total = 0
+    for x in lst {
+        total += x
+    }
+    return total
+}
+
+func avg(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    return sum(lst) / len(lst)
+}
+
+func min_of(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var m = lst[0]
+    for x in lst {
+        if x < m {
+            m = x
+        }
+    }
+    return m
+}
+
+func max_of(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var m = lst[0]
+    for x in lst {
+        if x > m {
+            m = x
+        }
+    }
+    return m
+}
+
+export gcd
+export lcm
+export fact
+export fib
+export is_prime
+export sum
+export avg
+export min_of
+export max_of

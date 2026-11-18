@@ -1,0 +1,6 @@
+Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\demos\曼德博分形.exe
+  大小：105.0 KB（107520 字节）
+  耗时：0.38s（转译 0.01s / tcc 0.08s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。

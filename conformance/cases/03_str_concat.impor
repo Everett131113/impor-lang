@@ -1,0 +1,4 @@
+var s = "Impor"
+var t = "Lang"
+print(s + t)
+print("hello, " + "world")

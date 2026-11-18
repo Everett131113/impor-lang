@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+// 字典值的统计
+var sales = {"周一": 12, "周二": 18, "周三": 9}
+var values = sales.values()
+print("总销量:", sum_arr(values))
+print("最高:", max_arr(values))
+print("最低:", min_arr(values))
+for k in sales.keys()
+    print(k, "卖出", sales[k])

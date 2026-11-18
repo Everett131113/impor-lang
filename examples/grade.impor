@@ -1,0 +1,34 @@
+important<<DAY<<english("English"):
+// 入门示例 3：成绩评级 + 模块/异常/断言综合演示
+// 运行：impor run examples/grade.impor
+exception ScoreError
+
+func grade(score)
+    if score < 0 or score > 100
+        raise ScoreError("非法成绩: " + to_str(score))
+    if score >= 90
+        return "A"
+    elseif score >= 80
+        return "B"
+    elseif score >= 70
+        return "C"
+    elseif score >= 60
+        return "D"
+    else
+        return "F"
+
+// 正常评级
+var students = [85, 92, 58, 73]
+for s in students
+    print("成绩", s, "→ 评级", grade(s))
+
+// 异常捕获
+try
+    grade(120)
+catch ScoreError e
+    print("捕获异常:", e.msg)
+
+// 断言（v2.8）：写测试时常用
+assert grade(95) == "A"
+assert grade(59) == "F"
+print("评级逻辑断言通过")

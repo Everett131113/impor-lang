@@ -1,0 +1,3 @@
+print(len("abcdef"))
+print(len(""))
+print(len("x"))

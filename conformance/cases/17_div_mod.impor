@@ -1,0 +1,4 @@
+print(div(7, 2))
+print(7 % 2)
+print(div(9, 3))
+print(9 % 3)

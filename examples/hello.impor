@@ -1,0 +1,30 @@
+important<<DAY<<english("English"):
+// 入门示例 1：你好，Impor
+// 运行：impor run examples/hello.impor
+var name = "世界"
+print("你好,", name)
+print("Impor (I++) —— 解释器 + REPL + 编译器")
+
+// 变量与运算
+var a = 10
+var b = 3
+print("a + b =", a + b)
+print("a * b =", a * b)
+
+// 条件分支
+if a > b
+    print("a 比 b 大")
+else
+    print("a 不大于 b")
+
+// 循环
+var i = 1
+loop
+    print("计数:", i)
+    set i = i + 1
+    if i > 3
+        break
+
+// 断言
+assert a + b == 13
+print("断言通过")

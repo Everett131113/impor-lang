@@ -1,0 +1,10 @@
+import std.text
+import std.collections
+
+print(std.text.pad_left("7", 3, "0"))
+print(std.text.pad_right("7", 3, "-"))
+print(std.text.index_of("hello", "ll"))
+print(std.text.count_sub("abababa", "aba"))
+print(std.text.split_lines("a\nb\nc"))
+print(std.collections.take([1, 2, 3, 4], 2))
+print(std.collections.drop([1, 2, 3, 4], 2))

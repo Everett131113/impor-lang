@@ -1,0 +1,6 @@
+var i = 0
+var acc = 0
+while i < 5
+    acc = acc + i * 2
+    i = i + 1
+print(acc)

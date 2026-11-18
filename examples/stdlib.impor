@@ -1,0 +1,26 @@
+important<<DAY<<english("English"):
+// stdlib.impor — 标准库：import 任意 Python 标准模块
+// 运行：impor run stdlib.impor
+
+import math
+import random
+import json
+import os
+import string
+
+print("π =", math.pi)
+print("sin(90°) =", math.sin(math.radians(90)))
+print("2^10 =", math.pow(2, 10))
+
+print("随机整数 1-100:", random.randint(1, 100))
+print("随机选择:", random.choice(["石头", "剪刀", "布"]))
+
+var data = {"名字": "Impor", "版本": 2.0}
+print("JSON序列化:", json.dumps(data))
+
+print("字母表前5个:", string.ascii_lowercase[0:5])
+print("当前工作目录:", os.getcwd())
+
+// 别名导入
+import datetime as dt
+print("现在是:", dt.datetime.now().strftime("%Y-%m-%d %H:%M"))

@@ -1,0 +1,12 @@
+important<<DAY<<english("English"):
+// 算术运算与整除、取余
+var a = 17
+var b = 5
+print("a =", a, "b =", b)
+print("和:", a + b)
+print("差:", a - b)
+print("积:", a * b)
+print("商:", a / b)
+print("整除:", div(a, b))
+print("余数:", a % b)
+print("绝对值:", abs(-9))

@@ -1,0 +1,34 @@
+# Demo 3：统计一段话里，哪些词被提到最多
+# 运行：impor run demos\demo_词频统计.impor
+
+var text = "Impor 是一个中文原生编程语言。它把中文代码编译成独立 exe，不依赖 Python。报错时，它给出源码片段、错误码和修复建议。中文编程不该是玩具，独立 exe 才是能发出去的作品。语言要一致，诊断要可读，作品要能独立运行。"
+
+var keys = ["中文", "编程", "语言", "exe", "报错", "独立"]
+var counts = list(6)
+
+for i in range(0, len(keys))
+    var word = keys[i]
+    var c = 0
+    var p = 0
+    while p <= len(text) - len(word)
+        if strcut(text, p, p + len(word)) == word
+            set c = c + 1
+        set p = p + 1
+    set counts[i] = c
+
+print("词频统计 · Top 6")
+print("====================")
+print("原文：" + text)
+print("")
+for i in range(0, len(keys))
+    var bar = ""
+    for j in range(0, counts[i])
+        set bar = bar + "|"
+    print(keys[i] + "  " + bar + "  " + str(counts[i]) + " 次")
+
+var top = 0
+for i in range(1, len(keys))
+    if counts[i] > counts[top]
+        set top = i
+print("")
+print("出现最多：" + keys[top] + "（" + str(counts[top]) + " 次）")

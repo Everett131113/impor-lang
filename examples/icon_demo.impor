@@ -1,0 +1,6 @@
+# Impor (I++) 独立可执行文件演示：双击后窗口会停留
+print("Impor (I++) 独立可执行文件")
+print("这个程序自带 I++ 图标，运行不依赖 Python。")
+print("")
+print("按回车键退出…")
+inputstr("")

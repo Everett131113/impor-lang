@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+func label(x)
+    switch x
+        case 3
+            return "hit"
+        default
+            return "miss"
+print(label(3))
+print(label(4))

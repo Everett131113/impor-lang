@@ -1,0 +1,10 @@
+[project]
+name = "impor_focus"
+version = "3.6.17"
+entry = "focus.impor"
+sandbox_default = false
+
+[module_search_paths]
+paths = ["./lib"]
+
+[dependencies]

@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+// 递归阶乘
+func factorial(n)
+    if n <= 1
+        return 1
+    return n * factorial(n - 1)
+
+for n in range(1, 8)
+    print(n, "! =", factorial(n))

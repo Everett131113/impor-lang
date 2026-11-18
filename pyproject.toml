@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "impor-lang"
+dynamic = ["version"]
+description = "Impor (I++) — 一个真正的编程语言：解释器、REPL、编译器、图形化编辑器"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Impor Team" }]
+keywords = ["language", "interpreter", "compiler", "impor", "lsp", "debugger"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Interpreters",
+]
+urls = { Homepage = "https://github.com/impor-lang/impor", Documentation = "https://github.com/impor-lang/impor/blob/main/docs/语言规范.md" }
+
+[project.scripts]
+impor = "impor.cli:main"
+
+[tool.setuptools.dynamic]
+version = { file = ["VERSION"] }
+
+[tool.setuptools]
+packages = ["impor"]
+
+[tool.setuptools.package-data]
+impor = ["assets/icons/*", "std/*.impor", "std/atlas/*.impor", "std/atlas/*.md"]

@@ -1,0 +1,21 @@
+important<<DAY<<english("English"):
+// 类继承与方法覆盖
+class Animal
+    def __init__(name)
+        set self.name = name
+    def speak()
+        print(self.name, "发出声音")
+
+class Dog(Animal)
+    def speak()
+        super().speak()
+        print(self.name, "汪汪")
+
+class Cat(Animal)
+    def speak()
+        print(self.name, "喵喵")
+
+var dog = new Dog("旺财")
+var cat = new Cat("咪咪")
+dog.speak()
+cat.speak()

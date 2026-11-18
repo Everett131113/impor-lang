@@ -1,0 +1,5 @@
+important<<DAY<<english("English"):
+var a = 21
+var b = 6
+print(a + b, a - b, a * b, a / b)
+print((a + b) * (a - b))

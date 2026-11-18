@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+// 字符串长度、截取、拼接与大小写
+var s = "Impor Language"
+print("长度:", len(s))
+print("前 5 个字符:", strcut(s, 0, 5))
+print("拼接:", strjoin(["A", "B", "C"], "-"))
+print("大写:", upper(s))
+print("小写:", lower(s))
+print("去空格:", trim("  hello  "))

@@ -1,0 +1,5 @@
+important<<DAY<<english("English"):
+enum Color { RED, GREEN, BLUE }
+print(Color.RED, Color.GREEN, Color.BLUE)
+print(Color.BLUE > Color.RED)
+print(3 + Color.GREEN)

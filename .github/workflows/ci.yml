@@ -1,0 +1,67 @@
+# Impor (I++) CI 工作流（当前 3.6.17）
+#
+# 每次 push / PR 自动执行：
+#   1. 编译零警告检查（SyntaxWarning 视为错误）
+#   2. 全量单元测试（unittest discover）
+#   3. 模糊测试（快速模式，IMPOR_FUZZ_ITERS=60）
+#   4. 格式检查 check-fmt
+#   5. 静态检查 lint
+#   6. 性能基准（快速模式，输出报告；防退化靠人工对比历史报告）
+#
+# 用法：把本文件放到仓库 .github/workflows/ci.yml 即可。
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: 测试 (${{ matrix.os }} / py${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 编译零警告检查
+        run: python -W error::SyntaxWarning -m compileall -f -q impor examples tests benchmarks Impor.py
+
+      - name: 运行时体检（v5.6）
+        run: python Impor.py doctor
+
+      - name: 单元测试
+        run: python run_tests.py
+
+      - name: 三后端一致性（conformance）
+        if: runner.os == 'Windows'
+        run: python conformance/run_conformance.py --ci
+
+      - name: 模糊测试（快速）
+        env:
+          IMPOR_FUZZ_ITERS: "60"
+        run: python -m unittest tests.test_fuzz
+
+      - name: 格式检查
+        run: python Impor.py check-fmt examples/snake.impor
+
+      - name: 静态检查
+        run: python Impor.py lint examples/snake.impor
+
+      - name: 性能基准（快速）
+        run: python benchmarks/bench_impor.py --quick --json bench.json
+
+      - name: 上传基准报告
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-report-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: bench.json

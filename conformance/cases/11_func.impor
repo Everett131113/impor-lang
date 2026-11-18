@@ -1,0 +1,6 @@
+func add(a, b)
+    return a + b
+func twice(v)
+    return v * 2
+print(add(2, 3))
+print(twice(add(1, 4)))

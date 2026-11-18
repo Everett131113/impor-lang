@@ -1,0 +1,6 @@
+var total = 0
+for i in range(5)
+    total = total + i
+print(total)
+for j in range(3)
+    print(j)

@@ -1,0 +1,33 @@
+important<<DAY<<english("English"):
+// game.impor — 游戏工具库：vec2 / rgb / 数学工具
+// 运行：impor run game.impor
+
+var pos = vec2(10, 20)
+pos.x = 50
+pos.y = 60
+print("位置:", pos)
+print("向量长度:", pos.length())
+
+var target = vec2(80, 100)
+print("到目标距离:", pos.dist(target))
+
+print("两点距离:", distance(0, 0, 3, 4))
+print("两点角度:", angle(0, 0, 1, 1), "度")
+
+// 颜色
+var red = rgb(255, 0, 0)
+var mixed = rgb(300, 100, 50)  // 自动裁剪到 0-255
+print("红色:", red, "hex:", red.hex)
+print("混合色:", mixed)
+
+// 数学工具
+print("clamp(150, 0, 100) =", clamp(150, 0, 100))
+print("lerp(0, 10, 0.5) =", lerp(0, 10, 0.5))
+print("remap(50, 0, 100, 0, 1) =", remap(50, 0, 100, 0, 1))
+print("sign(-7) =", sign(-7), " sign(0) =", sign(0))
+
+// 数组工具
+var scores = [88, 92, 76, 95]
+print("最高分:", max_arr(scores), "最低分:", min_arr(scores), "总分:", sum_arr(scores))
+shuffle(scores)
+print("打乱后:", scores)

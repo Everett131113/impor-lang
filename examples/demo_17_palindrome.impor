@@ -1,0 +1,17 @@
+important<<DAY<<english("English"):
+// 回文判断
+func is_palindrome(s)
+    var i = 0
+    var j = len(s) - 1
+    loop
+        if i >= j
+            break
+        if strcut(s, i, i + 1) != strcut(s, j, j + 1)
+            return false
+        set i = i + 1
+        set j = j - 1
+    return true
+
+var words = ["level", "impor", "noon", "abc"]
+for w in words
+    print(w, "是回文吗:", is_palindrome(w))

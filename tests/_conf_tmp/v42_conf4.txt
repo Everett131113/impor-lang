@@ -1,0 +1,27 @@
+Impor conformance —— 三后端逐字节比对（23 个用例）
+------------------------------------------------------------------------
+01_arith_int                 OK     rc=(0, 0, 0)
+02_float                     OK     rc=(0, 0, 0)
+03_str_concat                OK     rc=(0, 0, 0)
+04_len_ascii                 OK     rc=(0, 0, 0)
+05_unicode                   OK     rc=(0, 0, 0)
+06_bool_cmp                  OK     rc=(0, 0, 0)
+07_str_repeat                OK     rc=(0, 0, 0)
+08_for_range                 OK     rc=(0, 0, 0)
+09_while                     OK     rc=(0, 0, 0)
+10_if_else                   OK     rc=(0, 0, 0)
+11_func                      OK     rc=(0, 0, 0)
+12_recursion                 OK     rc=(0, 0, 0)
+13_array                     OK     rc=(0, 0, 0)
+14_array_set                 OK     rc=(0, 0, 0)
+15_nested_call               OK     rc=(0, 0, 0)
+16_str_cmp                   OK     rc=(0, 0, 0)
+17_div_mod                   OK     rc=(0, 0, 0)
+18_type                      OK     rc=(0, 0, 0)
+19_print_multi               OK     rc=(0, 0, 0)
+20_mixed                     OK     rc=(0, 0, 0)
+21_struct                    OK     rc=(0, 0, 0)
+22_enum                      OK     rc=(0, 0, 0)
+23_switch_match              OK     rc=(0, 0, 0)
+------------------------------------------------------------------------
+共 23 个用例，通过 23，失败 0

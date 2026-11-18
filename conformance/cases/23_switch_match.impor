@@ -1,0 +1,30 @@
+enum Color { RED = 10, GREEN = 20, BLUE = 30 }
+
+func classify(x)
+    switch x
+        case 1
+            return "one"
+        case Color.GREEN
+            return "green"
+        default
+            return "default"
+
+func bind(x)
+    switch x
+        case v
+            return "v=" + to_str(v)
+
+func neg(x)
+    switch x
+        case -1
+            return "minus"
+        default
+            return "other"
+
+print(classify(1))
+print(classify(Color.GREEN))
+print(classify(99))
+print(classify(Color.RED))
+print(bind(7))
+print(neg(-1))
+print(neg(0))

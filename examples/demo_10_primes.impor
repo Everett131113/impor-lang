@@ -1,0 +1,17 @@
+important<<DAY<<english("English"):
+// 素数判断与枚举
+func is_prime(n)
+    if n < 2
+        return false
+    var d = 2
+    loop
+        if d * d > n
+            break
+        if n % d == 0
+            return false
+        set d = d + 1
+    return true
+
+for n in range(2, 31)
+    if is_prime(n)
+        print(n, "是素数")

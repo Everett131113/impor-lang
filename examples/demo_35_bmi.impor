@@ -1,0 +1,18 @@
+important<<DAY<<english("English"):
+// BMI 计算与区间判断
+func bmi(weight, height)
+    return weight / (height * height)
+
+func level(value)
+    if value < 18.5
+        return "偏瘦"
+    elseif value < 24
+        return "正常"
+    elseif value < 28
+        return "偏胖"
+    else
+        return "肥胖"
+
+var value = bmi(65, 1.75)
+print("BMI:", value)
+print("区间:", level(value))

@@ -1,0 +1,14 @@
+enum Color { RED, GREEN, BLUE }
+enum Size
+    SMALL
+    MEDIUM = 5
+    LARGE
+print(Color.RED, Color.GREEN, Color.BLUE)
+print(Size.SMALL, Size.MEDIUM, Size.LARGE)
+func label(c)
+    if c == Color.RED
+        return "红"
+    if c == Color.GREEN
+        return "绿"
+    return "蓝"
+print(label(Color.GREEN))

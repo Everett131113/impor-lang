@@ -1,0 +1,169 @@
+important<<DAY<<english("English"):
+// ============================================================
+//  Impor 贪吃蛇 Snake — 纯 Impor 编写，tkinter 渲染
+//  运行:  python Impor.py run examples/snake.impor
+//  冒烟:  python Impor.py run examples/snake.impor --smoke
+//  操作:  方向键转向 · R 重新开始 · 关窗退出
+// ============================================================
+import tkinter
+
+// ---------------- 常量 ----------------
+var COLS = 20
+var ROWS = 20
+var CELL = 25
+var W = COLS * CELL
+var H = ROWS * CELL
+var SPEED = 120 // 每步毫秒
+
+// ---------------- 游戏状态 ----------------
+var snake = [vec2(7, 10), vec2(6, 10), vec2(5, 10)]
+var dirx = 1
+var diry = 0
+var nextx = 1
+var nexty = 0
+var food = vec2(0, 0)
+var score = 0
+var over = false
+var frame_n = 0
+
+// ---------------- 冒烟测试开关 ----------------
+var is_smoke = false
+var all_args = args()
+for a in all_args
+    if a == "--smoke"
+        is_smoke = true
+
+// ---------------- 工具函数 ----------------
+def hit_self(x, y)
+    for i in range(1, len(snake))
+        var seg = snake[i]
+        if seg.x == x and seg.y == y
+            return true
+    return false
+
+def blocked(x, y)
+    if x < 0 or x >= COLS or y < 0 or y >= ROWS
+        return true
+    return hit_self(x, y)
+
+// ---------------- 游戏逻辑 ----------------
+def spawn_food()
+    while true
+        var fx = randi(0, COLS - 1)
+        var fy = randi(0, ROWS - 1)
+        if not hit_self(fx, fy)
+            global set food = vec2(fx, fy)
+            return
+
+def smoke_turn()
+    // 冒烟模式：朝食物贪心转向（避开墙与身体）
+    var hx = snake[0].x
+    var hy = snake[0].y
+    if food.x > hx and not blocked(hx + 1, hy)
+        global set nextx = 1
+        global set nexty = 0
+    elif food.x < hx and not blocked(hx - 1, hy)
+        global set nextx =- 1
+        global set nexty = 0
+    elif food.y > hy and not blocked(hx, hy + 1)
+        global set nextx = 0
+        global set nexty = 1
+    elif food.y < hy and not blocked(hx, hy - 1)
+        global set nextx = 0
+        global set nexty =- 1
+
+def step()
+    if over
+        return
+    if is_smoke
+        global set frame_n = frame_n + 1
+        smoke_turn()
+        if frame_n >= 60
+            print("SMOKE OK  frames =", frame_n, " score =", score)
+            root.destroy()
+            return
+    var hx = snake[0].x + nextx
+    var hy = snake[0].y + nexty
+    global set dirx = nextx
+    global set diry = nexty
+    if blocked(hx, hy)
+        game_over()
+        return
+    snake.insert(0, vec2(hx, hy))
+    if hx == food.x and hy == food.y
+        global set score = score + 1
+        spawn_food()
+    else
+        snake.pop()
+    draw()
+    root.after(SPEED, step)
+
+def game_over()
+    global set over = true
+    cv.create_text(W / 2, H / 2 - 20, "-text", "游戏结束", "-fill", "#f38ba8", "-font", "TkDefaultFont 20 bold")
+    cv.create_text(W / 2, H / 2 + 22, "-text", "分数: " + to_str(score) + "   按 R 重新开始", "-fill", "#cdd6f4", "-font", "TkDefaultFont 13")
+    if is_smoke
+        root.after(400, reset)
+
+def reset()
+    global set snake = [vec2(7, 10), vec2(6, 10), vec2(5, 10)]
+    global set dirx = 1
+    global set diry = 0
+    global set nextx = 1
+    global set nexty = 0
+    global set score = 0
+    global set over = false
+    spawn_food()
+    draw()
+    root.after(SPEED, step)
+
+// ---------------- 绘制 ----------------
+def draw()
+    cv.delete("all")
+    for i in range(0, len(snake))
+        var p = snake[i]
+        var x1 = p.x * CELL + 2
+        var y1 = p.y * CELL + 2
+        var x2 = p.x * CELL + CELL - 2
+        var y2 = p.y * CELL + CELL - 2
+        if i == 0
+            cv.create_rectangle(x1, y1, x2, y2, "-fill", "#a6e3a1", "-outline", "#89b4fa")
+        else
+            cv.create_rectangle(x1, y1, x2, y2, "-fill", "#74c7ec", "-outline", "#1e1e2e")
+    var fx = food.x * CELL + CELL / 2
+    var fy = food.y * CELL + CELL / 2
+    cv.create_oval(fx - 9, fy - 9, fx + 9, fy + 9, "-fill", "#f38ba8", "-outline", "#f38ba8")
+    cv.create_text(10, 8, "-anchor", "nw", "-text", "分数: " + to_str(score), "-fill", "#cdd6f4", "-font", "TkDefaultFont 12 bold")
+
+// ---------------- 键盘 ----------------
+def on_key(ev)
+    var k = ev.keysym
+    if over
+        if k == "r" or k == "R"
+            reset()
+        return
+    if k == "Up" and diry != 1
+        global set nextx = 0
+        global set nexty =- 1
+    elif k == "Down" and diry !=- 1
+        global set nextx = 0
+        global set nexty = 1
+    elif k == "Left" and dirx != 1
+        global set nextx =- 1
+        global set nexty = 0
+    elif k == "Right" and dirx !=- 1
+        global set nextx = 1
+        global set nexty = 0
+
+// ---------------- 启动 ----------------
+var root = tkinter.Tk()
+root.title("Impor 贪吃蛇  —  方向键移动 · R 重开")
+root.resizable(0, 0)
+var cv = tkinter.Canvas(root, { "width": W, "height": H, "bg": "#1e1e2e", "highlightthickness": 0 })
+cv.pack()
+root.bind("<KeyPress>", on_key)
+spawn_food()
+draw()
+root.after(SPEED, step)
+root.mainloop()
+print("游戏退出")

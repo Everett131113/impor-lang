@@ -1,0 +1,12 @@
+important<<DAY<<english("English"):
+// 闭包与计数器
+func make_counter(start)
+    def next_value()
+        nonlocal set start = start + 1
+        return start
+    return next_value
+
+var counter = make_counter(10)
+print("第一次:", counter())
+print("第二次:", counter())
+print("第三次:", counter())

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impor 社区 · Impor (I++) 中文文档与真实讨论</title>
+<meta name="description" content="Impor (I++) 中文社区：可检索 32 份真实仓库文档、238 个章节，支持发帖、回帖与官方发布查询；不预置虚构评论。">
+<meta name="keywords" content="Impor,I++,ImporLang,编程语言,中文社区,文档,IDE,VS Code,教程">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta name="author" content="Impor (I++)">
+<meta property="og:site_name" content="Impor 社区">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://4mgksh8c53rk1.doubao.link/app/app_17j1rz8170n">
+<meta property="og:title" content="Impor 社区 · Impor (I++) 中文文档与真实讨论">
+<meta property="og:description" content="可检索真实 Impor 文档、发帖回帖、查官方发布；没有预置虚构评论。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Impor 社区 · Impor (I++)">
+<meta name="twitter:description" content="可检索真实 Impor 文档、发帖回帖、查官方发布。">
+<link rel="canonical" href="https://4mgksh8c53rk1.doubao.link/app/app_17j1rz8170n">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Impor 社区","alternateName":"Impor (I++) Community","url":"https://4mgksh8c53rk1.doubao.link/app/app_17j1rz8170n","description":"Impor (I++) 中文文档与真实讨论社区，索引仓库内真实文档，不预置虚构评论。","inLanguage":"zh-CN","about":{"@type":"SoftwareApplication","name":"Impor (I++)","applicationCategory":"DeveloperApplication","operatingSystem":"Windows"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://4mgksh8c53rk1.doubao.link/app/app_17j1rz8170n?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230a0d0e'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='monospace' font-size='28' fill='%23c9a35a'%3EI++%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --ink:#0a0d0e; --panel:#111617; --panel-2:#151b1c;
+  --paper:#e8e2d4; --muted:#929c99; --gold:#c9a35a; --cyan:#5cc8c2;
+  --line:rgba(232,226,212,.14); --line-soft:rgba(232,226,212,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--ink); color:var(--paper);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(circle at 18% 0%, rgba(92,200,194,.08), transparent 34rem),
+    radial-gradient(circle at 88% 18%, rgba(201,163,90,.09), transparent 30rem),
+    linear-gradient(rgba(232,226,212,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,226,212,.025) 1px, transparent 1px);
+  background-size:auto,auto,48px 48px,48px 48px;
+}
+::selection{background:var(--gold);color:var(--ink)}
+a{color:inherit}
+button,input{font:inherit}
+.wrap{max-width:1220px;margin:0 auto;padding:0 34px}
+nav{position:sticky;top:0;z-index:40;background:rgba(10,13,14,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-soft)}
+.nav-inner{max-width:1220px;margin:0 auto;padding:18px 34px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.mark{width:34px;height:34px;border:1px solid var(--line);display:grid;place-items:center;color:var(--gold);font-family:Consolas,monospace;font-size:15px;letter-spacing:-.04em}
+.brand b{font-family:Georgia,"Times New Roman",serif;font-size:21px;letter-spacing:.04em}
+.brand span{color:var(--muted);font-size:11px;letter-spacing:.19em;text-transform:uppercase}
+.nav-links{display:flex;gap:22px;align-items:center;font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.nav-links a{text-decoration:none}
+.nav-links a:hover{color:var(--paper)}
+.pill{border:1px solid var(--line);padding:8px 12px;color:var(--paper);font-family:Consolas,monospace;font-size:11px;white-space:nowrap}
+.pill i{display:inline-block;width:6px;height:6px;background:var(--cyan);border-radius:50%;margin-right:7px;vertical-align:1px}
+.hero{padding:76px 0 38px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,.7fr);gap:48px;align-items:end}
+.kicker{font-family:Consolas,monospace;font-size:11px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin:0 0 18px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(52px,8vw,112px);line-height:.94;letter-spacing:-.055em;margin:0;font-weight:400}
+h1 em{color:var(--cyan);font-style:normal}
+.lede{max-width:600px;color:var(--muted);font-size:15px;line-height:1.9;margin:24px 0 0}
+.lede strong{color:var(--paper);font-weight:600}
+.manifest{border-left:1px solid var(--line);padding-left:26px;display:grid;gap:1px}
+.manifest .m-row{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line-soft);padding:13px 0;align-items:baseline}
+.manifest .m-row:last-child{border-bottom:0}
+.manifest .m-label{font-size:11px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.manifest .m-value{font-family:Consolas,monospace;color:var(--paper);font-size:20px}
+.manifest .m-value small{font-size:10px;color:var(--muted);letter-spacing:.1em}
+.search-shell{margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:28px 0 22px}
+.searchbar{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);padding:0 18px;min-height:64px}
+.searchbar:focus-within{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(92,200,194,.2)}
+.searchbar svg{width:20px;height:20px;flex:none;color:var(--muted)}
+.searchbar input{width:100%;border:0;outline:0;background:transparent;color:var(--paper);font-size:17px;padding:18px 0}
+.searchbar input::placeholder{color:#69716f}
+.searchbar kbd{border:1px solid var(--line);padding:4px 7px;color:var(--muted);font-family:Consolas,monospace;font-size:10px;white-space:nowrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--muted);padding:7px 12px;font-size:11px;letter-spacing:.08em;cursor:pointer}
+.chip:hover{color:var(--paper);border-color:rgba(232,226,212,.3)}
+.chip.active{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+.results-section{padding:44px 0 24px}
+.results-head{display:flex;justify-content:space-between;gap:20px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:16px}
+.results-head h2{margin:0;font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:24px;letter-spacing:-.02em}
+.results-head .hint{font-family:Consolas,monospace;font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.results{margin-top:0}
+.hit{width:100%;display:grid;grid-template-columns:54px minmax(0,1fr) 42px;gap:18px;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line-soft);padding:22px 0;cursor:pointer;color:var(--paper)}
+.hit:hover{background:linear-gradient(90deg,rgba(201,163,90,.06),transparent 70%)}
+.hit-index{font-family:Consolas,monospace;color:var(--muted);font-size:11px;padding-top:4px}
+.hit-meta{display:flex;gap:12px;align-items:center;font-family:Consolas,monospace;font-size:10px;color:var(--muted);letter-spacing:.04em;margin-bottom:8px}
+.cat{border:1px solid var(--line);padding:3px 7px;color:var(--gold);text-transform:uppercase;letter-spacing:.08em}
+.hit h3{margin:0 0 8px;font-size:17px;line-height:1.5;font-weight:500}
+.hit p{margin:0;color:var(--muted);font-size:13px;line-height:1.75;max-width:880px}
+mark{background:var(--gold);color:var(--ink);padding:0 2px}
+.hit-arrow{color:var(--muted);font-family:Consolas,monospace;font-size:20px;align-self:center;text-align:right}
+.hit:hover .hit-arrow{color:var(--cyan)}
+.empty{border:1px solid var(--line);padding:34px;color:var(--muted);line-height:1.8;font-size:14px;margin:24px 0}
+.empty b{color:var(--paper)}
+.notice{padding:74px 0;border-top:1px solid var(--line);margin-top:42px}
+.notice-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:56px}
+.notice h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:clamp(32px,4vw,50px);line-height:1.15;letter-spacing:-.035em;margin:0 0 20px}
+.notice p{color:var(--muted);font-size:14px;line-height:1.95;margin:0 0 16px}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;border:1px solid var(--line);margin-top:26px}
+.rule{padding:18px 16px;background:var(--panel)}
+.rule span{display:block;font-family:Consolas,monospace;font-size:10px;color:var(--gold);letter-spacing:.12em;margin-bottom:10px}
+.rule b{font-size:13px;font-weight:500;line-height:1.6}
+.source-card{border:1px solid var(--line);padding:26px;background:linear-gradient(145deg,var(--panel),#0d1213)}
+.source-card .mono{font-family:Consolas,monospace;font-size:10px;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;margin:0 0 18px}
+.source-card ul{list-style:none;margin:0 0 22px;padding:0;font-family:Consolas,monospace;font-size:12px;line-height:2.1;color:var(--paper)}
+.source-card li{border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;gap:12px}
+.source-card li span{color:var(--muted)}
+.source-card .fine{font-size:11px;line-height:1.8;color:var(--muted);margin:0}
+.release{border:1px solid var(--line);margin-top:24px;padding:20px;display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;background:rgba(201,163,90,.05)}
+.release .tag{font-family:Consolas,monospace;font-size:10px;color:var(--gold);letter-spacing:.12em}
+.release strong{font-family:Georgia,serif;font-size:23px;font-weight:400}
+.release p{margin:5px 0 0;font-size:12px;line-height:1.6}
+.release .date{font-family:Consolas,monospace;font-size:10px;color:var(--muted)}
+.community{padding:78px 0 8px;border-top:1px solid var(--line);margin-top:62px}
+.community-head{display:flex;justify-content:space-between;gap:30px;align-items:end;margin-bottom:28px}
+.community-head h2{font-family:Georgia,serif;font-weight:400;font-size:clamp(32px,4vw,52px);line-height:1.1;letter-spacing:-.035em;margin:0 0 14px}
+.community-head p{max-width:620px;color:var(--muted);font-size:14px;line-height:1.9;margin:0}
+.community-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:var(--gold);color:var(--ink);border:1px solid var(--gold);padding:11px 16px;font-size:12px;letter-spacing:.04em;cursor:pointer}
+.btn:hover{background:#d8b471}
+.btn.ghost{background:transparent;color:var(--paper);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--paper);background:transparent}
+.community-grid{display:grid;grid-template-columns:245px minmax(0,1fr);gap:34px;align-items:start}
+.community-side{border-right:1px solid var(--line);padding-right:24px}
+.community-side .mono{font-family:Consolas,monospace;font-size:10px;letter-spacing:.16em;color:var(--cyan);text-transform:uppercase;margin:0 0 14px}
+.metric{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line-soft);padding:10px 0;color:var(--muted);font-size:12px}
+.metric b{font-family:Consolas,monospace;color:var(--paper);font-size:21px;font-weight:400}
+.side-note{font-size:11px;line-height:1.8;color:var(--muted);margin:14px 0 28px}
+.side-release{display:block;text-decoration:none;border-bottom:1px solid var(--line-soft);padding:10px 0;color:var(--paper);font-size:12px;line-height:1.5}
+.side-release span{display:block;color:var(--muted);font-family:Consolas,monospace;font-size:9px;margin-top:4px}
+.side-release:hover{color:var(--gold)}
+.community-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px}
+.feed-filters{display:flex;gap:6px;flex-wrap:wrap}
+.feed-filter{border:1px solid var(--line);background:transparent;color:var(--muted);padding:6px 10px;font-size:11px;cursor:pointer}
+.feed-filter.active{color:var(--ink);background:var(--paper);border-color:var(--paper)}
+.community-toolbar .hint{font-family:Consolas,monospace;font-size:10px;color:var(--muted);letter-spacing:.08em;white-space:nowrap}
+.post{border:1px solid var(--line);background:var(--panel);padding:18px 20px;margin-bottom:10px;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px}
+.post:hover{border-color:rgba(232,226,212,.34);background:#141a1b}
+.post.official{border-left:2px solid var(--gold);background:rgba(201,163,90,.045)}
+.post .p-meta{display:flex;gap:10px;align-items:center;font-family:Consolas,monospace;font-size:10px;color:var(--muted);margin-bottom:7px}
+.post .p-tag{border:1px solid var(--line);padding:2px 7px;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em}
+.post.official .p-tag{color:var(--gold)}
+.post h3{margin:0 0 6px;font-size:16px;font-weight:500;line-height:1.45}
+.post p{margin:0;color:var(--muted);font-size:12px;line-height:1.7;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.post .p-arrow{color:var(--muted);font-family:Consolas,monospace;font-size:16px;align-self:center}
+.post:hover .p-arrow{color:var(--cyan)}
+.feed-empty{border:1px dashed var(--line);padding:28px;color:var(--muted);font-size:13px;line-height:1.8;margin:16px 0}
+.feed-empty b{color:var(--paper);display:block;margin-bottom:8px;font-size:15px}
+.modal-panel{max-width:720px;height:auto;max-height:90vh;margin:3vh auto;background:var(--panel-2);border:1px solid var(--line);overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.modal-body{padding:26px 28px 30px}
+.modal-body h2{font-family:Georgia,serif;font-weight:400;font-size:28px;line-height:1.35;letter-spacing:-.02em;margin:0 0 6px}
+.modal-body .doc{color:var(--muted);font-size:12px;margin:0 0 20px}
+.modal-body .text{white-space:pre-wrap;font-size:14px;line-height:2;color:#d7d2c5}
+.side-release{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line-soft);padding:10px 0;color:var(--paper);font:inherit;font-size:12px;line-height:1.5;cursor:pointer}
+.field{display:block;margin-bottom:14px}
+.field label{display:block;font-family:Consolas,monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.input{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);padding:11px 13px;font-size:14px;outline:none}
+.input:focus{border-color:var(--cyan)}
+textarea.input{min-height:150px;resize:vertical;line-height:1.8}
+select.input{appearance:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-actions{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:18px}
+.form-actions .fine{font-size:11px;color:var(--muted);line-height:1.6}
+.replies{border-top:1px solid var(--line);margin-top:26px;padding-top:18px}
+.replies .mono{font-family:Consolas,monospace;font-size:10px;letter-spacing:.14em;color:var(--cyan);text-transform:uppercase;margin:0 0 12px}
+.reply{border-left:1px solid var(--line);padding:2px 0 2px 12px;margin-bottom:14px}
+.reply .r-meta{font-family:Consolas,monospace;font-size:10px;color:var(--muted);margin-bottom:5px}
+.reply .r-body{font-size:13px;line-height:1.8;color:#d7d2c5;white-space:pre-wrap}
+.reply-form{margin-top:18px}
+.reply-form .input{min-height:70px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);z-index:120;background:var(--paper);color:var(--ink);padding:10px 16px;font-size:12px;opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:900px){
+  .community-head{flex-direction:column;align-items:flex-start}
+  .community-grid{grid-template-columns:1fr}
+  .community-side{border-right:0;border-bottom:1px solid var(--line);padding-right:0;padding-bottom:20px}
+  .form-row{grid-template-columns:1fr}
+}
+footer{border-top:1px solid var(--line);padding:26px 0 42px}
+.foot{display:flex;justify-content:space-between;gap:20px;align-items:center;color:var(--muted);font-size:11px;font-family:Consolas,monospace;letter-spacing:.04em}
+.foot b{color:var(--paper);font-weight:400}
+.reader{position:fixed;inset:0;z-index:90;background:rgba(4,6,6,.72);backdrop-filter:blur(10px);display:none;padding:4vh 20px}
+.reader.open{display:block}
+.reader-panel{max-width:900px;height:92vh;margin:0 auto;background:var(--panel-2);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.reader-top{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:16px 22px;border-bottom:1px solid var(--line)}
+.reader-top .cat{font-size:10px}
+.reader-top .src{font-family:Consolas,monospace;font-size:10px;color:var(--muted);margin-left:12px}
+.close{border:1px solid var(--line);background:transparent;color:var(--muted);width:36px;height:32px;cursor:pointer;font-family:Consolas,monospace}
+.close:hover{color:var(--paper);border-color:var(--paper)}
+.reader-body{padding:30px 32px 48px;overflow:auto}
+.reader-body h2{font-family:Georgia,serif;font-weight:400;font-size:30px;line-height:1.35;letter-spacing:-.02em;margin:0 0 8px}
+.reader-body .doc{color:var(--muted);font-size:12px;margin-bottom:26px}
+.reader-body .text{white-space:pre-wrap;font-size:14px;line-height:2;color:#d7d2c5}
+@media(max-width:900px){
+  .wrap,.nav-inner{padding-left:22px;padding-right:22px}
+  .nav-links{display:none}
+  .hero-grid,.notice-grid{grid-template-columns:1fr;gap:34px}
+  .manifest{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:14px}
+  .hero{padding-top:54px}
+  .hit{grid-template-columns:34px minmax(0,1fr);gap:12px}
+  .hit-arrow{display:none}
+  .rules{grid-template-columns:1fr}
+  .release{grid-template-columns:1fr}
+  .reader-body{padding:22px}
+  .foot{flex-direction:column;align-items:flex-start}
+}
+@media(max-width:600px){
+  h1{font-size:48px}
+  .lede{font-size:14px}
+  .searchbar{min-height:58px;padding:0 13px}
+  .searchbar input{font-size:16px}
+  .searchbar kbd{display:none}
+  .results-head{flex-direction:column;gap:6px}
+  .hit h3{font-size:15px}
+}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="max-width:900px;margin:40px auto;padding:24px;background:#111617;border:1px solid #333;color:#e8e2d4;font-family:system-ui,sans-serif;line-height:1.8">
+    <h1>Impor 社区</h1>
+    <p>Impor (I++) 中文社区。页面索引 32 份真实仓库文档、238 个章节，支持检索语言、编辑器、教程、发布记录与性能资料。</p>
+    <p>社区支持真实发帖与回帖，不预置任何虚构评论。请启用 JavaScript 使用搜索与发帖功能。</p>
+  </div>
+</noscript>
+<nav>
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <span class="mark">I++</span>
+      <div><b>IMPOR</b><br><span>真实社区</span></div>
+    </a>
+    <div class="nav-links">
+      <a href="#community">社区</a>
+      <a href="#index">文档索引</a>
+      <a href="#notice">规则</a>
+    </div>
+    <span class="pill"><i></i>v3.6.17 · 真实使用修正</span>
+  </div>
+</nav>
+
+<main id="top">
+  <section class="hero wrap">
+    <div class="hero-grid">
+      <div>
+        <p class="kicker">IMPOR COMMUNITY / REAL DOCS / REAL POSTS</p>
+        <h1>查 Impor，<br><em>也聊 Impor。</em></h1>
+        <p class="lede">这里有真实文档索引，也有一个不预置假人的社区。官方公告只来自仓库；用户帖子和回复由你自己写，保存在本机。查不到就明确为空，<strong>不编造答案，也不伪造作者。</strong></p>
+      </div>
+      <aside class="manifest">
+        <div class="m-row"><span class="m-label">Real documents</span><span class="m-value" id="statDocs">32 <small>份</small></span></div>
+        <div class="m-row"><span class="m-label">Indexed sections</span><span class="m-value" id="statSections">238 <small>节</small></span></div>
+        <div class="m-row"><span class="m-label">Real posts</span><span class="m-value" id="statPosts">0 <small>条</small></span></div>
+        <div class="m-row"><span class="m-label">Fake posts</span><span class="m-value">0 <small>条</small></span></div>
+        <div class="m-row"><span class="m-label">Version truth</span><span class="m-value">3.6.17</span></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="search-shell wrap" id="index">
+    <div class="searchbar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.2 4.2"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="查任何 Impor 信息：安装、match、FFI、调试、imporc、包管理器…" aria-label="搜索 Impor 真实文档">
+      <kbd>Ctrl K</kbd>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="按分类筛选">
+      <button class="chip active" data-cat="全部">全部</button>
+      <button class="chip" data-cat="语言">语言</button>
+      <button class="chip" data-cat="编辑器">编辑器</button>
+      <button class="chip" data-cat="教程">教程</button>
+      <button class="chip" data-cat="发布">发布</button>
+      <button class="chip" data-cat="性能">性能</button>
+    </div>
+  </section>
+
+  <section class="results-section wrap">
+    <div class="results-head">
+      <h2 id="resultTitle">最新真实条目</h2>
+      <span class="hint" id="resultCount">DOCUMENTS / SECTIONS</span>
+    </div>
+    <div id="results" class="results"></div>
+  </section>
+
+  <section class="community wrap" id="community">
+    <div class="community-head">
+      <div>
+        <p class="kicker">COMMUNITY / LOCAL-FIRST</p>
+        <h2>这里开始有人说话。</h2>
+        <p>没有预置“网友”。官方公告只来自仓库真实发布记录；帖子与回复由你本人写，保存在当前浏览器。你可以导出数据，也可以从空白开始。</p>
+      </div>
+      <div class="community-actions">
+        <button class="btn" id="newPost" type="button">写一条帖子</button>
+        <button class="btn ghost" id="exportBtn" type="button">导出社区数据</button>
+      </div>
+    </div>
+    <div class="community-grid">
+      <aside class="community-side">
+        <p class="mono">LIVE / LOCAL</p>
+        <div class="metric"><span>真实帖子</span><b id="sidePosts">0</b></div>
+        <div class="metric"><span>真实回复</span><b id="sideReplies">0</b></div>
+        <div class="metric"><span>虚构内容</span><b>0</b></div>
+        <p class="side-note">帖子存在本机 localStorage，不上传到服务器。没有账号系统，也就没有伪造的注册用户、点赞或“热评”。</p>
+        <p class="mono">OFFICIAL RELEASES</p>
+        <div id="officialList"></div>
+        <p class="mono" style="margin-top:26px">COMMUNITY RULE</p>
+        <p class="side-note">官方内容必须能回到 docs/ 或 CHANGELOG；用户内容只由真人填写。系统不会代写“网友发言”。</p>
+      </aside>
+      <div>
+        <div class="community-toolbar">
+          <div class="feed-filters" id="feedFilters">
+            <button class="feed-filter active" type="button" data-mode="全部">全部</button>
+            <button class="feed-filter" type="button" data-mode="官方">官方发布</button>
+            <button class="feed-filter" type="button" data-mode="我的">我的帖子</button>
+          </div>
+          <span class="hint" id="feedHint">REAL POSTS ONLY</span>
+        </div>
+        <div id="posts"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="notice wrap" id="notice">
+    <div class="notice-grid">
+      <div>
+        <p class="kicker">COMMUNITY CONTRACT / V2</p>
+        <h2>先让资料真实，<br>再让人说话。</h2>
+        <p>这版把“可查”和“可说”放在一起：文档索引只来自仓库，官方公告只来自真实发布记录；帖子、回复和时间只由你本人产生。没有账号系统，也没有预置网友、点赞数或虚构问答。</p>
+        <div class="rules">
+          <div class="rule"><span>RULE 01</span><b>不生成虚构帖子</b></div>
+          <div class="rule"><span>RULE 02</span><b>不伪造作者与时间</b></div>
+          <div class="rule"><span>RULE 03</span><b>官方内容可追溯</b></div>
+        </div>
+        <div class="release">
+          <span class="tag">LATEST RELEASE</span>
+          <div><strong>Impor 3.6.17</strong><p>第一次真跑满 25 分钟后的小修版：专注中显示结束时刻，完成时把窗口带回前面，关窗保留当前一轮，第二天能看到昨天。没有加托盘、系统通知、长休息或云同步。</p></div>
+          <span class="date">2026-11-15</span>
+        </div>
+      </div>
+      <aside class="source-card">
+        <p class="mono">INDEX SOURCE</p>
+        <ul>
+          <li><span>README.md</span>项目总览</li>
+          <li><span>CHANGELOG.md</span>版本变更</li>
+          <li><span>docs/*.md</span>语言 / 编辑器 / 教程</li>
+        </ul>
+        <p class="fine">索引在生成页面时内置，不依赖联网，也不调用外部搜索接口。每一条结果都能回到具体文件与章节；未收录的文档不会被假装收录。</p>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span><b>IMPOR (I++)</b> / 真实文档知识库</span>
+    <span>BUILT 2026-11-15 · <b>32</b> DOCS · <b>238</b> SECTIONS · <b>0</b> FAKE POSTS</span>
+  </div>
+</footer>
+
+<div class="reader" id="reader" aria-hidden="true">
+  <div class="reader-panel" role="dialog" aria-modal="true" aria-labelledby="readerTitle">
+    <div class="reader-top">
+      <div><span class="cat" id="readerCat">文档</span><span class="src" id="readerSrc"></span></div>
+      <button class="close" id="readerClose" aria-label="关闭">×</button>
+    </div>
+    <div class="reader-body">
+      <h2 id="readerTitle"></h2>
+      <div class="doc" id="readerDoc"></div>
+      <div class="text" id="readerText"></div>
+    </div>
+  </div>
+</div>
+
+<div class="reader" id="composer" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="composerTitle">
+    <div class="reader-top">
+      <div><span class="cat">真实帖子</span><span class="src">LOCAL / NO FAKE</span></div>
+      <button class="close" id="composerClose" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <h2 id="composerTitle">写一条帖子</h2>
+      <div class="doc">帖子保存在当前浏览器；没有预置网友，也没有自动生成的回复。</div>
+      <form id="postForm">
+        <div class="form-row">
+          <div class="field"><label for="postNick">昵称</label><input class="input" id="postNick" maxlength="24" placeholder="真实填写，不做匿名假人" required></div>
+          <div class="field"><label for="postTag">分区</label><select class="input" id="postTag"><option>提问</option><option>分享</option><option>教程</option><option>反馈</option></select></div>
+        </div>
+        <div class="field"><label for="postTitle">标题</label><input class="input" id="postTitle" maxlength="80" placeholder="一句话说清你要问或要分享什么" required></div>
+        <div class="field"><label for="postBody">正文</label><textarea class="input" id="postBody" maxlength="5000" placeholder="可以贴代码、报错、版本号与复现步骤。没有真实内容就不要发。" required></textarea></div>
+        <div class="form-actions"><span class="fine">发布后只存在本机；导出 JSON 可迁移。</span><button class="btn" type="submit">发布到本机社区</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="reader" id="postView" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+    <div class="reader-top">
+      <div><span class="cat" id="pvTag">帖子</span><span class="src" id="pvMeta"></span></div>
+      <button class="close" id="pvClose" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <h2 id="pvTitle"></h2>
+      <div class="doc" id="pvBy"></div>
+      <div class="text" id="pvText"></div>
+      <div class="replies">
+        <p class="mono">REPLIES / 真实回复</p>
+        <div id="pvReplies"></div>
+        <form id="replyForm" class="reply-form">
+          <div class="field"><label for="replyNick">昵称</label><input class="input" id="replyNick" maxlength="24" required></div>
+          <div class="field"><label for="replyBody">回复</label><textarea class="input" id="replyBody" maxlength="3000" required></textarea></div>
+          <div class="form-actions"><span class="fine">回复同样只保存在本机。</span><button class="btn" type="submit">回复</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const CORPUS = [{"d": "README · Impor (I++)", "h": "Impor (I++)", "b": "Impor（读作 \"I++\"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。\n\n版本：3.6.17（测试基线收敛版：REPL 5 条、样式 lint 3 条已切到当前语法/文案，LEGACY_IDS 14→6；语言语法不变。）\n\n 新手教程：docs/新手教程.md（30 分钟从零入门，示例全部实测通过）\n\n 头部标记已可选：important 缺失时正常执行、仅给一行提示（模板仍默认生成）。\n\n 游戏示例：python Impor.py run examples\\snake.impor 运行用 Impor 写的贪吃蛇\n （方向键转向、R 重开、--smoke 无头自测模式）。\n\nimportant<<DAY<<english(\"English\"):\nvar name = \"世界\"\nprint(\"你好,\", name)          // 你好, 世界", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "方式一：命令行（无需安装）", "b": "cd ImporLang\npython Impor.py run examples\\hello.impor     运行脚本\npython Impor.py repl                         进入交互式解释器\npython Impor.py compile examples\\fib.impor -o fib.py    编译为 Python\npython fib.py                                 运行编译产物\npython Impor.py check examples\\oop.impor     只做语法检查\npython Impor.py run-dbg 程序.impor            命令行交互式调试（断点/单步/栈/变量）\npython Impor.py fmt 程序.impor                格式化代码（缩进/空格/换行）\npython Impor.py check-fmt 程序.impor          检查是否已格式化（CI 用）\npython Impor.py lint 程序.impor               静态检查（未定义/未使用/死代码）\npython Impor.py lsp                           启动 LSP 语言服务器（供 VS Code 连接）\npython Impor.py list-modules                 列出可发现模块\npython Impor.py check-imports 程序.impor      静态检查导入（缺失/循环）\npython Impor.py new 我的程序                  生成新脚本骨架\npython Impor.py version                       版本号\npython Impor.py                               无参数：打开图形化编辑器", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "方式二：安装为系统命令（推荐）", "b": "cd ImporLang\n.\\install.bat         等价于 pip install -e .\nimpor run hello.impor\nimpor repl", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "方式三：Windows 双击", "b": "1. 双击 Impor.py 打开图形化编辑器；\n2. 从「示例」菜单载入示例，点「运行」；\n3. 支持语法高亮、行号、变量监视、沙盒、断点调试、编译为 Python。", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "前置：Python ≥ 3.10（macOS/Linux 自带或经包管理器安装）", "b": "cd ImporLang\npython3 -m pip install --user -e .         安装为 impor 命令（免 root）\nimpor run examples/hello.impor", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "macOS 官方 Python → 自带；Homebrew python → brew install python-tk", "b": "python3 Impor.py repl\n\nimpor pkg 缓存目录在 Linux/macOS 遵循 XDG（$XDGCACHEHOME/impor/pkg，默认 ~/.cache/impor/pkg）。", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "语言特性", "b": "| 类别 | 能力 |\n|---|---|\n| 基础 | 变量 var / set、常量 true/false、数字、字符串、//、、/ / 注释 |\n| 运算符 | 算术、比较、逻辑 and/or/not、三元 条件 ? 真 : 假、复合赋值 += -= = /= %= |\n| 流程 | if / elseif / else、while、loop（无限循环）、for in（列表/range/字符串）、break/continue |\n| 函数 | def / func 声明、参数、返回值、闭包、高阶函数、nonlocal / global 作用域 |\n| 面向对象 | class、继承、new、super() 链式调用、实例属性、set self.x = v |\n| 异常 | exception 自定义异常、raise、try / catch / finally、catch err、catch Type err、catch Type, e、异常链 raise Err(\"m\", from old) / raise Err(\"m\") from old、异常携带调用栈 err.stack |\n| 断言（v2.8） | assert 表达式：条件为假抛 AssertionError（可 try/catch 捕获），配合 impor test 单元测试使用 |\n| 诊断（v2.8） | 语法/运行时错误输出行列号 + 源码行 + 波浪线 ^ 指位；LSP 诊断同步列号 |\n| 调试 | 断点、单步（步入/步过/步出）、调用栈、局部变量查看、CLI impor run-dbg 程序.impor 交互调试、GUI 调试面板（调用栈 + 局部变量窗口）、breakpoint() 内建 |\n| 语法扩展 | 原始字符串 r\"...\"（关闭转义）、match-case 模式匹配（字面量/绑定/ 通配）、复合赋值扩展至对象属性与下标 |\n| 工具链 | LSP 语言服务器 impor lsp（语法诊断/跳转定义/悬停/文档符号，VS Code 扩展随附）、impor fmt / check-fmt 格式化、impor lint 静态检查（未定义/未使用/死代码，支持  impor-lint-ignore 抑制）、impor pkg 包管理器（本地/git 源、lock 锁文件、upgrade/remove、XDG 缓存目录） |\n| 体验优化 | 头部标记可选（缺失仅警告）、编译产物异常显示源码行号（不泄露 Python 内部栈）、IMPORDEBUG=1 查看内部完整栈 |\n| 容器 | 列表、字典、字符串，支持索引与切片 a[1:4]、负索引 |\n| 模块 | import mymod / import mymod as mm、from mymod import x as y、from .pkg import  相对导入、export 私有导出、目录包 pkg.impor、点分隔 import pkg.sub、循环导入安全缓存、reload()、模块元信息 name/file/ispackage、impor.toml 项目配置、import math 等 Python 模块 |\n| 内建 | print、input、len、type、tonum、tostr、randi、字符串/数组工具 |\n| 游戏工具 | vec2、rgb、clamp、lerp、remap、sign、distance、angle、shuffle、frame、fps |\n| 系统 | args() 命令行参数、exit、cls、wait/sleep、文件读写、watch/snapshot 监视、沙盒模式 |\n| 编辑器 | Tk 图形编辑器（Code Studio）：语法高亮、行号、运行/清空、变量监视、断点、示例与导入导出；3.1 新增全项目搜索/事务化批量替换、大文件虚拟滚动、依赖图与离线审计、UIA 语义桥接、设置同步与插件进程隔离 |", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "语言特性", "b": "头部标记：每个 .impor 文件第一行必须是 important<<DAY<<english(\"English\"):。", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "目录结构", "b": "ImporLang/\n├── Impor.py                  图形化编辑器 / CLI 启动器（兼容旧版入口）\n├── impor/\n│   ├── lexer.py              词法分析器\n│   ├── astnodes.py          AST 节点定义\n│   ├── parser.py             递归下降语法分析器\n│   ├── interpreter.py        树遍历解释器（模块缓存/包/export/循环导入）\n│   ├── builtins.py           内建函数库（含 reload）\n│   ├── stdlib.py             标准库白名单\n│   ├── config.py             impor.toml 项目配置\n│   ├── transpiler.py         Impor → Python 编译器\n│   ├── runtime.py            编译产物的 Python 运行时\n│   ├── repl.py               交互式解释器\n│   ├── analysis.py           静态分析（符号表 + lint 检查）\n│   ├── fmt.py                代码格式化（impor fmt / check-fmt）\n│   ├── lsp.py                LSP 语言服务器（impor lsp）\n│   ├── pkgmgr.py             包管理器（impor pkg）\n│   ├── cli.py                命令行入口（含 run-dbg/fmt/lint/lsp/pkg）\n│   ├── editor.py             Tk 图形化编辑器\n│   ├── main.py           python -m impor 入口\n│   └── init.py           公开 API\n├── vscode-impor/             VS Code 扩展（语法高亮 + LSP 客户端）\n├── examples/                 60+ 个可运行示例（demo01…demo40 + hello/oop/game/stdlib 等）\n├── tests/                    自动化测试\n├── docs/语言规范.md           语法规范文档\n├── install.bat               一键安装脚本\n├── impor.bat                 命令行启动器（免安装）\n├── runtests.py              一键运行测试\n└── pyproject.toml            打包配置（pip install -e .）", "c": "发布", "p": "README.md"}, {"d": "README · Impor (I++)", "h": "测试", "b": "cd ImporLang\npython runtests.py           或 python -m unittest discover -s tests\n\n132+ 项自动化测试覆盖：词法/语法/解释器/转译器/REPL/CLI/示例回归，并校验解释器与编译产物的输出完全一致；模块系统测试覆盖 from-import/export/目录包/相对导入/循环导入/reload/元信息/异常；P0 测试覆盖原始字符串/match-case/异常链/复合赋值扩展/属性边界/断点与单步/CLI run-dbg；P1 测试覆盖格式化/静态检查/LSP 诊断与跳转/包管理器（安装/卸载/锁文件/版本约束）；v2.8 新增测试覆盖 assert 双后端一致性、Token 列号、波浪线诊断、impor test 子命令、pkg 依赖冲突。\n\nImpor 语言层单元测试（v2.8）：写 tests/ 目录下文件名含 test 的 .impor 文件（用 assert 断言），运行 impor test 即可执行并统计通过/失败。", "c": "发布", "p": "README.md"}, {"d": "CHANGELOG · 版本变更", "h": "Changelog", "b": "Impor (I++) 的版本变更记录。每条只列用户可感知的变化；详细说明见 README.md 的「更新日志」。\n\n格式参考 Keep a Changelog，版本号遵循语义化版本（主版本.次版本.修订号）。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "新增", "b": "- 多根工作区资源管理器：项目配置里的 roots 会显示为多个顶层节点，不再固定成单个 ImporLang 根。\n- 工作区符号索引热更新：后台按 mtime 轮询 .impor，外部修改或 git checkout 后自动增量刷新。\n- 状态栏新增索引状态：索引中… / 索引 N 符号 / 索引已更新 / 索引失败。\n- 项目质量检查问题双击跳转改为 (文件路径, 行, 列)，先打开对应文件再定位。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "新增", "b": "- 自动配对 ()、[]、{}、\"\"、''；选中文本时直接包裹，键入右符号自动跳过。\n- 智能退格：空配对上一次删除两边，不跨行误删。\n- 多行注释 Ctrl+/：选中多行一次注释/取消，保留缩进。\n- 整块缩进 / 反缩进：多行选区按设置宽度整体调整。\n- Alt+↑ / Alt+↓ 上下移动当前行或选区；Ctrl+Shift+K 删除当前行或选区。\n- Ctrl+Backspace 删除光标前一个词，中文按连续字处理。\n- 智能 Home：在行首与第一个非空格之间切换。\n- elif、except、case、default 等行尾输入回车时自动加深缩进。\n- 设置页新增“自动配对括号与引号”开关，配置随项目保存。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "新增", "b": "- 语法查询：impor syntax、impor syntax print、--search、--json。\n- 覆盖 73 个关键字与常用内建函数，每条含意思 / 格式 / 例子 / 例子说明。\n- 编辑器 F1 与命令面板“语法查询”面板。\n- REPL help(名字) 优先显示完整语法条目。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "[3.6.2] - 2026-11-14", "b": "系统编程门禁 + 受控指针 FFI：只增加可验收的审计、CI 退出码和解释器侧受控缓冲区，不声称系统编程能力已完成。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "Added", "b": "- impor sys-check：逐项报告 C 后端、自举编译器、FFI 基础、指针/结构体、C ABI、自动内存、线程/原子、syscall、freestanding、LLVM 后端状态。\n- impor sys-check --strict：systemsready 为 NO 时返回退出码 2，可直接接入 CI。\n- impor sys-check --json：输出 systemsready 与逐项状态报告。\n- docs/系统编程/README.md：系统编程实施顺序与验收条件。\n- 受控原生缓冲区 FFI：ffialloc、ffiallocstr、ffibuffersize、ffireadi64、ffiwritei64、ffireadf64、ffiwritef64、ffireadstr、ffiwritestr、ffibuffers。\n- fficall 增加 argtypes 与 ptr/cstr/void 返回类型；ptr 只接受运行时分配的缓冲区 token，不接受任意整数地址。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "Known limits", "b": "- 受控指针 FFI 只在解释器侧实现；C 后端与自举 imporc 尚未同步。\n- 结构体布局、回调、稳定 C ABI、线程/原子、syscall、freestanding、LLVM 后端仍未实现。\n- sys-check --strict 当前会失败，这是预期行为。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "[3.6.1] - 2026-11-14", "b": "系统编程内存策略定稿：采用自动管理，不暴露手动 free。本版仍不包含线程/原子、稳定 C ABI、LLVM/Cranelift 原生后端。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "Changed", "b": "- 阶段一内存模型由“默认 GC + 可选手动/区域分配”改为“运行时自动管理”：语言层不提供 malloc/free，用户不需要手写释放；内部 arena 仅限库实现，不作为公开 API。\n- docs/生产化/01-原生后端.md 与 README.md 同步更新。\n- 版本统一升至 3.6.1。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "CHANGELOG · 版本变更", "h": "Known limits", "b": "- 自动管理不等于系统编程完成：仍缺线程、原子、锁、稳定 C ABI、freestanding 运行时与原生后端。\n- 自举闭环测试 testselfhostclosure 仍未通过。", "c": "发布", "p": "CHANGELOG.md"}, {"d": "Impor 3.6.17 发布说明", "h": "定位", "b": "3.6.17 是 IDE 工作区增强版。本版不改变语言语法，重点补 VS Code 级 IDE 最影响日常使用的两块：\n\n1. 工作区多根资源管理器\n2. 外部文件变化后的符号索引热更新\n\n 边界：Impor 仍是 Tk 桌面编辑器，不是 VS Code 的完整替代品。本版没有新增 Electron 外壳、远程开发、扩展市场或完整 DAP。", "c": "发布", "p": "docs/Impor 3.6.17 发布说明.md"}, {"d": "Impor 3.6.17 发布说明", "h": "1. 多根工作区资源管理器", "b": "- impor.toml / 项目配置里的 roots 现在会真正显示在左侧资源管理器。\n- 每个根目录独立成顶层节点，不再把整个工作区硬编码成单个 ImporLang 节点。\n- 常用目录（examples、docs、bootstrap、impor/std、tests、src）仍按原逻辑懒加载。\n- 根目录下的 .impor 文件直接列在对应根节点下。", "c": "发布", "p": "docs/Impor 3.6.17 发布说明.md"}, {"d": "Impor 3.6.17 发布说明", "h": "2. 符号索引热更新", "b": "- 编辑器启动后会在后台按 2.5 秒间隔检查工作区 .impor 文件的 mtime。\n- 外部修改、git checkout、其他编辑器保存后，ProjectIndex 会自动增量刷新，不需要手动重开项目。\n- 状态栏新增索引状态：索引中… / 索引 N 符号 / 索引已更新 / 索引失败。\n- 索引刷新仍在后台线程执行，不阻塞编辑输入。", "c": "发布", "p": "docs/Impor 3.6.17 发布说明.md"}, {"d": "Impor 3.6.17 发布说明", "h": "3. 项目问题跳转修复（延续上一轮）", "b": "- 项目质量检查的问题标记现在保存 (文件路径, 行, 列)。\n- 双击问题会先打开对应文件，再定位行列，而不是只跳当前文件。\n- 解析失败的文件也会写入 (path, 1, 1)，避免后续问题整体错位一行。", "c": "发布", "p": "docs/Impor 3.6.17 发布说明.md"}, {"d": "Impor 3.6.17 发布说明", "h": "验证", "b": "- pycompile：Impor.py、impor/editor.py、impor/init.py 通过。\n- 桌面启动冒烟：APPBOOT365OK。\n- 编辑器十项行为：EDITORFEELOK。\n- 新增 testideworkspace.py：INDEXHOTREFRESHOK、MULTIROOTTREEOK、IDEWORKSPACEOK。\n- imporc.cmd version：imporc (Impor 自举编译器) v3.6.17 · 子集模式。", "c": "发布", "p": "docs/Impor 3.6.17 发布说明.md"}, {"d": "Impor 3.6.17 发布说明", "h": "已知边界", "b": "- “VS Code 级别完整 IDE”不是本版完成的承诺。多根工作区、索引热更新只是其中一层。\n- 仍未实现：完整扩展市场、远程开发、完整 DAP 调试适配器、Web/Electron 渲染层。\n- 后台索引按 mtime 轮询，不是操作系统级文件系统事件；超大仓库会有可测量的扫描开销。", "c": "发布", "p": "docs/Impor 3.6.17 发布说明.md"}, {"d": "新手教程", "h": "Impor (I++) 新手教程", "b": "版本：v2.6+（与 v2.6.0 实现完全一致，文中所有示例均已在解释器实测通过）\n 建议时长：30~45 分钟。读完你就能用 Impor 写小游戏、命令行工具和小型脚本。\n\n---", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "1. Impor 是什么？", "b": "Impor（读作 I++）是一门缩进即代码块的脚本语言，语法像 Python 一样简洁，\n又内置了游戏开发常用工具（向量、随机、Tk 图形界面）。它的特点：\n\n- 零依赖上手：一个 Impor.py 启动器 + 一套 impor 包即可运行；\n- 双后端：默认用树遍历解释器直接跑（教学友好），也可 compile 转译成 Python；\n- 中文/英文混写：变量名、函数名可以用中文；\n- 游戏友好：vec2、rgb、clamp、lerp、randi 等开箱即用。\n\nprint(\"你好，Impor!\")", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "或安装为全局命令（可选）", "b": "pip install -e .\nimpor run 脚本.impor\n\n三个最常用的命令：\n\n| 命令 | 作用 |\n|---|---|\n| python Impor.py run 文件.impor | 运行脚本 |\n| python Impor.py repl | 交互式解释器（一行一行试） |\n| python Impor.py new 名字.impor | 生成新脚本模板 |", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "3. 第一个程序", "b": "新建 hello.impor，写入：\n\nprint(\"你好，Impor!\")\nvar 名字 = \"小明\"\nprint(\"欢迎，\", 名字)\n\n运行：\n\npython Impor.py run hello.impor\n\n输出：\n\n你好，Impor!\n欢迎， 小明\n\n 提示：print 可以一次打印多个值，用空格分隔。", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "4. 变量与类型", "b": "用 var 声明变量，用 set 修改变量：\n\nvar 年龄 = 17              // 整数\nvar 分数 = 92.5            // 小数\nvar 名字 = \"小明\"           // 字符串\nvar 是否及格 = true         // 布尔 true / false\nvar 空值 = none            // 空值\n\nset 分数 = 分数 + 7.5       // 修改\nprint(分数)\n\n支持的复合赋值（+= -= = /= %=）直接写在变量上：\n\nvar x = 10\nx += 5      // x = 15\nx -= 3      // x = 12\nx = 2      // x = 24\nx /= 4      // x = 6\nprint(x)\n\n类型可以随时改变（动态类型）：\n\nvar v = 1\nset v = \"现在我是字符串了\"\nprint(v)", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "5. 运算符", "b": "| 类别 | 运算符 |\n|---|---|\n| 算术 | +  -    /  %（/ 得小数；整除可配合 math.floor） |\n| 比较 | ==  !=    = |\n| 逻辑 | and  or  not |\n| 三元 | 条件 ? 真值 : 假值 |\n\nvar a = 10\nvar b = 3\nprint(a + b, a - b, a  b, a / b, a % b)   // 13 7 30 3.3333... 1\nprint(a == b, a != b, a  b)               // false true true\nprint(a  5 and b  5 ? \"大\" : \"小\")                 // 三元：大", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "6. 字符串", "b": "var s = \"  Hello, Impor!  \"\nprint(upper(s))          // 转大写   HELLO, IMPOR!\nprint(lower(s))          // 转小写   hello, impor!\nprint(trim(s))           // 去首尾空白\nprint(len(s))            // 长度\nprint(strcut(s, 2, 7))   // 截取子串（从第 2 到第 7 个字符）\nprint(strjoin([\"a\", \"b\", \"c\"], \"-\"))   // 拼接为 a-b-c\nprint(strpad(\"42\", 5, \"0\"))            // 填充为 00042\n\n数字与字符串互转：\n\nvar n = tonum(\"3.14\")        // 字符串 → 数字\nprint(n  2)                  // 6.28\nprint(tostr(100) + \" 分\")    // 数字 → 字符串：100 分", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "7. 列表与字典", "b": "var 水果 = [\"苹果\", \"香蕉\", \"橘子\"]\nprint(水果[0])            // 苹果（下标从 0 开始）\nprint(len(水果))          // 3\nprint(arrappend(水果, \"西瓜\"))   // 追加，返回新列表\nprint(arrpop(水果))       // 弹出末尾：西瓜\nprint(arrfind(水果, \"香蕉\"))     // 查找下标：1\nprint(arrrev(水果))       // 反转\n\n字典（键值对）：\n\nvar 学生 = {\"名字\": \"小红\", \"年龄\": 16}\nprint(学生[\"名字\"])        // 小红\nset 学生[\"年龄\"] = 17      // 修改值\nprint(学生[\"年龄\"])        // 17\n\n遍历列表：\n\nfor 水果 in [\"苹果\", \"香蕉\"]\n    print(\"我喜欢\", 水果)", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "if / elseif / else", "b": "var score = 85\nif score = 90\n    print(\"优秀\")\nelseif score = 60\n    print(\"及格\")\nelse\n    print(\"不及格\")", "c": "教程", "p": "docs/新手教程.md"}, {"d": "新手教程", "h": "while / for / loop", "b": "var i = 0\nvar s = 0\nwhile i < 5\n    set s = s + i\n    set i = i + 1\nprint(s)            // 10\n\nfor i in range(0, 5)     // range(起点, 终点)，不包含终点\n    set s = s + i\n\nloop                     // 无限循环（用 break 退出）\n    print(\"hi\")\n    break\n\nbreak 跳出循环，continue 跳过本次迭代：\n\nvar i = 0\nwhile i < 10\n    set i = i + 1\n    if i == 3\n        continue          // 跳过 3\n    if i == 6\n        break             // 到 6 停止\n    print(i)              // 输出 1 2 4 5", "c": "教程", "p": "docs/新手教程.md"}, {"d": "语法查询", "h": "Impor 语法查询", "b": "“语法查询”用来回答一个关键字或内建函数怎么用。每条结果固定包含四块：\n\n1. 意思：它做什么。\n2. 格式：标准写法。\n3. 例子：可以直接抄的最小程序。\n4. 例子说明：逐行解释输出是什么、为什么。", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语法查询", "h": "命令行", "b": "impor syntax print\nimpor syntax if\nimpor syntax --search 条件\nimpor syntax --json print\nimpor syntax\n\n不带参数时列出全部条目；--search 按名字、意思、格式、例子做模糊查找；--json 给编辑器或脚本消费。", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语法查询", "h": "编辑器", "b": "- 按 F1，或命令面板搜索“语法查询”。\n- 左侧是关键字/内建函数列表，右侧显示四块内容。\n- 输入框可搜名字、意思、例子；选中条目后可“复制例子”。", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语法查询", "h": "REPL", "b": "help(print)\nhelp(if)\n\nhelp(名字) 现在会优先显示完整语法条目，不再只给一行内建说明。", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语法查询", "h": "print 的查询结果", "b": "print（内建函数）\n\n意思\n打印：把括号里的内容输出到屏幕，末尾换行。\n\n格式\nprint(\"xxx\")  /  print(变量)\n\n例子\nvar a = 1\nprint(\"1\")\nprint(a)\nprint(\"a\")\n\n例子说明\nprint(\"1\") 括号里是字符串 1，输出 1；\nprint(a) 括号里是变量 a，输出 a 保存的值 1；\nprint(\"a\") 括号里是字符串 a，输出 a。\n引号只表示字符串，不会把引号一起输出。\n\n实际运行结果：\n\n1\n1\na", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语法查询", "h": "覆盖范围", "b": "- impor/lexer.py 的 KEYWORDS 全部 73 个保留字，一个不漏。\n- 软关键字：match、enum、struct、unless、fn、repeat。\n- 常用内建函数：print、input、len、range、type、str、int、文件、JSON、正则、内存、FFI 等。\n- 预留关键字（如 with、yield、defer、macro、template）会明确标成“预留，当前无语法”，不给假例子。", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语法查询", "h": "数据位置", "b": "- 查询数据：impor/syntaxref.py\n- 命令行：impor syntax\n- 编辑器入口：impor/editor.py 的 opensyntaxreference\n- REPL：impor/repl.py 的 help(名字)\n\n新增关键字时，在 syntaxref.py 里补一条；漏补的会在导入时自动归为“预留”，不会出现“查不到”的空条目。", "c": "语言", "p": "docs/语法查询.md"}, {"d": "语言规范", "h": "Impor (I++) 语言规范 v5.2.0", "b": "本文档描述 Impor（读作 I++）3.0.0 的语言规范，与实现完全一致。v4.3 报错体验统一：所有错误显示源码片段 + ^ + 错误码 + 带行号调用栈，解释器 / C 后端 / imporc 同格式；impor explain 解释原因与修法；imporc 支持 from ... import、包路径与嵌套 import；impor build 输出耗时、产物大小与依赖模块。v4.2 P0 第一批：字典、切片与嵌套函数/闭包在解释器 / C 后端 / imporc 自举编译器三端打通，模块对象作为值在解释器、C 后端与 imporc 可用（imporc 支持单层 import mod [as m]），expect() 表驱动断言落地解释器 / Python 转译 / C 后端 / imporc，impor test 每个测试文件独立临时目录隔离。v4.1 语言核心补齐：C 后端支持 import / from ... import（编译期模块拼接、引用裁剪、同名符号内部改名，独立 exe 仍不依赖 Python）、typeof 内建四路径统一（对象返回真实类名）、std.collections.flatten、imporc 嵌套 switch；私有源新增 pkg pack / pkg publish / pkg outdated / pkg prune。v2.10 核心重构：① 词法/语法解析器全面完善，语法错误输出源码片段 + 波浪线 + 修复建议；② 代码块与 Python 缩进剥离——统一支持大括号 {} 块（新标准），quick 单行可省略大括号，旧缩进块完全兼容；③ 每个 AST 节点携带文件名/行号/列号，是一切友好报错、调试、LSP 的基础；④ 自定义语法异常 ImporSyntaxError（不抛 Python 原生异常）；⑤ 运行时异常统一包装 ImporRuntimeError（隐藏 Python 内部堆栈，携带源码位置）；⑥ 规范作用域系统：var 声明局部、set 就近更新（闭包可修改外层变量）、nonlocal set / global set 显式作用域。v2.1 新增完整模块系统（from-import / export 私有导出 / 目录包 / 模块缓存与循环导入 / reload / impor.toml / CLI 工具链）；v2.2 新增 P0 能力：调试系统（断点 / 单步 / 调用栈 / CLI run-dbg / GUI 调试面板 / 异常携带调用栈）、原始字符串 r\"\"、match-case 模式匹配、复合赋值扩展至属性与下标、异常链 raise ... from ...、属性赋值边界报错、Python 底层异常统一包装；v2.3 新增 P1 工具链：LSP 语言服务器（语法诊断 / 跳转定义 / 悬停 / 文档符号，随附 VS Code 扩展）、impor fmt / check-fmt 格式化、impor lint 静态检查、impor pkg 包管理器（本地 / git 源 / lock 锁文件 / upgrade / remove）；v3.10 生态闭环：impor.lock v1.1（直接+传递依赖、来源、12 位哈希、完整 dirsha256、归档 sha256、requires）与 install --frozen 严格还原、pkg check / lock --check 漂移校验、私有源（[registry] + index.json + zip + 强制 sha256 + Bearer 鉴权、file:// 离线源）、VS Code 扩展 VSIX 实打包与市场发布流程；v2.3.1 体验优化：头部标记可选、转译产物源码行号映射、XDG 缓存目录、lint 抑制指令；v2.4 语法宽松与稳定性：一元正负号允许在二元/比较运算符右侧、match-case 新增 else:/default: 兜底分支、lint 消除模块级前向引用误报、修复转译器 global/nonlocal 重复声明 bug；v2.4.1 启动器重构：子命令集合收敛为 cli 单一派发表（Impor.py 不再硬编码命令列表）；v2.5 编辑器与调试增强：LSP 自动补全 / 符号重命名 / QuickFix、fmt 支持 impor.toml [fmt] 配置（indentwidth / maxlinelength）与 CLI 覆盖、CLI 调试器条件断点（b 6 if x10）与任意表达式监视（p a+b）、lint 函数调用参数数量不匹配检查、impor new 三模板（script / lib / game）、impor help 、REPL 历史持久化；v2.8 语法诊断与测试体系：全量语法报错携带行列号与波浪线指位、assert 断言语句、impor test 单元测试子命令、Token 1 起列号、pkg 依赖冲突检测、pyproject 发布元数据；v2.9 差异化语言特性：中文关键字系统、字符串插值、管道运算符 |、隐式返回、裸表达式语句、解释器数字快速路径与 --inproc 公平基准。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "Impor (I++) 语言规范 v5.2.0", "b": "- 实现：词法分析 → 递归下降语法分析 → AST → 树遍历解释器；另附 Impor→Python 转译器（compile 命令）；v2.13 新增 C 后端（build 命令）：Impor AST → C 源码 → 随包分发的 tcc 原生编译，产出不依赖 Python 的独立可执行文件。\n- 文件编码：UTF-8。缩进：块结构用缩进表达（空格或 Tab，同一文件保持一致；空行与纯注释行不影响缩进层级）。\n- 注释：// 单行、 单行、/ ... / 多行（可跨行）。\n- v3.3 三端一致性（本版只消除不一致与崩溃，不新增语言特性）：\n  - 字符串 len / 下标 / strcut 一律按字符（C 后端按 UTF-8 编码单元计数），下标支持负数、越界报错；字符串字面量可直接下标（\"你好\"[1] → 好）。\n  - C 后端整数为 64 位有符号（int64），加/减/乘溢出时报 整数溢出：超出 64 位有符号整数范围。解释器侧仍是 Python 大整数——这是唯一保留的语义差异，写跨后端程序时请确保数值落在 int64 范围内。\n  - 1 == true 为 true；1 + \"a\" 报 TypeError（不再隐式拼接，需 tostr() 显式转换）；\"ab\"  3 为 \"ababab\"（字符串 × 整数重复，次数 ≤ 0 得空串）。\n  - 解释器递归上限提升到约 3000 层（sys.setrecursionlimit(20000)）；超限报 RecursionDeep，提示改用循环。\n  - C 编译失败（tcc）会把 C 行号反查回 Impor 源码行，输出 C 编译错误: 第N行 列M + 源码行 + 指示符，而不是裸吐 tcc 英文错误。\n  - conformance/ 提供 23 个脚本 × 三后端（解释器 / C 后端 / 自举编译器）逐字节比对，已接入 CI。\n\n---", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "1. 程序头部", "b": "每个 .impor 文件第一行可以是：\n\nimportant<<DAY<<english(\"English\"):\n\n头部标记自 v2.3.1 起可选：缺失时仅给出警告、正常解析执行（用于版本标记，不再拒绝运行）。impor new 生成的模板默认带头部。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "2. 变量与常量", "b": "var x = 10             声明变量\nvar name = \"Impor\"     字符串\nset x = 20             赋值（x 须已声明）\nset obj.attr = 1       属性赋值\nset arr[0] = 99        下标赋值\nset self.name = name   类中给实例字段赋值（旧语法兼容）\n\n- 关键字 var 声明、set 赋值；两者都支持 对象.属性 与 数组[下标]。\n- 变量无需类型标注，类型由值决定：整数、小数、字符串、布尔、列表、字典、函数、类、实例、vec2、rgb。\n- 真/假：true / false。\n- 复合赋值：+=  -=  =  /=  %=；支持普通变量，也支持对象属性与下标（b.val += 10、a[0] += 5、d[\"n\"] = 2）。\n- 字符串：单引号或双引号，转义 \\n \\t \\\\ \\\" \\'；三引号 \"\"\" 支持多行字符串（可跨行）。\n- 字符串插值（v2.9）：\"你好, {name}，今年 {n} 岁\"——{表达式} 在运行期求值并转为字符串；\\{ 与 \\} 为字面花括号；插值表达式内不支持 }（避免与字典字面量歧义）。解释器与转译产物行为一致。\n- 原始字符串（v2.2）：r\"...\" / r'...' / R\"...\"，关闭转义解析、反斜杠原样保留（print(r\"a\\nb\") 输出字面 a\\nb）；\\\" 不结束字符串，反斜杠与引号都保留（与 Python 规则一致）。\n- 列表：[1, 2, 3]；字典：{\"key\": value}，键可为字符串或数字。\n- 下标与切片：a[0]、a[-1]、a[1:4]、a[:3]、a[::2]、a[-2:]；字符串与数组均支持，负索引从末尾计数、越界自动裁剪、负步长反向取；step == 0 报 ValueError，字典切片报 TypeError。\n- 字典方法（v4.2）：d.keys()、d.values()、d.items() 返回数组；d.get(k, 默认值)、d.has(k) / d.contains(k)；for k in d 迭代键。d[k] 读写，缺失键读取报 KeyError。\n- 字典与数组参与 == 时按内容深比较（嵌套数组逐元素、字典按键匹配后比较值）。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "3. 运算符", "b": "| 优先级 | 运算符 |\n|---|---|\n| 高 | ( ) [ ] . 方法调用 new |\n| | 一元 - not |\n| |  / % |\n| | + - |\n| | == !=  = |\n| | and |\n| | or |\n| | | 管道（v2.9，左结合） |\n| 三元 | 条件 ? 真值 : 假值 |\n\n运算语义与 Python 一致：/ 得小数、// 是注释不是整除（整除用 tonum 或 int 风格运算）。\n\n管道运算符 |（v2.9）：把左侧结果作为第一个参数传入右侧调用，专为链式数据流设计：\n\n5 | add2 | mul3           == mul3(add2(5))，链式\n3 | add(10)                == add(3, 10)，右侧调用参数自动后移\n\"hello\" | upper | len     == len(upper(\"hello\"))，可接内建函数\n[1,2,3] | sumarr          == sumarr([1,2,3])\n\n- x | f 等价 f(x)；x | f(a) 等价 f(x, a)；左结合，可无限链式。\n- 与 Python 等主流语言不同，管道把\"数据流方向\"写成代码阅读方向，是 Impor 的差异化特性。\n\n一元正负号（v2.4 宽松）：-/+ 除表达式开头外，也允许出现在二元/比较运算符右侧：\na != -1、x  -2、a - -3、a = -2 and a <= 2 均合法。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "4. 流程控制", "b": "冒号可省略（旧版承诺的 Pro 语法，v2.0 已支持）。\n\nv2.10 大括号块（新标准）：代码块与缩进剥离，统一用大括号 {}（块内缩进被忽略）：\n\nif 条件 {\n    语句\n} elseif 条件2 {\n    语句\n} else {\n    语句\n}\n\nwhile 条件 { 语句 }           大括号块可单行书写\nif 条件 { 语句1; 语句2 }      块内用换行分隔多条语句\n\nquick 单行块：块体仅一条语句时可省略大括号（同行使内容）：\n\nif 条件 print(\"单行\")\nfor i in [1, 2, 3] print(i)\nfunc f(x) { return x  2 }\n\n旧缩进块完全兼容（历史脚本不受影响）：\n\nif 条件:             冒号可选\n    语句\nelseif 条件2:\n    语句\nelse:\n    语句\n\nwhile 条件\n    语句\n\nloop                  无限循环，等价 while true\n    语句\n\nfor x in [1, 2, 3]    遍历列表\nfor i in range(0, 10)    遍历 range\nfor ch in \"abc\"       遍历字符串\n\n- break 跳出循环，continue 跳过本次迭代。\n- if/while 条件后也可写冒号；for 的 in 关键字不可省略。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "4.1 match-case 模式匹配（v2.2）", "b": "match 是软关键字（可作变量名），仅在语句位置触发模式匹配：\n\nmatch 值\n    case 1:             字面量模式：数字 / 字符串 / 布尔 / 负数\n        语句\n    case \"red\":\n        语句\n    case v:             绑定模式：把被匹配值绑定到变量 v\n        语句\n    case :             通配符：匹配一切（不绑定变量）\n        语句\n    else:               兜底分支（v2.4，也可写 default:，必须位于最后一个分支）\n        语句\n\n- case 块用缩进表达；每个 case 命中后执行其块并结束整个 match（无 fallthrough）。\n- 未命中任何 case 时执行 else: / default: 兜底分支（v2.4 新增；没有兜底则静默跳过）。\n- 绑定模式变量只在命中块内有效。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "5. 函数", "b": "def add(a, b)          或 func add(a, b)\n    return a + b\n\nvar f = add            函数是一等值\nfunc makecounter(x)\n    def inc()\n        nonlocal set x = x + 1\n        return x\n    return inc\n\n- def 与 func 等价。\n- return 可省略值（裸 return）。\n- 隐式返回（v2.9）：函数体最后一行若是表达式语句（函数调用或裸表达式），自动返回其值，无需写 return：\n\nfunc double(x)\n    x  2             末行裸表达式 → 自动返回 x2\n\nfunc report(x)\n    print(\"计算中\")\n    x + 10            隐式返回 x+10（前面的 print 正常执行）\n\n  与显式 return 完全等价；若末行不是表达式（如 set/if/while），函数返回 none，行为不变。\n- 闭包：函数捕获外层变量；修改外层变量用 nonlocal set x = ...。\n- 全局作用域修改：global set x = ...。\n- 高阶函数：函数可作为参数传递、作为返回值。\n- 递归支持。\n- 裸表达式语句（v2.9）：任意表达式可独立成行（求值并丢弃结果），如 a + 2；这是隐式返回与管道链式写法的语法基础。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "6. 类与面向对象", "b": "class Animal\n    def init(name)\n        set self.name = name\n    def speak()\n        print(self.name, \"在叫\")\n\nclass Dog(Animal)       继承\n    def speak()\n        super().speak()           调用父类方法（支持链式）\n        print(self.name, \"汪汪！\")\n\nvar d = new Dog(\"旺财\")\nd.speak()\nset d.age = 3           实例属性\n\n- 构造函数为 init；new 时沿继承链查找构造函数（子类无 init 自动用基类）。\n- 类字段在 class 体内用 var x = ... 声明，实例自动继承（基类优先）。\n- super() 需要紧跟 .方法名(...) 使用，或裸调用。\n- 方法内通过 self 访问实例；set self.x = v / self.x = v 均可写属性。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "语言规范", "h": "6.1 结构体 `struct`（v3.7）", "b": "struct 是只含字段的记录类型，用来替代「只为装几个字段而写一个类」的样板代码：\n\nstruct Point\n    var x = 0\n    var y = 0\n\nvar p = new Point(3, 4)      按字段声明顺序传参\nprint(p.x, p.y)              3 4\nset p.x = 10                 字段可读写\n\n- 体内只允许 var 字段名 = 默认值；空结构体、重复字段、方法或其它语句都会报语法错误。\n- 字段默认值在 new 时先按默认值初始化，再用构造实参按声明顺序覆盖；实参少于字段数时，缺省字段保留默认值。\n- struct 是软关键字：只在语句开头、后跟标识符时才生效，var struct = 1 这类变量名不受影响，关键字总数不变。\n- 与 class 的关系：struct 会被解析器脱糖为一个 class（自动生成 init），因此继承、self、方法调用等能力与普通类一致；区别只是不能在 struct 体内写方法。\n- 三端一致：解释器 / Python 转译 / C 后端（impor build）/ 自举编译器（imporc）均支持缩进块与 { ... } 大括号块两种写法（字段之间可用 ; 分隔）。C 后端构造实参通过语句表达式临时数组传递，规避 tcc 对多元素复合字面量的限制。", "c": "语言", "p": "docs/语言规范.md"}, {"d": "写法规范", "h": "Impor (I++) 写法规范（唯一定荐写法表）", "b": "版本：v3.0.0（推荐写法冻结于 v3.5.0）\n 地位：本文件是「同一件事只推荐一种写法」的唯一标准。与 docs/语言规范.md 冲突时，以本表为准。\n 原则：一套求值规则、一套变量语义；不搞风格迥异的语法糖；同一件事推荐一种主流写法。", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "0. 三条硬规则", "b": "1. 一种意图，一种写法。下表「推荐写法」列就是唯一答案；其余写法只是 v3.4 兼容层，能跑、不再扩、不进入新代码。\n2. 语法糖冻结。v3.5 起不再新增同义写法；新语法若要加入，必须先删掉一个旧写法或明确标为「替换」，不允许并存。\n3. 推荐写法零提示。impor lint --style 对推荐写法不报任何提示；对兼容写法报 [提示] 并给出本表中的推荐写法。", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "1. 语句与分隔", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） | 说明 |\n| --- | --- | --- | --- |\n| 多条语句 | 一行一条 | a = 1; b = 2 | ; 仅作兼容，不参与排版 |\n| 语句块 | { ... } | 冒号 + 缩进块 | 大括号块是标准形式；缩进块为旧工程兼容 |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "2. 输出", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） |\n| --- | --- | --- |\n| 打印 | print(a, b) | print a, b（无括号）、打印 / 输出 |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "3. 变量与常量", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） | 说明 |\n| --- | --- | --- | --- |\n| 声明变量 | var x = 1 | let x = 1、local x = 1、变量 x = 1 | 三者语义等价，统一用 var |\n| 赋值 | x = 1 | x := 1、set x = 1 | := 只作兼容 |\n| 只读常量 | const N = 10 | static / readonly | 只读语义统一用 const |\n| 类型注解 | 可省略 | var x: int = 1 | 注解只解析不检查，写不写都不影响语义；团队可选统一 |\n| 省略初始化 | var x = null | var x | 显式写初值，避免\"默认值是什么\"的隐性规则 |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "4. 条件", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） |\n| --- | --- | --- |\n| 条件分支 | if x  0 { ... } elseif y { ... } else { ... } | if x  0 then { ... }、则 |\n| 取反条件 | if not x { ... } | unless x { ... }、除非 |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "5. 循环", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） | 说明 |\n| --- | --- | --- | --- |\n| 遍历集合 | for x in 表 { ... } | for each x in 表、for x of 表、每个 x in 表 | 只有 in 一种连接词 |\n| 计数循环 | for i in range(0, n) { ... } / for i in range(1, n + 1) | for i in 1..n、for i = 0; i < n; i++ | 区间语义一律由 range 显式表达 |\n| 条件循环 | while cond { ... } | do { ... } until cond、do { ... } while cond | 需要\"至少执行一次\"时，先写一次再进 while，避免 doN 这类隐藏标志 |\n| 无限循环 | loop { ... } | while true { ... } | 两者等价，loop 更直白 |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "6. 函数", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） |\n| --- | --- | --- |\n| 定义 | func f(a, b) { ... } | func f a, b { ... }、def f(a, b) 与 func 混用 |\n| 返回 | return x | 返回 x（中文关键字，属中文写法体系，团队内统一即可） |\n| 返回类型注解 | func f(a) - int（可选） | — 只解析不检查 |\n\n 中文关键字（如果/循环/返回/变量…）是 v2.9 的完整中文写法体系，与英文关键字两选一、团队统一；中文软别名（打印/然后/除非/每个/继承/循环体）不在推荐表中。", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "7. 类与对象", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） |\n| --- | --- | --- |\n| 继承 | class 子(父) { ... } | class 子 extends 父 { ... }、继承 |\n| 实例化 | new A(x) | new A（省空括号） |\n| 调父类 | super().m(x) | super.m(x)（省括号） |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "写法规范", "h": "8. 异常", "b": "| 意图 | 推荐写法 | 兼容写法（不推荐） |\n| --- | --- | --- |\n| 捕获 | catch e { ... } / catch Type e { ... } | catch { ... }（省略变量） |", "c": "语言", "p": "docs/写法规范.md"}, {"d": "编辑器-7.2", "h": "Impor 编辑器 7.2.0", "b": "7.2.0 是编辑器体验批次，不改语言语法。以下功能全部在 impor/editor.py 与 impor/studioext.py 内实现。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "1. 渐进式启动", "b": "- 默认先构建工具栏、活动栏、资源管理器、outline、标签与编辑区，root 先进入事件循环。\n- splash 的停留时间改为 280 ms、淡出 120 ms；单击、Esc、空格可立即进入。\n- 底部输出/终端/测试/调用图/内存/问题面板、会话恢复、插件、文件监听在首帧之后补齐。\n- 关闭渐进式启动：设置环境变量 IMPORNOPROGRESSIVE=1。\n- 关闭 splash：设置 IMPORNOSPLASH=1。\n\n实测（本机 Python 3.11.5，IMPORNOSPLASH=1）：\n\n| 阶段 | 耗时 |\n| --- | --- |\n| App(root) 返回外壳 | 约 884 ms |\n| 首次 root.update()（含底部面板补齐） | 约 642 ms |\n| 真实窗口标题首次可见 | 约 1,220.8 ms |\n\n7.1.0 的编辑器主窗实测约 5.9 s，因此 7.2.0 的外壳首帧明显提前；底部面板仍在后台补齐，不阻塞外壳。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "2. 自动更新与回滚", "b": "- 启动 7 秒后静默读取 site/update.json 或 IMPORUPDATEURL。\n- 发现更高版本时只在状态栏显示「发现新版本 x · 点击更新」，不弹窗。\n- 手动「检查更新」保留 SHA256 校验、code --install-extension 安装和旧 VSIX 回滚。\n- 下载过程显示进度窗；安装成功后询问是否重载 VS Code 窗口。\n- code --command workbench.action.reloadWindow 不是所有 VS Code CLI 版本都支持，失败时提示手动重启，不杀进程。\n- 回滚范围仅 VSIX；启动壳和应用本体不参与自动回滚。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "3. 项目级配置", "b": "路径：/.impor/settings.json，UTF-8 无 BOM、LF、末尾换行，写入使用临时文件 + os.replace。\n\n优先级：项目设置覆盖全局 ~/.imporstudio.json。\n\n支持的键：\n\n{\n  \"theme\": \"dark\",\n  \"fontsize\": 11,\n  \"editor\": {\n    \"indent\": 4,\n    \"wordwrap\": false,\n    \"minimap\": true,\n    \"inlayhints\": true,\n    \"semantichighlighting\": true,\n    \"largefilekb\": 2000\n  },\n  \"format\": { \"onsave\": false },\n  \"autosave\": true,\n  \"shell\": { \"profile\": \"cmd\" },\n  \"tasks\": {\n    \"run\": \"\\\"{python}\\\" -m impor run \\\"{file}\\\"\",\n    \"build\": \"\\\"{python}\\\" -m impor build \\\"{file}\\\"\"\n  },\n  \"plugins\": [\"D:/impor-plugins\"]\n}\n\n- 设置对话框底部新增「保存到项目 .impor/settings.json（覆盖全局）」。\n- 命令面板新增「项目设置 .impor/settings.json」，可在内置 JSON 编辑器中修改并立即应用。\n- 切换工作区时重新读取项目设置并应用字号、缩进、换行、缩略图、inlay、语义高亮、大文件阈值、保存格式化、自动保存和主题。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "4. 只读插件 API", "b": "插件搜索根：\n\n1. ~/.imporstudio/plugins\n2. /.impor/plugins\n3. 项目设置 plugins 数组中的额外目录\n\n只加载 .py，模块必须提供 register(api)。加载失败只记录到 PluginManager.errors，不阻塞编辑器启动。\n\nAPI 暴露的读取方法：\n\n| 方法 | 作用 |\n| --- | --- |\n| currenttext() | 当前编辑器文本 |\n| currentpath() | 当前文件路径 |\n| readfile(path) | 读取工作区文本文件 |\n| listfiles(suffix) | 列出工作区文件 |\n| toast(text) | 浮层提示 |\n\n注册方法：\n\n| 方法 | 作用 |\n| --- | --- |\n| registercommand(title, callback, shortcut=\"\") | 命令面板命令 |\n| registerpanel(title, builder) | 左侧插件侧栏页；builder(frame, api) |\n| registerstatusitem(text, callback=None) | 状态栏条目 |\n| registertheme(name, colors) | 覆盖 THEME 的颜色字典 |\n| registerformatter(name, func) | 文本格式化器，func(text) - str |\n\n示例：\n\ndef register(api):\n    api.registercommand(\"统计行数\", lambda: api.toast(\"%d 行\" % len(api.currenttext().splitlines())))\n\n    def panel(frame, api):\n        import tkinter as tk\n        tk.Label(frame, text=\"插件面板\", bg=\"111820\", fg=\"d5dde8\").pack()\n\n    api.registerpanel(\"示例\", panel)\n\n边界：API 表面不提供写文件或执行命令方法；插件是本地 Python，和编辑器同进程执行，不是进程隔离。只应安装可信插件。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "5. Git 深度集成", "b": "Git 面板新增：\n\n- 行级 blame：对当前文件当前行执行 git blame -L n,n --porcelain，显示作者、短 SHA 和提交。\n- 按 hunk 暂存：git diff --unified=0 拆 hunk，选中后写入临时 .patch，执行 git apply --cached --unidiff-zero，只进 index 不提交。\n- 冲突入口：git diff --name-only --diff-filter=U 列出未合并文件，双击打开。编辑器原样显示冲突标记，由用户手动解决。\n- 原有刷新、diff、分支查看/切换、初始化、暂存全部、提交保留。\n\n所有命令固定 git -C ；工作区不是 Git 仓库时直接显示 Git 的 stderr。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "6. 多终端与任务模板", "b": "- 「多终端标签」打开 Toplevel + Notebook，可新建多个持久 shell 标签，每个标签独立进程。\n- profile 支持 cmd、powershell、pwsh，默认取项目设置 shell.profile。\n- Ctrl+C 发送 terminate；关闭标签结束该 shell。\n- 任务模板从项目设置 tasks[kind] 读取，支持 {file}、{workspace}、{python}、{kind}；没有模板时回退 python -m impor  。\n- problem matcher 从任务输出抓 file:line[:col]，写入问题面板并累计错误数，去重。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "7. 编辑器智能", "b": "- inlay hints：行号槽加宽到 92 px，var/let/const/set 行按字面量推断 num/str/bool/arr/dict/func/obj，仅对可视行绘制。\n- 语义高亮：true/false/null/nil/self/this/super 使用 sem 标签（青色加粗）；这是常量/自指词级语义，不是基于符号索引的全量语义着色。\n- 括号着色：()[]{} 四层颜色，原有能力保留。\n- sticky scroll：编辑器顶部新增「作用域」吸顶条，跟随光标显示 文件 › 类 › 函数；面包屑保留。\n- 大文件模式：项目设置 editor.largefilekb 控制打开确认阈值（默认 2000 KB）；大文件只对可视行 ±30 行着色，缩略图超过 6000 行跳过。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "编辑器-7.2", "h": "8. 可访问性", "b": "- 新增 高对比主题：纯黑底、白/黄前景、青色强调、白色边框；dark → light → hc → dark 循环。\n- 键盘焦点快捷键：Ctrl+1 编辑器、Ctrl+2 资源管理器、Ctrl+3 底部命令条、Ctrl+4 问题面板、Ctrl+5 命令面板。\n- 命令面板新增对应「键盘焦点：…」命令，全部有真实回调。\n- 字号缩放沿用 Ctrl+= / Ctrl+-，范围 9–18，并写入全局或项目设置。\n\n限制：Tkinter 没有完整的 Windows UIA 屏幕阅读器接口，7.2.0 只做到可见标签、键盘可达和高对比，不等于原生屏幕阅读器全量适配。", "c": "编辑器", "p": "docs/编辑器-7.2.md"}, {"d": "教学大纲", "h": "Impor (I++) 12 课教学大纲", "b": "版本：v3.0.0 · 每课 30–60 分钟 · 配套 docs/教学练习.md、docs/教师讲义.md\n\n 自动判题：impor teach grade  \n\n| 课 | 主题 | 关键语法 | 课堂产出 |\n|---|---|---|---|\n| 1 | 第一行输出 | print、字符串、注释 | 输出「你好，Impor」 |\n| 2 | 变量与算术 | var、+ -  / | 和、差、积 |\n| 3 | 条件分支 | if、比较运算 | 分数分级 |\n| 4 | 循环累加 | for ... in range、累加器 | 1..10 求和 |\n| 5 | 数组 | [ ]、len、sumarr、maxarr | 统计长度/总和/最大值 |\n| 6 | 函数 | func、参数、return | 平方函数 |\n| 7 | 字符串处理 | upper、len、切片 | 大写/长度/前三字符 |\n| 8 | 字典 | { }、下标、get | 库存查询 |\n| 9 | 类与对象 | class、def init、new | 计数器 |\n| 10 | 枚举与匹配 | enum、match、穷尽分支 | 颜色名称 |\n| 11 | 异常处理 | exception、raise、try/catch/finally | 捕获非法成绩 |\n| 12 | 闭包与高阶函数 | 嵌套 func、捕获变量、返回函数 | 计数器闭包 |", "c": "教程", "p": "docs/教学大纲.md"}, {"d": "教学大纲", "h": "教学原则", "b": "- 先运行再解释：每课先跑参考答案，再改 starter。\n- 错误信息当教材：读错误码、行号、修复建议，不急着问答案。\n- 类型标注可选：第 6 课起鼓励给参数和返回值加类型，用 impor check 看诊断。\n- private / protected 在第 9 课后补充；match 穷尽性在第 10 课重点讲。\n- 每课练习只有一道核心题，但允许多种写法，判题只看标准输出。", "c": "教程", "p": "docs/教学大纲.md"}, {"d": "教学大纲", "h": "评估", "b": "- 课中：每课末用 impor teach grade 抽查一名学生。\n- 阶段：第 6 课（函数）与第 12 课（闭包）各一次小项目，按「能运行、能解释、能改」评分。\n- 结课：完成 12 课并独立写出一个带文件读写或 JSON 的 Windows 小工具。", "c": "教程", "p": "docs/教学大纲.md"}, {"d": "教师讲义", "h": "课程节奏建议", "b": "| 课次 | 主题 | 建议时长 | 课堂重点 |\n|---|---|---|---|\n| 1 | 第一行输出 | 30 分钟 | 先让学生看到输出，再解释字符串 |\n| 2 | 变量与算术 | 40 分钟 | 变量是盒子，算术有优先级 |\n| 3 | 条件分支 | 40 分钟 | 条件只执行一个分支 |\n| 4 | 循环累加 | 45 分钟 | 循环变量与累加器分开 |\n| 5 | 数组 | 45 分钟 | 索引从 0 开始，越界会报错 |\n| 6 | 函数 | 50 分钟 | 参数、返回值、调用三件事 |\n| 7 | 字符串处理 | 45 分钟 | 字符串不可变，切片不修改原串 |\n| 8 | 字典 | 45 分钟 | 键不存在时 get 的默认值 |\n| 9 | 类与对象 | 60 分钟 | self 指向实例，new 创建对象 |\n| 10 | 枚举与匹配 | 50 分钟 | match 必须覆盖全部枚举成员 |\n| 11 | 异常处理 | 55 分钟 | 异常把错误从正常流程里分离 |\n| 12 | 闭包与高阶函数 | 60 分钟 | 闭包捕获的是变量而不是值 |", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 1 课 · 第一行输出", "b": "- 开场问题：认识 print 与字符串。先让学生猜输出，再运行 impor teach 1。\n- 讲解要点：print 会把参数按空格连接后输出；字符串用双引号包裹。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 1 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 2 课 · 变量与算术", "b": "- 开场问题：声明变量并做四则运算。先让学生猜输出，再运行 impor teach 2。\n- 讲解要点：var 声明变量；+ -  / 是四则运算，整数除法可用 div。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 2 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 3 课 · 条件分支", "b": "- 开场问题：用 if 做分数分级。先让学生猜输出，再运行 impor teach 3。\n- 讲解要点：if 条件后接缩进块；比较运算 ==  = <= 返回布尔值。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 3 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 4 课 · 循环累加", "b": "- 开场问题：用 for 与 range 求和。先让学生猜输出，再运行 impor teach 4。\n- 讲解要点：for x in range(1, 11) 会依次取 1 到 10；累加要用 var 保存。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 4 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 5 课 · 数组", "b": "- 开场问题：创建数组、取长度、求和与最大值。先让学生猜输出，再运行 impor teach 5。\n- 讲解要点：数组用 [ ]；len 取长度，arr[i] 取元素，sumarr / maxarr 做统计。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 5 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 6 课 · 函数", "b": "- 开场问题：定义函数、传参与返回。先让学生猜输出，再运行 impor teach 6。\n- 讲解要点：func 定义函数；return 返回值；调用时按位置传参。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 6 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 7 课 · 字符串处理", "b": "- 开场问题：大小写、长度与切片。先让学生猜输出，再运行 impor teach 7。\n- 讲解要点：upper / lower / len 可处理字符串；s[0:3] 取前三个字符。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 7 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 8 课 · 字典", "b": "- 开场问题：键值读写与 get。先让学生猜输出，再运行 impor teach 8。\n- 讲解要点：字典用 {键: 值}；stock[key] 读写，get 在键缺失时给默认值。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 8 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "教师讲义", "h": "第 9 课 · 类与对象", "b": "- 开场问题：定义类、构造函数与方法。先让学生猜输出，再运行 impor teach 9。\n- 讲解要点：class 内用 def init 初始化，self 访问字段，new 创建实例。\n- 常见错误：直接抄答案而不改 starter；忘记缩进；把 print 当成会修改值。\n- 判题：impor teach grade 9 学生文件.impor，输出一致即通过。", "c": "教程", "p": "docs/教师讲义.md"}, {"d": "安全-3.2.1", "h": "Impor 3.2.1 安全模型：能防什么、不能防什么", "b": "“最高的安全性”在桌面应用里不能靠一句口号。本版把安全拆成可检查的应用层策略，并把做不到的部分写进威胁模型，避免虚假安全感。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "1. 默认拒绝", "b": "| 能力 | 默认 | 如何开启 |\n| --- | --- | --- |\n| 插件写文件 | 拒绝 | pluginwriteallow / IMPORPLUGINPERMISSIONS，且路径必须在工作区 |\n| 插件读文件 | 只读工作区与 Python 运行时 | 子进程 audit hook 阻断工作区外的 open / listdir |\n| 插件网络 | 拒绝 | 权限清单声明 net；audit hook 阻断 socket.connect / getaddrinfo |\n| 插件启动子进程 | 拒绝 | 权限清单声明 process；audit hook 阻断 subprocess / os.system |\n| FFI 原生库 | 拒绝 | IMPORFFIALLOW 或 .impor/ffiallow.json 的 allow 数组 |\n| 大文件整文件加载 | 阈值以上转分块 | 用户显式选择“完整编辑” |", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "2. 路径围栏", "b": "security.inside(root, path) / requireinside()：\n\n- 先 os.path.realpath 解析符号链接与 ..，再 os.path.commonpath 比较。\n- Windows 盘符不同、跨盘路径直接判越界。\n- 所有插件写、编辑器保存、文件移动都走同一套围栏。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "3. 原子写与完整性", "b": "safewrite(path, content, root=...)：\n\n1. 同目录 mkstemp 创建唯一临时文件。\n2. 写入、flush、os.fsync。\n3. os.replace 原子替换。\n4. 失败清理临时文件。\n\n编辑器保存同样使用临时文件 + os.replace；断电/崩溃不会留下半截源文件。\n\n供应链：sha256file() / verifymanifest() 校验发布物与清单；当前只做完整性，不做签名。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "4. 审计", "b": "AuditLog(workspace).write(event, fields) 追加 JSONL 到 .impor/audit.log：\n\n- app.start：版本、进程加固结果。\n- file.save：路径、字节数、atomic=True。\n- plugin.write / plugin.writecurrent：插件 ID、目标路径。\n\n失败不静默：写不进去时返回 False，调用方仍继续业务，但安全中心会显示“暂无记录/读取失败”。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "5. 进程加固", "b": "hardenprocess()：\n\n- Unix：RLIMITCORE=0，关闭 core dump。\n- 所有平台：清除 PYTHONINSPECT、PYTHONSTARTUP、PYTHONPATH，避免被环境变量注入启动代码。\n- Windows 未设置 Job Object / AppContainer；这是残余风险。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "6. 插件隔离", "b": "- 子进程 + JSON-RPC 代理；父进程持有权限判断。\n- 子进程 sys.addaudithook：未声明 write 直接写文件、未声明 net 的 socket、未声明 process 的 subprocess / os.system 一律抛 PermissionError。\n- 读范围限制在工作区、插件目录与 Python 运行时（sys.prefix / sys.path），工作区外 open / listdir / scandir 被阻断。\n- 即使声明 write，直接写文件仍必须落在工作区内；越界写被阻断。\n- 崩溃自动重启，最多 3 次；命令调用失败重试一次。\n- 面板宿主显示权限清单与重启次数。\n- 不是 OS 沙箱：子进程仍以当前用户身份运行；audit hook 只覆盖 Python 级事件，ctypes / 原生扩展可绕过。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "7. 残余风险（必须知晓）", "b": "1. 同用户权限下的恶意代码可以绕过任何应用层检查。\n2. 未启用 AppContainer / Job Object / 网络命名空间；插件写、网络、子进程由 Python audit hook 阻断，但 ctypes / 原生扩展调用可绕过。\n3. FFI 仅限制参数类型与库白名单；被允许的库本身可能提供危险能力。\n4. 更新通道依赖 HTTPS + SHA256 清单，未做代码签名验证。\n5. 自举编译器与 C 后端不支持 FFI/部分新语法，安全策略只在解释器与编辑器生效。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "安全-3.2.1", "h": "8. 威胁模型摘要", "b": "- 资产：用户源码、工作区文件、编译器与发布物、插件进程、更新通道。\n- 信任边界：编辑器主进程 ↔ 插件子进程；工作区 ↔ 系统其余路径；脚本 ↔ 原生库；发布物 ↔ 用户机器。\n- 缓解：默认拒绝、路径围栏、原子写、权限清单、重启上限、审计、哈希、诊断。\n- 残余：见上节。\n\n需要更强边界时，应使用受限 Windows 账户、AppContainer、虚拟机或单独的构建机，而不是依赖编辑器的应用层策略。", "c": "安全", "p": "docs/安全-3.2.1.md"}, {"d": "路线图-v6.0", "h": "Impor v6.0 路线图（四条线）", "b": "定位：中文母语入门 + Windows 小工具独立 exe。v6.0 的目标不是“功能更多”，而是“说过支持的东西真的成立”。", "c": "路线图", "p": "docs/路线图-v6.0.md"}, {"d": "路线图-v6.0", "h": "1. 诚信：冻结语法，三端同语义", "b": "| 项目 | 状态 | 说明 |\n|---|---|---|\n| implements 契约校验 | 已完成 | 缺方法直接 ContractError（E1014），基类方法算实现 |\n| ContractError 诊断 | 已完成 | 新增错误码、中文“为什么/修复” |\n| 修饰符访问控制 | 进行中 | 目前仅声明性标记；下一步做 private/protected 真检查或从关键字表删除 |\n| JSON / 正则 C 后端 | 计划 | 解释器已支持，C 后端/自举未同步，build 前会显式报错 |\n| lambda C 后端 | 计划 | 当前 impor build 明确拒绝，不静默降级 |", "c": "路线图", "p": "docs/路线图-v6.0.md"}, {"d": "路线图-v6.0", "h": "2. 性能：只追小工具体感", "b": "| 项目 | 状态 | 说明 |\n|---|---|---|\n| 基准可复现 | 已完成 | benchmarks/benchcompare.py + latest.md |\n| 性能门槛 | 已完成 | impor bench --gate，v6.1 收紧到 3400 ms；v6.2 实测 520–563 ms |\n| 热路径优化 | 已完成 | v6.1 帧采样降频、const 检查短路、整数热路径、当前作用域直查；v6.2 函数调用帧预计算与成功路径去 sys.excinfo |\n| 启动导入 | 已完成 | v6.2 解耦包缓存目录，run 不再导入 pkgmgr / urllib / ssl / zipfile |\n| 字节码 VM / 局部变量槽 | 计划 | 当前 1 秒内已达成小工具体感，VM 降级为后续选项 |\n| 发布约束 | 计划 | exe <150 KB、冷启动 <50 ms、不装 Python，每次发布检查 |", "c": "路线图", "p": "docs/路线图-v6.0.md"}, {"d": "路线图-v6.0", "h": "3. 功能：只做目标人群每天用的", "b": "| 项目 | 状态 | 说明 |\n|---|---|---|\n| JSON / 正则 | 部分完成 | 解释器可用；C 后端待同步 |\n| 文件 / 目录 API | 已完成（解释器） | 新增 filelist / filemkdir / fileexists / filesize；C 后端/自举待同步 |\n| HTTP / 进程 / 压缩 | 计划 | 小工具常用，但必须先定三端策略 |\n| GUI 表单/表格/托盘 | 计划 | 面向 Windows 小工具，不做通用 GUI 框架 |\n| 包管理依赖解析 | 计划 | 现有本地包/私有源，缺依赖图与离线包 |\n| FFI | 计划 | 只做 Windows DLL，不做通用 C 互操作 |", "c": "路线图", "p": "docs/路线图-v6.0.md"}, {"d": "路线图-v6.0", "h": "4. 人群：把教学体验做成产品", "b": "| 项目 | 状态 | 说明 |\n|---|---|---|\n| 12 课大纲 | 已完成 | docs/教学大纲.md |\n| impor teach 入口 | 已完成 | 终端直接查看大纲，支持 impor teach 3 |\n| 练习 / 答案 / 教师讲义 | 计划 | 大纲只有课程名，缺可交付练习 |\n| 在线 Playground | 计划 | 无后端时用单页本地运行版 |\n| 作品墙 | 计划 | 10 个可双击 exe，比关键字数量更有说服力 |\n| VSIX 上架 | 阻塞 | 缺有发布权限的 PAT；本地 VSIX 已可安装 |", "c": "路线图", "p": "docs/路线图-v6.0.md"}, {"d": "路线图-v6.0", "h": "v6.0 验收命令", "b": "python Impor.py version\npython Impor.py doctor\npython Impor.py teach 3\npython Impor.py bench --gate\npython -m unittest tests.testv37.TestEnglishKeywords tests.testv43.TestKeywordCountUnchanged\n\n契约校验样例：class Bad implements Shape { func other() { return 1 } } 必须报 E1014。", "c": "路线图", "p": "docs/路线图-v6.0.md"}, {"d": "性能报告-v6.2", "h": "v6.2 性能报告：函数调用与启动开销", "b": "- 日期：2026-11-09\n- 环境：Windows / Python 3.11.5 / 本机\n- 目标：在 v6.1 已达成 3400 ms 门槛的基础上，继续压函数调用/递归热路径与每次启动的导入开销。", "c": "性能", "p": "docs/性能报告-v6.2.md"}, {"d": "性能报告-v6.2", "h": "结果", "b": "| 指标 | v6.1 | v6.2 | 变化 |\n|---|---:|---:|---:|\n| impor bench --gate 解释器 100 万循环 | 536 ms | 520–563 ms（多次） | 约 2%–3% |\n| loop1e6（含进程启动） | 799.8 ms | 731.9 ms | 8.5% |\n| str2000（含进程启动） | 283.4 ms | 249.1 ms | 12.1% |\n| fib22（含进程启动） | 694.6 ms | 648.4 ms | 6.7% |\n| fib(22) cProfile 总量 | 1.916 s | 1.758 s | 8.2% |\n| callclosure 自身耗时 | 0.347 s | 0.290 s | 16.4% |\n\n 收尾复测备注：当时系统后台负载约 41%，同机连续三次 bench --gate 为 958 / 1147 / 1203 ms（冷启动一次 1407 ms）。早先热机数据为 520–563 ms；两组都低于 3400 ms 门槛，差异来自机器负载，不是代码回退。\n\n启动侧：python -X importtime 中 impor.pkgmgr 累计 95.7 ms（其中 urllib.request 84.5 ms、http.client 67.9 ms、ssl 11.6 ms、zipfile 2.7 ms）。v6.2 后 run 路径不再导入这些模块。", "c": "性能", "p": "docs/性能报告-v6.2.md"}, {"d": "性能报告-v6.2", "h": "改了什么", "b": "1. 闭包调用信息预计算：Closure.init 记录末行是否为隐式返回（tailexpr）与正文长度（headlen），callclosure 不再每帧 isinstance 判断和 body[:nlast] 切片。\n2. 参数绑定直写：参数直接写入新环境的 store，不再逐个调用 setlocal。\n3. 成功路径不取异常信息：sys.excinfo() 从每次调用的 finally 移到 except ImporException 分支；只有异常时才收集调用栈。\n4. 包缓存目录与包管理器解耦：config.py 里的 from .pkgmgr import CACHEDIR 改为本地计算的 pkgcachedir()；pkgmgr.CACHEDIR 复用同一个函数，路径语义不变，run 不再连带加载 urllib / http.client / ssl / zipfile。", "c": "性能", "p": "docs/性能报告-v6.2.md"}, {"d": "性能报告-v6.2", "h": "边界", "b": "- 本轮没有改执行模型（仍是 AST 树遍历 + 局部循环专用计划），递归仍走 Python 异常做返回，和 CPython 有明显差距：fib(22) 约为 CPython 的 0.17x–0.21x。\n- 启动导入只砍掉了包管理器这条链；Python 自身启动与核心模块导入仍在。\n- 没有开启函数级 JIT/字节码，避免改变调用栈、错误信息和调试语义。", "c": "性能", "p": "docs/性能报告-v6.2.md"}, {"d": "性能报告-v6.2", "h": "回归", "b": "- fib(22) 输出 17711。\n- 闭包、隐式返回、const、字符串/数字混算、除法、负数等冒烟脚本输出与 v6.1 一致。\n- tests.testv37.TestEnglishKeywords + tests.testv43.TestKeywordCountUnchanged 10 项通过。\n- 全量 runtests.py 本轮未跑完：进程在 v2.9 用例处挂起，未产出 Ran ... tests 汇总；已有基线偏差（10 failures / 21 errors，LSP、v2.9 旧语法、v38 自举闭包、v43 lint 等）不能据此判定本轮新增失败。已完成的冒烟与关键字回归均通过。", "c": "性能", "p": "docs/性能报告-v6.2.md"}, {"d": "性能报告-v6.2", "h": "验收命令", "b": "python Impor.py bench --gate\npython benchmarks\\benchcompare.py\npython runtests.py\n\n门槛保持 benchmarks/gate.json 的 interpreterloopmaxms = 3400。本轮实测 520–563 ms，仍有余量；没有借表现收紧门槛，避免慢机器/CI 误报。", "c": "性能", "p": "docs/性能报告-v6.2.md"}, {"d": "测试矩阵-3.2.1", "h": "Impor 3.2.1 测试矩阵与实测记录", "b": "日期：2026-11-13。环境：Windows，本地 python 3.11（GUI 必须用带 Tk 的 3.11；系统默认 3.13 无 Tk）。", "c": "测试", "p": "docs/测试矩阵-3.2.1.md"}, {"d": "测试矩阵-3.2.1", "h": "语言", "b": "| 用例 | 覆盖 | 结果 |\n| --- | --- | --- |\n| tadt.impor | 带载荷 ADT、match 字段绑定、负例 | 解释器/C 均 Result.Ok / 41 / -1 / 41 / 42 |\n| tparity.impor | ADT + async + JSON + 正则 + lambda | 解释器与 C EXE 9 行逐行一致 |\n| ttasks.impor | runtasks / taskstatus | 解释器与 C 均 done / [6, 8] |\n| tenum.impor | 无载荷 enum 兼容 | 5 / blue |\n| tmoduse.impor | 跨文件公开函数 | 输出 8 |\n| tmodprivbad.impor | 跨文件 private 拒绝 | 退出 1，AccessError ... [E1099] |\n| tffi.impor | FFI 白名单 + kernel32 | int / True（需 IMPORFFIALLOW=kernel32.dll） |\n| tstack.impor | 栈/JSON 解码路径 | 已重编并通过 |\n\nC 产物：tparity.exe 114.5 KB；tadt.exe 103.5 KB。解释器与 EXE 均不依赖 Python 运行（EXE 由 tcc 生成）。", "c": "测试", "p": "docs/测试矩阵-3.2.1.md"}, {"d": "测试矩阵-3.2.1", "h": "编辑器（Tk 主循环实测）", "b": "| 项 | 实测 |\n| --- | --- |\n| 分块编辑 | 3,200 行 / 2.4 MB 文件，state=normal，插入一行后 Ctrl+S，磁盘 3200 → 3201 且含标记 |\n| 大文件保存 | 保存后跳过全量 lint，未卡死 |\n| 提取变量预览 | 弹出 diff 预览窗口，应用前不改文件 |\n| 覆盖率视图 | 正常打开，函数调用近似统计 |\n| UIA 控件树 | 正常打开，Treeview + 原生 EDIT 宿主 |\n| 高对比主题 | applytheme(\"hc\") 后 themename=hc |\n| 安全中心 | 正常打开，显示威胁模型、审计记录；启动写入 app.start 审计 |\n| 插件权限钩子 | guard321.py：未声明 net/write/process/越界读均 PermissionError；声明后写文件成功；结果见 guard321.json |\n| 搜索虚拟列表 | 4 处命中，替换/撤销通过（3.1 基线，本版未回归破坏） |", "c": "测试", "p": "docs/测试矩阵-3.2.1.md"}, {"d": "测试矩阵-3.2.1", "h": "静态检查", "b": "- pycompile：editor.py、editorvirtual.py、editoruia.py、editorsearchui.py、pluginhost.py、studioext.py、security.py、interpreter.py、builtins.py、diagnostics.py 全部通过。\n- 版本号：Impor.py / impor/init.py / pyproject.toml / vscode-impor/package.json / bootstrap/imporc.impor 均为 3.2.1。", "c": "测试", "p": "docs/测试矩阵-3.2.1.md"}, {"d": "测试矩阵-3.2.1", "h": "未闭环项", "b": "| 项 | 状态 | 说明 |\n| --- | --- | --- |\n| 自举 imporc 的 ADT/async/lambda/JSON/正则 | ❌ | 仍是 C 后端子集，输出“子集模式” |\n| C 后端 FFI | ❌ | 明确不支持，编译产物报未定义 |\n| OS 级沙箱 | ❌ | 仅应用层策略；未启用 AppContainer/Job Object |\n| 发布物签名 | ❌ | 仅 SHA256 清单，未做代码签名 |\n| 运行时行覆盖率 | ❌ | 当前是测试调用静态近似 |\n| UIA 逐控件 provider | ❌ | 当前是 Treeview 语义映射 |", "c": "测试", "p": "docs/测试矩阵-3.2.1.md"}, {"d": "测试矩阵-3.2.1", "h": "已知解析边界", "b": "- match 大括号 case X { ... } 在函数连续语句里可能报“期望 OP”，缩进式 match 稳定。\n- Impor 字符串 {...} 会插值，JSON 字面量必须 raw string。\n- C 端 lambda 为无捕获静态函数；捕获外层局部尚未支持。", "c": "测试", "p": "docs/测试矩阵-3.2.1.md"}, {"d": "库-atlas-3.1", "h": "Impor Atlas · 700 个 Impor 独有微库", "b": "3.1.0 的 std.atlas 扩展包，共 700 个独立模块，全部是纯 Impor 源码，按需加载，不进入 use std 的默认注入链。", "c": "库", "p": "docs/库-atlas-3.1.md"}, {"d": "库-atlas-3.1", "h": "结构", "b": "- 10 个族：num / seq / txt / data / geom / time / codec / sim / teach / stat\n- 每族 70 个模块：7 套 API × 10 个变体\n- 每个模块 1 个函数、1 个 export，无跨模块依赖\n- 完整目录：impor/std/atlas/CATALOG.md", "c": "库", "p": "docs/库-atlas-3.1.md"}, {"d": "库-atlas-3.1", "h": "用法", "b": "import std.atlas as atlas\nimport std.atlas.nummultiple01 as m\n\nprint(atlas.count())          // 700\nprint(atlas.has(\"txtprefix04\"))\nprint(m.multiple01(10))      // true\n\nuse std 只会注入 atlas 目录入口，不会一次性加载 700 个模块：\n\nuse std\nprint(atlas.count())", "c": "库", "p": "docs/库-atlas-3.1.md"}, {"d": "库-atlas-3.1", "h": "验证", "b": "- tests/atlas700smoke.impor：700 个模块全部 import，并各调用一次\n- 运行：impor run tests/atlas700smoke.impor\n- 预期：atlas-smoke 700 700", "c": "库", "p": "docs/库-atlas-3.1.md"}, {"d": "库-atlas-3.1", "h": "边界", "b": "这是“微库矩阵”，不是 700 个重型框架：每个库聚焦一个可复用的小能力，适合组合、教学和快速原型；不包含网络、数据库、GUI 等需要宿主能力的大型库。", "c": "库", "p": "docs/库-atlas-3.1.md"}, {"d": "语言-3.2.1", "h": "Impor 语言 3.2.1：带载荷 ADT、async/await、三端对齐与安全边界", "b": "本版目标不是“再加几个语法糖”，而是把最容易让用户踩坑的三件事收敛：\n\n1. 错误/结果能带数据（不是只有整数枚举）。\n2. 异步有最小可用模型，并且解释器与编译产物状态一致。\n3. 解释器能跑的 JSON / 正则 / lambda，C 后端也能跑。\n\n---", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "1. 带载荷 ADT 与穷尽 match", "b": "enum Result {\n    Ok(value)\n    Err(message)\n}\n\nfunc make(n) {\n    if n < 0 {\n        return Result.Err(\"neg\")\n    }\n    return Result.Ok(n  2)\n}\n\nfunc main() {\n    match make(5)\n        case Result.Ok(v)\n            print(v)\n        case Result.Err(e)\n            print(e)\n}\n\n语义：\n\n- enum 成员可带一个或多个字段：Ok(value)、Point(x, y)。\n- 构造：Result.Ok(41)。运行时值是 tagged dict：{\"adt\": \"Result.Ok\", \"value\": 41}。\n- 模式：case Result.Ok(v) 按字段名绑定； 是通配；字段个数不符在解析/检查期报错。\n- 穷尽性：无 else /  的 match 必须覆盖该类型全部 tag，否则报 match-exhaustive。\n- 兼容：无载荷 enum 仍是整数常量，旧代码不受影响。\n\n写法提示：缩进式 match x + 换行 case 最稳；case X { ... } 在函数连续语句中容易触发“期望 OP”，本版未改该解析行为。", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "2. async / await / 最小任务", "b": "async func work(n) {\n    return n  2\n}\n\nfunc main() {\n    t1 = work(3)\n    print(taskstatus(t1))       done\n    print(runtasks([t1, work(4)]))   [6, 8]\n    print(await work(7))         14\n}\n\n模型（刻意保守）：\n\n- 单线程、无抢占、无事件循环。\n- 解释器中 async 调用立即求值并包成 Task，taskstatus 返回 done，await 解包，runtasks 顺序收集结果。\n- C 后端没有任务对象，async 等同同步求值；taskstatus 恒 done，runtasks 原样返回数组。\n- 因此三端状态与结果一致；代价是没有真正的并发/挂起。需要并发时应等后续任务调度器，而不是假设 async 会并行。", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "3. 三端一致性：JSON / 正则 / lambda", "b": "解释器与 C 后端都已支持：\n\n| 能力 | 函数/语法 | 说明 |\n| --- | --- | --- |\n| JSON 编码 | jsonencode(v) | 对象键按插入顺序，布尔输出 true/false，字符串转义 |\n| JSON 解码 | jsondecode(s) | 支持转义、\\uXXXX（BMP）、整数/小数/指数 |\n| 正则匹配 | regexmatch(s, p) | ^ $ .  + ? \\d \\w \\s、字符类 [abc] / [a-z] / [^...] |\n| 正则查找 | regexfind(s, p) | 返回全部匹配数组 |\n| 正则替换 | regexreplace(s, p, r) | 全局替换；无捕获组与反斜杠回溯 |\n| 匿名函数 | lambda(x): x  2 | C 端为无捕获静态函数；捕获外层局部尚未支持 |\n\n注意：Impor 字符串里的 {...} 会插值，写 JSON 字面量请用 raw string：\n\nprint(jsondecode(r'{\"x\": 2}')[\"x\"])\n\n实测 tparity.impor 解释器与 C EXE 输出 9 行逐行一致：\n\n{'adt': 'Result.Ok', 'value': 10}\nneg\n{\"x\":2,\"a\":[1,true,\"s\"]}\n2\nTrue\n['1', '22']\nab\n6\n15\n\n（共 9 行；第 8/9 行为 lambda 6 与 await 15。）", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "_t_mod_priv.impor", "b": "visibility private func secret() {\n    return 42\n}\n\nfunc visible() {\n    return 8\n}\n\nimpor\nimport tmodpriv\nprint(tmodpriv.visible())    8\nprint(tmodpriv.secret())     AccessError [E1099]\n\n规则：\n\n- private：仅本文件可访问；跨文件 AttrGet 与 from ... import 都拒绝。\n- protected：模块内与“同包”访问保留；跨包默认拒绝。\n- 报错：AccessError: secret 是模块 tmodpriv 的 private 符号，不能跨文件访问 [E1099]。\n- 诊断：问题面板右键「解释诊断」会给“为什么 / 怎么修”，并可直接 Quick Fix。", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "5. FFI：默认拒绝的原生调用", "b": "var h = ffiopen(\"C:/Windows/System32/kernel32.dll\")\nvar t = fficall(h, \"GetTickCount\", [], \"int\")\nprint(type(t))    int\n\n安全策略：\n\n- 默认不允许任何原生库。允许清单来自环境变量 IMPORFFIALLOW（逗号分隔 DLL 文件名）或向上查找的 .impor/ffiallow.json：\n\n{ \"allow\": [\"kernel32.dll\", \"user32.dll\"] }\n\n- 只支持 int/float/str/bool 参数与返回值，最多 8 个参数；不做指针、数组、结构体，避免脚本获得任意内存读写。\n- C 后端与自举不支持 FFI：编译产物会报未定义函数。这是明确边界，不是 bug。", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "6. 诊断：每条错误都有“为什么 / 怎么修”", "b": "问题面板选中一条诊断后右键：\n\n- 解释诊断：弹出“为什么 / 怎么修”两段，并带「快速修复当前行」按钮。\n- 快速修复当前行 / 批量修复本文件 / 跳到问题。\n\n安全类诊断已内置：\n\n- AccessError：模块顶层 private 只在本文件可见；修复方式是改 public 或提供公开转发函数。\n- 其他规则沿用分析器 + 类型检查 + 样式 lint；每条都尽量给出可执行修复。", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "语言-3.2.1", "h": "7. 三端边界（诚实声明）", "b": "| 能力 | 解释器 | C 后端 | 自举 imporc |\n| --- | --- | --- | --- |\n| 带载荷 ADT / match | ✅ | ✅ | ❌（子集） |\n| async / await / runtasks | ✅ | ✅（同步） | ❌ |\n| JSON / 正则 / lambda | ✅ | ✅ | ❌ |\n| 跨文件 private/protected | ✅ | 静态检查部分 | ❌ |\n| FFI | ✅（白名单） | ❌ | ❌ |\n\n自举编译器 bootstrap/imporc.impor 仍是“C 后端子集”，版本号已标 3.2.1 但明确输出“子集模式”。这是本版唯一没有闭环的一致性问题，文档不掩饰。", "c": "语言", "p": "docs/语言-3.2.1.md"}, {"d": "Impor 3.6.3 发布说明", "h": "1. 语法查询", "b": "每个关键字/内建函数都给出四块内容：\n\n- 意思：它做什么。\n- 使用格式：标准写法。\n- 程序例子：可以直接运行的最小代码。\n- 例子说明：逐行解释输出是什么、为什么。\n\n覆盖范围：\n\n- KEYWORDS 全部 73 个关键字，一个不漏。\n- 软关键字 match、enum、struct、unless、fn、repeat。\n- 常用内建函数，包括 print、input、len、range、type、str、int、文件、JSON、正则、内存、FFI 等。\n- 预留关键字（with、yield、defer、macro、template）明确标注“当前无可用语法”，不伪造可执行例子。", "c": "发布", "p": "docs/Impor 3.6.3 发布说明.md"}, {"d": "Impor 3.6.3 发布说明", "h": "2. 三个入口", "b": "命令行：\n\nimpor syntax print\nimpor syntax if\nimpor syntax --search 条件\nimpor syntax --json print\nimpor syntax\n\n编辑器：\n\n- 按 F1，或在命令面板搜索“语法查询”。\n- 左侧关键字/内建列表，右侧显示意思、格式、例子、例子说明。\n- 输入框支持按名字、意思、例子搜索；可一键复制例子。\n\nREPL：\n\nhelp(print)\nhelp(if)\n\nhelp(名字) 优先显示完整语法条目。", "c": "发布", "p": "docs/Impor 3.6.3 发布说明.md"}, {"d": "Impor 3.6.3 发布说明", "h": "print 的口径", "b": "print（内建函数）\n\n意思\n打印：把括号里的内容输出到屏幕，末尾换行。\n\n格式\nprint(\"xxx\")  /  print(变量)\n\n例子\nvar a = 1\nprint(\"1\")\nprint(a)\nprint(\"a\")\n\n例子说明\nprint(\"1\") 括号里是字符串 1，输出 1；\nprint(a) 括号里是变量 a，输出 a 保存的值 1；\nprint(\"a\") 括号里是字符串 a，输出 a。\n引号只表示字符串，不会把引号一起输出。\n\n实际运行：\n\n1\n1\na", "c": "发布", "p": "docs/Impor 3.6.3 发布说明.md"}, {"d": "Impor 3.6.3 发布说明", "h": "验证结果", "b": "- 语法数据：KEYWORDS 73、ENTRIES 122、missing []、EXAMPLESBAD 0。\n- impor syntax print / --search 条件 / --json print：退出码 0。\n- impor release-check：3 项通过，0 项失败。\n- 编辑器语法面板：Toplevel 创建、标题“语法查询”、列表与详情渲染通过。\n- 自举编译器 imporc.exe 内嵌版本：3.6.3。\n- 包内已包含 impor/syntaxref.py、docs/语法查询.md、impor/editor.py、impor/cli.py。", "c": "发布", "p": "docs/Impor 3.6.3 发布说明.md"}, {"d": "Impor 3.6.3 发布说明", "h": "文件", "b": "- ZIP：Impor-3.6.3-Windows-x64.zip，1,155 项，4,853,643 B\n  SHA256：2F7DFECE20C158C6C97F9FC471143FFADE8E130CB004323F76C10C260373E5F3\n- VSIX：vscode-impor-3.6.3.vsix，482,219 B\n  SHA256：B2D6FD9C7E001C26E8E5B00B4646DB9684B63A59237E1513AF4AF8BA02D043C5\n- 解压即用：Impor(I++) 3.6.3\\", "c": "发布", "p": "docs/Impor 3.6.3 发布说明.md"}, {"d": "Impor 3.6.3 发布说明", "h": "边界", "b": "- 语法查询是查询与教学功能，不改变语言语义。\n- 预留关键字仍不可执行；查询结果会明确提示。\n- 中文别名（如果/否则/打印等）默认不启用，未作为单独条目列出。\n- 3.6.2 的系统编程结论仍为 NO；本次未改变系统编程能力。", "c": "发布", "p": "docs/Impor 3.6.3 发布说明.md"}, {"d": "Impor 3.6.4 发布说明", "h": "新增与改进", "b": "- 自动配对：输入 (、[、{、\"、' 自动补右半边；有选区时直接包裹选中文本；光标后已有右符号时自动跳过，不再重复输入。\n- 智能退格：光标在空的 ()、[]、{}、\"\"、'' 中间按退格，一次删掉两边，不跨行误删。\n- 多行注释：Ctrl+/ 支持单行和选中多行；全部已注释时再次按下取消注释，保留原缩进。\n- 整块缩进 / 反缩进：选中多行后按 Tab / Shift+Tab，按设置宽度整体增减，选区保持。\n- 上下移动行：Alt+↑ / Alt+↓ 移动当前行；有选区时整块移动。\n- 删除行：Ctrl+Shift+K 删除当前行或选中行，末尾行和首行边界单独处理。\n- 删词：Ctrl+Backspace 删除光标前一个词；中文按连续汉字处理，英文按单词处理。\n- 智能 Home：在行首和第一个非空格之间切换，减少长缩进行里的鼠标操作。\n- 缩进触发词：elif、except、case、default 等行尾回车后自动加深一级。\n- 设置开关：设置页新增“自动配对括号与引号”，默认开启，并随项目设置保存。", "c": "发布", "p": "docs/Impor 3.6.4 发布说明.md"}, {"d": "Impor 3.6.4 发布说明", "h": "兼容性", "b": "- 原有语法、解释器、C 后端、imporc 自举编译器行为不变。\n- 3.6.3 的语法查询（impor syntax、编辑器 F1、REPL help()）保持不变。\n- 自动配对默认开启；如使用输入法时觉得干扰，可在设置中关闭。", "c": "发布", "p": "docs/Impor 3.6.4 发布说明.md"}, {"d": "Impor 3.6.4 发布说明", "h": "验证", "b": "- impor/editor.py 通过 pycompile。\n- 无头 GUI 行为测试覆盖 10 项手感功能，全部通过（EDITORFEELOK）。\n- imporc 重建后版本输出为 v3.6.4。", "c": "发布", "p": "docs/Impor 3.6.4 发布说明.md"}, {"d": "库-atlas-3.0", "h": "Impor Atlas · 700 个 Impor 独有微库", "b": "3.0.0 的 std.atlas 扩展包，共 700 个独立模块，全部是纯 Impor 源码，按需加载，不进入 use std 的默认注入链。", "c": "库", "p": "docs/库-atlas-3.0.md"}, {"d": "库-atlas-3.0", "h": "结构", "b": "- 10 个族：num / seq / txt / data / geom / time / codec / sim / teach / stat\n- 每族 70 个模块：7 套 API × 10 个变体\n- 每个模块 1 个函数、1 个 export，无跨模块依赖\n- 完整目录：impor/std/atlas/CATALOG.md", "c": "库", "p": "docs/库-atlas-3.0.md"}, {"d": "库-atlas-3.0", "h": "用法", "b": "import std.atlas as atlas\nimport std.atlas.nummultiple01 as m\n\nprint(atlas.count())          // 700\nprint(atlas.has(\"txtprefix04\"))\nprint(m.multiple01(10))      // true\n\nuse std 只会注入 atlas 目录入口，不会一次性加载 700 个模块：\n\nuse std\nprint(atlas.count())", "c": "库", "p": "docs/库-atlas-3.0.md"}, {"d": "库-atlas-3.0", "h": "验证", "b": "- tests/atlas700smoke.impor：700 个模块全部 import，并各调用一次\n- 运行：impor run tests/atlas700smoke.impor\n- 预期：atlas-smoke 700 700", "c": "库", "p": "docs/库-atlas-3.0.md"}, {"d": "库-atlas-3.0", "h": "边界", "b": "这是“微库矩阵”，不是 700 个重型框架：每个库聚焦一个可复用的小能力，适合组合、教学和快速原型；不包含网络、数据库、GUI 等需要宿主能力的大型库。", "c": "库", "p": "docs/库-atlas-3.0.md"}, {"d": "性能报告-v6.1", "h": "目标", "b": "把解释器 100 万次算术循环从约 7 秒压到 3400 ms 以内，且不改变语言语义。", "c": "性能", "p": "docs/性能报告-v6.1.md"}, {"d": "性能报告-v6.1", "h": "结果", "b": "| 指标 | 改造前 | 改造后 |\n|---|---:|---:|\n| 纯解释执行（impor bench） | 7.031 s | 0.581 s |\n| 含进程启动（loop1e6） | 8042.1 ms | 799.8 ms |\n| 字符串 2000 字符 | 525.6 ms | 283.4 ms |\n| 递归 fib(22) | 1293.4 ms | 694.6 ms |\n\n门槛：benchmarks/gate.json 的 interpreterloopmaxms = 3400，impor bench --gate 超标即失败。", "c": "性能", "p": "docs/性能报告-v6.1.md"}, {"d": "性能报告-v6.1", "h": "改了什么", "b": "1. 帧采样降频：tickframe 原本每轮循环调用一次 time.time()，改为每 1024 轮采样一次。计数器仍然每轮递增，帧上限与调试语义不变。\n2. const 检查短路：解释器没有声明过任何 const 时，赋值不再沿作用域链执行 checkmutable。一旦出现 const，恢复完整检查。\n3. 整数热路径：visitBinOp 在左右值都是 int 时直接执行 + -  / % 与比较，跳过 isinstance 和字符串/数字混算检查。\n4. 当前作用域直查：visitVar 先查当前 Env.store，命中即返回；未命中才走完整作用域链。", "c": "性能", "p": "docs/性能报告-v6.1.md"}, {"d": "性能报告-v6.1", "h": "边界", "b": "- 这些改动只优化解释器热路径，不改 AST、不生成新字节码、不影响 C 后端与自举 imporc。\n- fib22 仍比 CPython 慢约 6 倍，递归与函数调用不是这次的重点。\n- 计算密集、长循环的交付场景仍建议 impor build 生成独立 exe。", "c": "性能", "p": "docs/性能报告-v6.1.md"}, {"d": "性能报告-v6.1", "h": "回归状态", "b": "- 性能专项冒烟通过：100 万循环结果 499999500000，const 只读报 E1009，字符串/浮点/除法/负数运算正常。\n- 英文关键字回归 10 项全通过（tests.testv37.TestEnglishKeywords、tests.testv43.TestKeywordCountUnchanged）。\n- 全量单测 563 tests in 431.225s：FAILED (failures=10, errors=21)，失败集中在既有 LSP、v2.9 旧语法、v43 lint 与诊断调用栈用例，不是本次性能门槛；未声称全绿。", "c": "性能", "p": "docs/性能报告-v6.1.md"}, {"d": "性能报告-v6.1", "h": "验收命令", "b": "python Impor.py version\npython Impor.py bench --gate\npython benchmarks/benchcompare.py\npython -m unittest tests.testv37.TestEnglishKeywords tests.testv43.TestKeywordCountUnchanged", "c": "性能", "p": "docs/性能报告-v6.1.md"}, {"d": "性能补测-斐波那契0到20", "h": "斐波那契 0–20 的 0.3 秒验收", "b": "- 日期：2026-11-09\n- 目标：一次算完并输出 fib(0) 到 fib(20)，总墙钟不超过 300 ms。\n- 样例：examples/fib020.impor", "c": "性能", "p": "docs/性能补测-斐波那契0到20.md"}, {"d": "性能补测-斐波那契0到20", "h": "实测（本机，7 次取最小/中位/最大，单位 ms）", "b": "| 路径 | 最小 | 中位 | 最大 | 结果 |\n|---|---:|---:|---:|---|\n| python Impor.py run examples/fib020.impor | 204 | 227 | 257 | 通过 |\n| fib020.exe（C 后端独立 exe） | 57 | 67 | 78 | 通过 |\n\n输出末行均为 fib( 20 ) = 6765，完整序列 0、1、1、2、3、5、8、13、21、34、55、89、144、233、377、610、987、1597、2584、4181、6765。", "c": "性能", "p": "docs/性能补测-斐波那契0到20.md"}, {"d": "性能补测-斐波那契0到20", "h": "本轮为启动路径做的改动", "b": "1. impor/config.py：tomllib 改为实际读到 impor.toml 时才导入；无配置的普通 run 不再付约 28 ms。\n2. impor/cli.py：subprocess、shutil 从模块顶层移到实际用到它们的命令函数；run 不再加载这两个模块。\n3. impor/builtins.py：hashlib、json、random、string、re 改为在对应内建函数首次调用时导入；普通脚本启动不再加载。", "c": "性能", "p": "docs/性能补测-斐波那契0到20.md"}, {"d": "性能补测-斐波那契0到20", "h": "边界", "b": "- 纯递归写法 fib(0..20) 走 Python 解释器仍是约 1.05 秒；上面的 0.3 秒目标是迭代写法与 C 后端 exe。\n- 计时包含进程启动；解释器路径仍受 Python 自身启动约 180–250 ms 的限制，不能压到几十毫秒。\n- 未跑全量 563 项单测；已做 pycompile、hash/json/regex/random 内建冒烟、impor build 回归，均通过。", "c": "性能", "p": "docs/性能补测-斐波那契0到20.md"}, {"d": "教学练习", "h": "Impor 12 课练习与答案", "b": "版本：v3.0.0 · 自动判题：impor teach grade  \n\n每课先读目标与讲解，再改 starter。答案不是唯一解，只要标准输出一致即可通过。", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "第 1 课 · 第一行输出", "b": "目标：认识 print 与字符串\n\n讲解：print 会把参数按空格连接后输出；字符串用双引号包裹。", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "第 2 课 · 变量与算术", "b": "目标：声明变量并做四则运算\n\n讲解：var 声明变量；+ -  / 是四则运算，整数除法可用 div。", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "参考答案", "b": "var a = 7\nvar b = 5\nprint(\"和:\", a + b)\nprint(\"差:\", a - b)\nprint(\"积:\", a  b)", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "第 3 课 · 条件分支", "b": "目标：用 if 做分数分级\n\n讲解：if 条件后接缩进块；比较运算 ==  = <= 返回布尔值。", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "参考答案", "b": "var score = 85\nif score = 90\n    print(\"优秀\")\nif score < 90\n    print(\"继续加油\")", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "第 4 课 · 循环累加", "b": "目标：用 for 与 range 求和\n\n讲解：for x in range(1, 11) 会依次取 1 到 10；累加要用 var 保存。", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "参考答案", "b": "var total = 0\nfor i in range(1, 11)\n    total = total + i\nprint(\"总和:\", total)", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "第 5 课 · 数组", "b": "目标：创建数组、取长度、求和与最大值\n\n讲解：数组用 [ ]；len 取长度，arr[i] 取元素，sumarr / maxarr 做统计。", "c": "教程", "p": "docs/教学练习.md"}, {"d": "教学练习", "h": "参考答案", "b": "var data = [3, 1, 4, 1, 5]\nprint(\"长度:\", len(data))\nprint(\"总和:\", sumarr(data))\nprint(\"最大值:\", maxarr(data))", "c": "教程", "p": "docs/教学练习.md"}, {"d": "测试矩阵-3.0", "h": "Impor 3.0 测试矩阵", "b": "版本：3.0.0 · 2026-11-12\n\n 记录本版实际执行的验证。未执行项明确写「未验证」，不把设计当结果。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "1. 三端一致性", "b": "| 项目 | 命令 | 结果 |\n|---|---|---|\n| 全部 conformance | impor conformance --ci | 23/23 通过，rc=(0,0,0) |\n| 单用例 | impor conformance --only 01 | 通过 |\n| 桌面镜像（路径含空格与括号） | 在 Impor(I++) 3.0.0 内同上 | 23/23 通过 |\n| imporcargs.txt 恢复 | 跑完后读取 | 53 B，SHA256 F3044260…585FE9 |\n\n 本轮实测发现并修复：自举编译器读取 imporcargs.txt 时不能处理含空格的路径，桌面镜像目录 Impor(I++) 3.0.0 会让第三个后端直接 BUILDFAIL。现在 conformance 先把用例复制到无空格临时目录再编译，桌面镜像 23/23 通过。\n\n用例覆盖：算术、浮点、字符串拼接/重复/比较、Unicode、布尔、循环、函数、递归、数组读写、嵌套调用、整除取模、type、多参数输出、混合、struct、enum、switch/match。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "2. 类型与访问控制", "b": "| 场景 | 预期 | 实测 |\n|---|---|---|\n| var x: int = \"a\" | type-mismatch | 通过 |\n| func f(a: int) - str: return a | return-type | 通过 |\n| enum 少写成员 | match-exhaustive | 通过 |\n| 类外访问 private | AccessError | 通过 |\n| 子类访问父类 protected | 允许 | 通过 |\n| 子类访问父类 private | AccessError | 通过 |\n| 同文件静态访问检查 | access-private / access-protected | 通过 |\n| impor check 退出码 | 类型失败返回 1 | 已修复 impor.bat 早展开 %errorlevel% 的问题，实测 RC=1 |\n| 全仓 .impor 类型扫描 | 0 误报 | 0 issues（含 100+ 文件） |\n\n扫描修复了两个实现缺陷：walk 对非 AST 节点调用 vars() 崩溃；int 变量赋 float 被误报。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "3. 增量构建与性能", "b": "| 项目 | 结果 |\n|---|---|\n| 首次 impor build | 0.66 s（转译 0.07 / tcc 0.24） |\n| 命中缓存 | 0.05 s |\n| 再次命中 | 0.03–0.04 s |\n| 产物 | 约 100 KB 独立 exe |\n| --no-cache | 绕过缓存，强制全量 |\n\nimpor bench --gate 读取 benchmarks/gate.json，解释器 100 万循环墙钟上限 3400 ms；未在本轮重新跑完整基准。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "4. 教学", "b": "| 项目 | 结果 |\n|---|---|\n| 12 课答案运行 | 12/12 OK |\n| impor teach grade 1..12 | 12/12 通过 |\n| impor teach 课程表 | 12 条，排序正确 |\n| impor teach 3 --answer | 写出 lesson03answer.impor |", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "5. 包管理", "b": "用临时 impor.lock 构造 a→b/c、b→a 场景：\n\n| 项目 | 结果 |\n|---|---|\n| pkg graph | 树形输出，↺ 循环依赖 标记正确 |\n| pkg audit | 3 个未安装错误 + HTTP 源警告 + 缺哈希警告 |\n| audit 退出码 | 有「错误」返回 1，只有提示/警告返回 0 |\n\n空项目执行 pkg audit 返回「缺少 impor.lock」并退出 1。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "6. 编辑器与插件", "b": "| 项目 | 结果 |\n|---|---|\n| 项目质量检查 | 聚合 analyze + typecheck，最多 300 条，更新问题面板 |\n| 单文件类型诊断 | lintpane 已并入 |\n| 教学入口 | 命令面板「教学大纲（12 课）」 |\n| 插件未授权写入 | PermissionError |\n| 授权后写入 | 内容正确写入工作区 |\n| 越界写入 | PermissionError（commonpath 拒绝） |\n\nGUI 窗口只做了代码级/单元级验证，未在本轮人工打开窗口逐项点击。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.0", "h": "7. 单元测试", "b": "命令：\n\npython -X utf8 -m unittest discover -s tests -v\n\n结果：563 tests，477.6 s，9 failures，21 errors（修复 3 个与本版直接相关的用例后）。这些失败集中在历史测试，不是本版新增功能的入口：\n\n- testv29 / testv32 / 部分 testv42 / testv43 仍在测 v5.2 已删除的中文关键字与软别名（打印、输出、则、函数 等），与当前「纯英文关键字」设计冲突。\n- testv33 的 REPL 中文块测试同样基于已删除的中文关键字。\n- testlsp 两个用例的临时索引根为空（relpath 收到空路径），属于测试夹具问题。\n- testv42diag 期望调用栈包含 b（第N行），当前二元运算异常栈只记录 。\n- testv38.testselfhostclosure 调用完整 selfhostcheck.py，7.1 起该脚本未跑完（已知遗留）。\n\n本版修复并复测：\n\n- testlauncherwhitelistmatchescli：白名单补 dap/explain/doctor/teach/conformance/migrate-cn。\n- testv38.testversionmode：三个自举二进制版本串改为 3.0.0。\n- testv40 编辑器测试：适配渐进式启动，先 openpath 再断言标签数。\n\n结论：核心新功能验证通过；全量 unittest 尚未全绿，历史用例需单独清理，不能宣称「全部测试通过」。", "c": "测试", "p": "docs/测试矩阵-3.0.md"}, {"d": "测试矩阵-3.1", "h": "Impor 3.1 测试矩阵", "b": "版本：3.1.0 · 2026-11-13\n\n 记录本版实际执行的验证。未执行项明确写「未验证」，不把设计当结果。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "1. 三端一致性", "b": "| 项目 | 命令 | 结果 |\n|---|---|---|\n| 全部 conformance | impor conformance --ci | 23/23 通过，rc=(0,0,0) |\n| 单用例 | impor conformance --only 01 | 通过 |\n| 桌面镜像（路径含空格与括号） | 在 Impor(I++) 3.1.0 内同上 | 23/23 通过 |\n| imporcargs.txt 恢复 | 跑完后读取 | 53 B，SHA256 F3044260…585FE9 |\n\n 本轮实测发现并修复：自举编译器读取 imporcargs.txt 时不能处理含空格的路径，桌面镜像目录 Impor(I++) 3.1.0 会让第三个后端直接 BUILDFAIL。现在 conformance 先把用例复制到无空格临时目录再编译，桌面镜像 23/23 通过。\n\n用例覆盖：算术、浮点、字符串拼接/重复/比较、Unicode、布尔、循环、函数、递归、数组读写、嵌套调用、整除取模、type、多参数输出、混合、struct、enum、switch/match。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "2. 类型与访问控制", "b": "| 场景 | 预期 | 实测 |\n|---|---|---|\n| var x: int = \"a\" | type-mismatch | 通过 |\n| func f(a: int) - str: return a | return-type | 通过 |\n| enum 少写成员 | match-exhaustive | 通过 |\n| 类外访问 private | AccessError | 通过 |\n| 子类访问父类 protected | 允许 | 通过 |\n| 子类访问父类 private | AccessError | 通过 |\n| 同文件静态访问检查 | access-private / access-protected | 通过 |\n| impor check 退出码 | 类型失败返回 1 | 已修复 impor.bat 早展开 %errorlevel% 的问题，实测 RC=1 |\n| 全仓 .impor 类型扫描 | 0 误报 | 0 issues（含 100+ 文件） |\n\n扫描修复了两个实现缺陷：walk 对非 AST 节点调用 vars() 崩溃；int 变量赋 float 被误报。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "3. 增量构建与性能", "b": "| 项目 | 结果 |\n|---|---|\n| 首次 impor build | 0.66 s（转译 0.07 / tcc 0.24） |\n| 命中缓存 | 0.05 s |\n| 再次命中 | 0.03–0.04 s |\n| 产物 | 约 100 KB 独立 exe |\n| --no-cache | 绕过缓存，强制全量 |\n\nimpor bench --gate 读取 benchmarks/gate.json，解释器 100 万循环墙钟上限 3400 ms；未在本轮重新跑完整基准。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "4. 教学", "b": "| 项目 | 结果 |\n|---|---|\n| 12 课答案运行 | 12/12 OK |\n| impor teach grade 1..12 | 12/12 通过 |\n| impor teach 课程表 | 12 条，排序正确 |\n| impor teach 3 --answer | 写出 lesson03answer.impor |", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "5. 包管理", "b": "用临时 impor.lock 构造 a→b/c、b→a 场景：\n\n| 项目 | 结果 |\n|---|---|\n| pkg graph | 树形输出，↺ 循环依赖 标记正确 |\n| pkg audit | 3 个未安装错误 + HTTP 源警告 + 缺哈希警告 |\n| audit 退出码 | 有「错误」返回 1，只有提示/警告返回 0 |\n\n空项目执行 pkg audit 返回「缺少 impor.lock」并退出 1。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "6. 编辑器与插件", "b": "| 项目 | 结果 |\n|---|---|\n| 项目质量检查 | 聚合 analyze + typecheck，最多 300 条，更新问题面板 |\n| 单文件类型诊断 | lintpane 已并入 |\n| 教学入口 | 命令面板「教学大纲（12 课）」 |\n| 插件未授权写入 | PermissionError |\n| 授权后写入 | 内容正确写入工作区 |\n| 越界写入 | PermissionError（commonpath 拒绝） |\n\nGUI 窗口已用 3.11.5 解释器做窗口冒烟：打开示例、打开 UIA 桥接（原生 EDIT 句柄非空、写出 accessibility.json）、打开虚拟滚动只读标签、打开搜索替换面板、设置窗口、命令面板、依赖审计窗口；搜索替换的搜索→替换→撤销已在真实 Tk 主循环中跑通。其余窗口级逐项点击仍需人工确认。\n\nGUI 线程注意：搜索在后台线程执行，结果通过 after(0, ...) 回到 UI。验证脚本必须让 Tk 进入 mainloop()（再由定时器 quit），只调用 update() 的脚本不会正常派发后台线程回调，会把「正在扫描项目…」误判成产品假死。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "7. 本轮编辑器五项", "b": "| 项目 | 验证 | 结果 |\n|---|---|---|\n| 全词匹配 | selftestsearch.py：Foo 不命中 foobar | 通过 |\n| 两文件三处替换 | selftestsearch.py | 通过 |\n| 事务备份/撤销 | 事务目录生成、撤销恢复 | 通过 |\n| 正则反向引用 | \\1 替换 | 通过 |\n| 非法正则 | 报错不崩溃 | 通过 |\n| 文件依赖图 | selftestgraph.py：三文件、循环、未解析、孤立 | 通过 |\n| 依赖图窗口 | testgraphtree2.py：3 节点、循环/未解析、4 条审计、JSON 导出 | 通过 |\n| 设置快照 | selftestsync.py：不含 workspace/recent；newer/remote 合并 | 通过 |\n| 插件子进程 | selftestisolation.py：命令、格式化器、面板/主题事件、崩溃捕获 | 通过 |\n| 插件管理器隔离 | selftestmanagerisolation.py：真实 .impor/plugins 加载 | 通过 |\n| GUI 冒烟 | 窗口创建、UIA 原生控件、虚拟标签、搜索面板、设置/命令/审计窗口 | 通过 |\n| 搜索面板全链路 | testsearchui4.py：2 文件/4 处命中、勾选、替换、事务目录、撤销还原 | 通过 |\n| 虚拟滚动边界 | testvirtual.py：10000 行、500 行窗口、初始徽章、跳转 9000 行、换块 | 通过 |\n| 虚拟 pane 重载保护 | 批量替换/撤销跳过 virtualreadonly pane，避免全文覆盖窗口 | 通过（代码路径） |", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "测试矩阵-3.1", "h": "8. 单元测试", "b": "命令：\n\npython -X utf8 -m unittest discover -s tests -v\n\n结果：563 tests，477.6 s，9 failures，21 errors（修复 3 个与本版直接相关的用例后）。这些失败集中在历史测试，不是本版新增功能的入口：\n\n- testv29 / testv32 / 部分 testv42 / testv43 仍在测 v5.2 已删除的中文关键字与软别名（打印、输出、则、函数 等），与当前「纯英文关键字」设计冲突。\n- testv33 的 REPL 中文块测试同样基于已删除的中文关键字。\n- testlsp 两个用例的临时索引根为空（relpath 收到空路径），属于测试夹具问题。\n- testv42diag 期望调用栈包含 b（第N行），当前二元运算异常栈只记录 。\n- testv38.testselfhostclosure 调用完整 selfhostcheck.py，7.1 起该脚本未跑完（已知遗留）。\n\n本版修复并复测：\n\n- testlauncherwhitelistmatchescli：白名单补 dap/explain/doctor/teach/conformance/migrate-cn。\n- testv38.testversionmode：三个自举二进制版本串改为 3.1.0。\n- testv40 编辑器测试：适配渐进式启动，先 openpath 再断言标签数。\n\n结论：核心新功能验证通过；全量 unittest 尚未全绿，历史用例需单独清理，不能宣称「全部测试通过」。", "c": "测试", "p": "docs/测试矩阵-3.1.md"}, {"d": "编辑器-3.0", "h": "Impor Code Studio 3.0", "b": "版本：3.0.0 · 2026-11-12\n\n本版编辑器在 7.2 的渐进式启动、自动更新、项目设置、只读插件 API、Git、终端、智能提示与可访问性之上，补齐「项目级质量入口、教学入口、插件写权限」，并继续复用已有的项目索引、符号跳转、调用层级、重命名、提取函数、DAP、测试浏览器、多光标、折叠与 diff。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.0", "h": "项目质量检查", "b": "命令面板执行「项目质量检查（类型+lint）」：\n\n- 遍历工作区 .impor 文件，排除 .git、.imporrecovery、build、dist、nodemodules、pycache、.impor。\n- 每个文件先跑 analyze，再跑 typecheck.checksource。\n- 诊断进入「问题」面板，消息带错误码（如 type-mismatch、match-exhaustive、access-private），最多显示 300 条。\n- 同步更新状态栏错误/警告计数，并自动切到底部「问题」。\n\n单文件保存时也会把类型诊断并入 lintpane，因此打开文件即可看到可选类型、返回类型、枚举穷尽性与同文件访问控制问题。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.0", "h": "教学入口", "b": "- 命令面板「教学大纲（12 课）」打开 docs/教学大纲.md。\n- 命令行 impor teach 列出 12 课；impor teach 3 显示讲义与练习；impor teach 3 --exercise/--answer/--write 写出文件；impor teach grade 3 FILE 自动判题。\n- 练习、答案与教师讲义见 docs/教学练习.md、docs/教师讲义.md。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.0", "h": "插件写权限", "b": "插件 API 在 7.2 的只读能力基础上新增：\n\n- writefile(path, content)：写入工作区内文件。\n- writecurrent(content)：替换当前编辑器已保存文件内容。\n\n默认拒绝。授权方式二选一：\n\n{\n  \"pluginwriteallow\": [\"demo.py\", \"\"]\n}\n\n或环境变量：\n\nset IMPORPLUGINPERMISSIONS=write\n\n约束：\n\n- 未授权抛 PermissionError，错误消息说明如何授权。\n- 写入路径必须位于工作区内，commonpath 校验，阻止插件改系统文件。\n- 写入使用 UTF-8、\\n 换行。\n- 插件仍与编辑器同进程，只加载 .impor/plugins 与 ~/.imporstudio/plugins 下用户明确放置的脚本；独立进程隔离未实现。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.0", "h": "已有能力（7.2 起）", "b": "- 项目索引：ProjectIndex 增量按 mtime 更新，支持定义、引用、重命名编辑。\n- 符号跳转、调用层级、重命名、快速修复、提取变量/函数。\n- DAP 调试 UI、断点、条件断点、日志点、单步。\n- 测试浏览器、统一 diff、多光标、代码折叠。\n- 全项目搜索（Ctrl+Shift+F）、问题面板、命令面板、终端与任务模板。\n- 高对比主题、Ctrl+1..5 区域跳转、字号缩放、大文件可视行着色。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.0", "h": "验证方式", "b": "impor check examples\\demo01variables.impor\nimpor teach\nimpor teach grade 1 lesson01answer.impor\n\n编辑器窗口标题应为 Impor (I++) 3.0.0 · Code Studio。本项目没有自动化 GUI 测试，窗口级验证需人工打开确认。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.0", "h": "未完成", "b": "- 全项目搜索目前是「过滤 + 跳转」，尚无带预览的批量替换面板。\n- 百万行级虚拟滚动未单独实现；大文件模式只做可视行着色与阈值降级。\n- Windows UIA 屏幕阅读器全量适配未完成。\n- 设置同步（跨设备）与插件独立进程隔离未完成。", "c": "编辑器", "p": "docs/编辑器-3.0.md"}, {"d": "编辑器-3.1", "h": "Impor Code Studio 3.1", "b": "版本：3.1.0 · 2026-11-13\n\n本版在 3.0 的项目质量入口、教学入口与插件写权限之上，完成五项编辑器升级：全项目搜索与事务化批量替换、大文件虚拟滚动、项目依赖图与离线审计、Windows 屏幕阅读器语义桥接、设置同步与插件独立进程隔离。已有的项目索引、符号跳转、调用层级、重命名、提取函数、DAP、测试浏览器、多光标、折叠与 diff 全部保留。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "全项目搜索与批量替换", "b": "命令面板「全项目搜索与替换（预览/事务）」或 Ctrl+Shift+H 打开面板：\n\n- 支持正则、区分大小写、全词匹配。全词匹配使用 Unicode 标识符边界，Foo 不会命中 foobar，也不会因 \\b 对中文失效。\n- 按后缀扫描，结果按文件分组；每个文件可单独勾选，预览为 unified diff。\n- 「只替换勾选文件」在写入前建立 .imporrecovery/searchreplace//，含备份与 manifest.json；任一文件失败会按 manifest 反向回滚。\n- 撤销按钮还原整个事务，并刷新已打开且未脏的编辑器；虚拟滚动 pane 不参与整文件重载，避免把当前窗口写成全文。\n- 已知 BUG 已修复：忽略大小写/全词模式下替换串复用同一正则，且用函数返回字面替换，避免把 \\1 当反向引用；搜索完成时先勾选可读非脏文件，再按实际变化收敛，避免“一个文件都没勾选”；窗口级搜索→替换→撤销已在真实 Tk 主循环中跑通。\n\n纯逻辑在 impor/editorsearch.py，UI 在 impor/editorsearchui.py。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "大文件虚拟滚动", "b": "impor/editorvirtual.py 的 VirtualLargeFilePane 继承 EditorPane：\n\n- 内存保留完整行列表，Tk Text 只装入当前 3,000 行窗口；滚动超过 12% / 88% 时换块。\n- breadcrumb 持续显示「虚拟滚动 起-止 / 总行数 · 只读」，启动后不会被编辑器延迟初始化覆盖。\n- 行号显示绝对行号，不在窗口内重建全文。\n- 默认只读；点击 breadcrumb 可转完整编辑（整文件读入，超大文件仍可能卡顿）。\n- 打开超过 largefilekb（默认 2,000 KB）的文件时三选一：虚拟只读 / 完整编辑 / 取消。\n- 虚拟只读 pane 的保存会被拒绝并提示；gotoline 走 gotovirtualline。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "项目依赖图与离线审计", "b": "impor/editorgraph.py + impor/editorgraphui.py：\n\n- 文件依赖图解析 import / from，支持点号模块到 .impor 文件、包入口 pkg.impor、唯一 basename 回退。\n- 文件图扫描当前打开的工作区（不是安装根）；刷新带代次校验，快速连点不会重复插入旧结果。\n- 检测循环依赖、未解析导入、自导入、孤立文件、重复模块名。\n- 包依赖图复用 pkgmgr.dependencygraph，审计复用 pkgmgr.audit。\n- 三标签页「文件依赖 / 包依赖 / 审计」，双击节点打开文件，可导出 JSON。\n- 命令面板「项目依赖图」「项目依赖与离线审计」。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "屏幕阅读器与键盘", "b": "- impor/editoruia.py 生成当前文件、光标行列、选区、诊断、当前行、可见文本、只读/大文件状态的语义 JSON，写到 .imporrecovery/accessibility.json。\n- UIABridge 在 Tk 窗口内嵌原生 Win32 EDIT 控件（系统自带 UIA/MSAA provider），每 900ms 刷新；原生控件失败时回退到 Tk 文本。\n- Ctrl+Alt+A 或设置中的「启动时打开屏幕阅读器桥接」打开。\n- 边界：Tk 8.6 自绘 Canvas/Text 没有自定义 UIA provider；可访问的是“语义桥接窗口 + 快捷键路径”，不是每个自绘像素。第三方 uiautomation、pywinauto、comtypes 在当前环境未安装，因此使用 ctypes 原生控件而非第三方库。\n- 键盘路径保留 Ctrl+1..5 区域跳转、命令面板、字号缩放。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "设置同步", "b": "impor/editorsync.py：\n\n- 快照 schema=1，文件名 impor-studio-settings.json；只导出可移植偏好（主题、字体、缩进、换行、缩略图、自动保存、格式化、大文件阈值、插件隔离、屏幕阅读器），不含 workspace、recent、recentcommands 等机器相关字段。\n- 默认目录 ~/.imporstudio/sync，可用 IMPORSETTINGSSYNC 覆盖；指向 OneDrive/坚果云等云盘目录即可跨设备。\n- 合并策略：newer（较新者优先，默认）、local（本地优先）、remote（远端优先）。\n- 设置窗口提供启用开关、目录选择、策略下拉、「立即上传」「立即拉取」；保存设置时按开关自动 push。\n- 启动时若启用同步且快照存在，自动 pull 后再应用主题/字体等偏好。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "插件独立进程隔离", "b": "impor/pluginhost.py + impor/studioext.py：\n\n- 默认每个插件在独立 Python 子进程中加载与执行，通过 JSON 行协议与编辑器通信；插件崩溃/死循环不再拖垮编辑器。\n- 命令、格式化器、主题、状态项通过 RPC 代理；文件读写、当前文本、Toast 由父进程代理。\n- 写权限仍由父进程校验：pluginwriteallow 或 IMPORPLUGINPERMISSIONS；写入路径限制在工作区内。\n- 面板 builder 不跨进程执行：隔离模式下面板显示安全占位说明。需要同进程面板的插件可在文件头写  impor-plugin: inproc 显式退回同进程（不推荐）。\n- 设置项「插件独立进程隔离（重启生效）」可关闭。边界：这是进程隔离，不是 OS 沙箱；插件仍以当前用户身份运行，强安全边界请用受限账户/容器。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "验证方式", "b": "impor check examples\\demo01variables.impor\nimpor teach\nimpor bench\n\n纯逻辑自测：python selftestsearch.py、selftestgraph.py、selftestsync.py、selftestisolation.py、selftestmanagerisolation.py。GUI 窗口级验证仍需人工打开确认（项目没有自动化 GUI 测试）。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.1", "h": "已知边界", "b": "- 虚拟滚动默认只读；转完整编辑会整文件读入，超大文件可能卡顿。\n- 原生 EDIT 桥接只朗读语义快照，不把自绘控件逐个映射为 UIA 元素。\n- 设置同步是文件级同步；同一秒内两台设备同时写同一目录时，后写覆盖先写，需靠云盘版本历史恢复。\n- 插件隔离不阻止插件直接 open() 系统文件；写代理只约束通过 API 的写操作。", "c": "编辑器", "p": "docs/编辑器-3.1.md"}, {"d": "编辑器-3.2.1", "h": "1. 全项目安全重构", "b": "四个入口，统一“先预览 diff、再写入、可一键撤销”：\n\n- 重命名符号：renamesymbol() → showrenamepreview()；符号索引给出跨文件改动，预览后 applyrename()。\n- 提取变量 / 提取函数：计算完整 after 文本，走 previewtextchange()；绿色 +、红色 -，点「应用修改」才写入。\n- 移动 / 重命名文件：moveprojectfile() 选择目标路径，校验必须在工作区内且不冲突；正则改写所有 .impor 的 from|import ，聚合 diff 预览；应用时先备份，再写引用、os.rename，失败回滚。\n- 撤销：undorefactor() 恢复文件内容，并按 moves 把移动过的文件移回原位。\n\n边界：移动文件只改 from|import ，字符串里的路径、包重定向、动态导入不在自动改写范围。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.1", "h": "2. 测试与调试一体化", "b": "- 测试失败内联：解析 file.impor:行 或“第 N 行”，对已打开 pane 加 testfail 红字下划线，行号栏画 ✖；错误明细显示在底部。\n- 只重跑失败：rerunfailedtests() 复用失败集合，不跑全量。\n- 覆盖率视图：showcoverage() 扫描工作区非测试 .impor 的 func（跳过 main），按测试文件中的调用/引用计算覆盖率；Treeview 列出状态/函数/文件/行，双击跳转。注意这是静态调用近似，不是运行时行覆盖。\n- 断点持久化：breakpoints 随会话保存/恢复，togglebreakpoint() 与行号栏同步。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.1", "h": "3. 大文件分块可编辑", "b": "VirtualLargeFilePane 从“只读浏览”升级为“可编辑窗口”：\n\n- 完整行列表留在内存，Tk Text 只装当前窗口（默认 3,000 行）；窗口内 state=normal、undo=True。\n- 编辑后 450ms 防抖 flushvirtual() 回写完整行列表；换块前强制回写。\n- Ctrl+S 先 flushvirtual()，再 getcontent() 取整文件，写同目录临时文件后 os.replace 原子替换。\n- 保存后大文件跳过全量 AST/lint，避免 2 MB+ 文件把 UI 卡死；问题面板提示“大文件：跳过全量诊断”。\n- 徽章：分块编辑 x-y / z 行 · 逐块自动回写（Ctrl+S 保存整文件），点击可转完整编辑。\n\n实测：3,200 行 / 2.4 MB 文件，在窗口首行插入一行后保存，磁盘行数 3200 → 3201，内容包含插入标记。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.1", "h": "4. 插件隔离补全", "b": "- 崩溃自动重启：IsolatedPluginProcess.restart() 清空事件/响应队列后重启；连续 3 次失败停止；callwithrestart() 失败自动重启并重试一次。\n- 权限清单：插件头部  impor-permissions: read,write,net,process；默认 read=True, write=False, net=False, process=False。\n- 隔离面板宿主：isolatedpanel() 显示插件标题、隔离进程说明、权限清单、运行状态、重启次数、写权限，并提供「重启插件进程」。\n- 文件权限：readfile 解析真实路径后必须落在工作区内；writefile / writecurrent 走 security.safewrite 并写审计。\n\n边界：这是进程隔离，不是 OS 沙箱；没有 AppContainer / Job Object / 网络隔离。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.1", "h": "5. UIA：可聚焦控件树 + 高对比", "b": "- editoruia.py 从“朗读一段文本”升级为可操作控件树：左侧 Treeview 按 文件/编辑/运行/视图/帮助 分组列出命令（保存、打开、快速打开、命令面板、查找、跳行、重命名、提取变量/函数、运行、测试、重跑失败、覆盖率、构建 EXE、高对比/深色、编辑器/资源管理器/底部面板焦点、教学、关于）。\n- 选中后 Enter 或双击 invokecontrol() 真正执行命令，并在右侧状态栏回显；右侧保留原生 EDIT 宿主供屏幕阅读器读取编辑区。\n- 顶部「高对比主题」按钮直接 applytheme(\"hc\")。\n- 边界：控件树是 Tk Treeview 的语义映射，不是逐控件 UI Automation provider；对读屏软件可用，但不具备完整 UIA 控件模式。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.1", "h": "6. 索引与搜索虚拟列表", "b": "- 符号索引 ProjectIndex.refresh(force=False) 按 mtime 增量刷新，跳过 SKIPDIRS；命令面板「重建符号索引」强制全量。\n- 搜索结果虚拟列表：首次渲染 200 条，滚动到 yview()[1]  0.92 自动追加下一批；状态栏显示“已显示 x / y 个文件，滚动加载更多”。\n- 当前只有滚动触发加载，没有单独的「加载更多」按钮。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.1", "h": "7. 安全中心", "b": "命令面板「安全中心（威胁模型 / 审计）」：\n\n- 显示安全版本、已启用防护、信任边界、残余风险、最近 20 条审计。\n- 启动时 hardenprocess() 清理 PYTHONINSPECT / PYTHONSTARTUP / PYTHONPATH；启动、保存、插件写入写 .impor/audit.log（JSONL）。\n- 保存走原子写；插件写走 safewrite + 工作区围栏。", "c": "编辑器", "p": "docs/编辑器-3.2.1.md"}, {"d": "编辑器-3.2.2", "h": "Impor 编辑器 3.2.2：五项运行时闭环", "b": "本版只升级编辑器，语言、三端与安全策略沿用 3.2.1。五项都接真实运行路径，并保留可复现的测试证据。", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.2", "h": "1. 运行时行覆盖率", "b": "旧实现用“测试文件是否引用函数”做静态近似，无法回答“这一行到底跑没跑”。3.2.2 改为解释器逐语句统计。\n\n- impor/interpreter.py：Interpreter.init 新增 coverageenabled、coverage、coveragehits；execstmt() 在开关打开时按 node.lineno 累加；enablecoverage(True) 重置计数，coveragesnapshot() 返回 {行号: 命中次数}。\n- impor/editor.py：runcode(src=None, coverage=False) 把覆盖开关贯通到异步 worker 与同步执行；异步 worker 完成后发 (\"coverage\", (path, snapshot))，pollqueue 收下并写入 lastcoverage。\n- 视图：coverageexeclines(src) 用 AST 语句节点行做分母；showcoverage() 显示“行 / 命中 / 状态 / 源码”，双击跳转；按钮“运行并统计覆盖率”“清空数据”。\n\n实测（t322.json / gui322.json）：\n\n- 可执行行 [2,3,4,6,7,9]，命中 8 次。\n- GUI 视图 6 行，标签 行覆盖率 100.0%（6 / 6 可执行行）· 解释器逐语句命中。\n- 首行 [\"2\",\"1\",\"已执行\",\"var total = 0\"]。\n\n边界：只统计当前文件；表达式不单独计行；解释器路径有效，C 产物不产出覆盖率。", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.2", "h": "2. 插件面板跨进程 builder", "b": "3.2.1 的隔离进程只有一个“占位面板”，插件没法声明自己的界面。3.2.2 把 builder 放到子进程执行，父进程只收 UI 描述。\n\n- impor/pluginhost.py：UINode / UIValue / UIBuilder 记录控件类型、属性、布局与父子层级；命令注册为 actN，存进 UIBuilder.actions；collectactions() 返回 {id: callable}。\n- registerpanel(title, builder) 在子进程执行 builder，异常时返回“面板构建失败”label；成功后发 panel 事件，载荷为 {title, ui}。\n- installtkshim() 在子进程 import 插件前替换 tkinter 常用控件为转发到 UINode 的代理，旧插件 tk.Label(frame, ...) 写法无需改写。\n- 子进程主循环与 request 都处理 op == \"panelaction\"；父进程请求使用负数 id，与子进程代理请求的正数 id 分离。\n- impor/studioext.py：isolatedpanel(title, proc, ui) 按描述递归渲染 frame / labelframe / label / button / entry / text / checkbutton / separator / tree；按钮点击调用 proc.callwithrestart(\"panelaction\", {\"name\": action})。\n\n实测（plugin322.json）：\n\n- started=true、panelcount=1。\n- UI 三层节点：label / label / button；按钮文本“点我”。\n- actions=[\"act1\"]，动作调用成功（handler 返回 None）。\n\n边界：控件上限 240 个、层级上限 8 层；只支持上述控件；父进程不执行插件代码，插件仍受 3.2.1 的 audit hook 权限约束。", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.2", "h": "3. 索引与搜索后台化", "b": "- impor/symbolindex.py：ProjectIndex 增加 threading.RLock()；refresh、updatetext、symbols、definition、references、renameedits、completion、stats 全部加锁，刷新与读取不再竞争。\n- impor/editor.py：refreshindexasync(ondone=None, force=False) 用 indexgen 合并请求，后台线程刷新，root.after(0, finish) 回主线程；启动与 openworkspacepath() 都改走异步。\n- impor/editorsearch.py：searchproject(..., shouldcancel=None) 每处理一个文件前检查取消，已扫结果保留。\n- impor/editorsearchui.py：后台线程 + searchtoken 代次 + threading.Event；新增“取消”“加载更多”；过期结果按 token 丢弃；取消后状态显示“已取消，保留已扫描结果”。\n\n实测：\n\n- index322.json：4 线程并发刷新/查询 6 轮，threaderrors=[]，threadstats=[120,241,840]；异步 asyncready=true、asyncfiles=120。\n- search322.json：取消后 busy=false，status=\"已取消，保留已扫描结果；25 个文件 / 75 处…\"，rows=25。\n- search322page.json：首屏 200 行、总数 260；“加载更多”后 260 行，按钮转为 disabled。\n\n边界：索引仍是项目级，跨项目符号不解析；搜索取消是协作式，正在解析的单个文件会先完成。", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.2", "h": "4. UIA 逐控件 provider", "b": "- impor/editoruia.py：ControlProvider 带 id/name/role/group/accelerator/widget/invoke/state/description，方法 state()、focusable()、focus()、invoke()、bounds()、todict()。\n- buildcontrolproviders(app) 覆盖 editor.text、explorer.tree、problems.tree、output.text、test.tree、task.entry、memory.text、palette.input、search.dialog、run.current、run.tests、run.coverage、file.save、file.open、view.hc、a11y.bridge，共 16 个。\n- buildsnapshot() 增加 controls；refresh() 额外写 controlproviders.json，与 accessibility.json 并列。\n- 控件树 columns=(\"role\",\"state\",\"accel\")、show=\"tree headings\"；按 provider.group 分组，iid 用稳定 id；状态栏显示名称/角色/状态/快捷键；Control+Tab / Shift+Tab 循环焦点，Enter 执行。\n\n实测（uia322.json / gui322.json）：\n\n- ok=true，8 个分组：编辑器 / 导航 / 底部面板 / 命令 / 运行 / 文件 / 视图 / 辅助功能。\n- 16 个 provider；首控件 [\"文档\",\"已保存\",\"Ctrl+1\"]。\n- 焦点状态“编辑器正文 · 角色 文档 · 状态 已保存 · Ctrl+1”。\n\n边界：覆盖主入口，自定义插件控件尚未自动注册；provider 是应用层语义，不替代原生 UIA 控件。", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.2", "h": "5. 诊断 Quick Fix 扩面", "b": "- impor/diagnostics.py：新增 7 条规则——缺少 return、match 不穷尽、重复定义、类型不匹配、await/async、ADT 载荷数量、FFI 签名；ISSUEFIX 增加 type-mismatch、enum-nonexhaustive、duplicate-def、private-access、missing-return、async-without-await。\n- impor/editor.py：explainproblem() 用 [E\\d{4}] 提取错误码，显示标题、原文、为什么、怎么修、最小示例。\n- quickfixsmart()：关键字拼写（fuc / funciton / retrun / whlie / els / improt / calss / ture / fasle / nul）、未声明赋值补 var、条件单个 = 改 ==、括号/方括号/大括号补齐、单双引号补齐、未使用变量删除。\n- quickfixall()：不可达语句删除、文件末尾未闭合大括号补齐；前后 editseparator()，提示可按 Ctrl+Z 撤销。\n\n实测（fix322.json）：\n\n- fuc add(a, b) { 修复为 func add(a, b) {。\n- 解释窗口包含“原文 / 为什么 / 怎么修 / 最小示例”，正文含 NameError: 名字 nope 未定义。\n\n边界：修复仍以单行/局部为主，复杂控制流需人工确认；一次 Ctrl+Z 只撤一个修复单元。", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.2", "h": "验收命令", "b": "impor version\nD:\\编程软件\\python3.11\\python.exe t322.py\nD:\\编程软件\\python3.11\\python.exe plugin322.py\nD:\\编程软件\\python3.11\\python.exe index322.py\nD:\\编程软件\\python3.11\\python.exe search322page.py\nD:\\编程软件\\python3.11\\python.exe fix322gui.py", "c": "编辑器", "p": "docs/编辑器-3.2.2.md"}, {"d": "编辑器-3.2.3", "h": "Impor 编辑器 3.2.3：五项编辑器升级", "b": "本版只升级编辑器，语言、三端与安全策略沿用 3.2.2。五项全部进入 3.2.3，不拆版本。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "1. 符号级语义高亮", "b": "旧版只有关键字、内建、字符串、数字、注释和启发式函数/类名着色，变量、参数、模块、字段无法区分。3.2.3 先做一遍轻量符号表，再按符号类别着色。\n\n- impor/editor.py 顶部新增 SEMDECL、SEMFOR、SEMIMPORT、SEMFROM、SEMFUNC 与纯函数 semanticsymbolmap(src)。\n- 映射优先级：参数 5  局部变量 4  函数 3  类/结构/异常 2  模块 1；同名符号后出现的高优先级声明覆盖低优先级。\n- 支持 func/def 参数、var/const/let/set、class/exception/struct、for、import、from ... import ... as ...。\n- THEME 三套主题新增 semvar、semparam、semfield、semmodule；对应 Tk tag 加入 configuretags()。\n- highlight() 在关键字/内建之后、启发式 func/cls/decl 之前应用：变量→semvar、参数→semparam、模块→semmodule、函数→func、类/结构→cls；obj.field 且非调用的字段→semfield。\n- true/false/null/nil/self/this/super 仍走原有 sem 分支。\n\n实测（gui323.json）：示例源码产生 semvar=5、semparam=4、semmodule=1、func=3、cls=1，符号表 8 项。\n\n边界：字段按 obj.field 形式推断，尚未从 AST 精确提取字段声明；枚举成员暂与普通变量同色；同名符号跨函数共享同一类别，不做作用域隔离。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "2. 异步防抖诊断", "b": "旧版每次修改后同步解析整文件，输入时主线程会被大文件拖住。3.2.3 把诊断放到后台线程，并用代次丢弃过期结果。\n\n- EditorPane 新增 diagjob、diaggen、diagqueue、diagthread、diagpolljob、problemmarks、lintpayload。\n- onmodified() 在 90ms 高亮调度之后调用 schedulediagnostics()；300ms 防抖，受 app.asyncdiagnostics 开关控制。\n- startdiagnostics() 抓取当前文本、stripheader、计算 header offset，递增 diaggen，启动 daemon 线程；worker 只调用 App.collectlint(src, path)，结果写入 queue.Queue，不跨线程碰 Tk。\n- polldiagnostics() 在主线程每 150ms 排空队列，只应用最新 gen 的结果；线程存活或队列未空时继续轮询。\n- App.collectlint 是纯计算：Parser(tokenize(...))、analyze()、stylelint()、typecheck.checksource()，返回 (issues, error)。\n- App.applylint 把结果写入 pane 自己的 problemmarks 与 lintpayload；只有当前 pane 才刷新问题面板与错误/警告计数。切换标签时 selectpane 重放该 pane 的诊断，面板不会串文件。\n- lintpane 保留同步入口，保存/显式检查时调用，并递增代次作废在途异步结果。\n\n实测（gui323.json）：插入 func broken( 后 300ms 防抖触发，pane 收到 1 条错误标记，面板显示语法错误；当前 pane 切换后仍保留自己的标记。\n\n边界：防抖后仍解析整文件，不是增量 AST；超大文件建议关闭“异步诊断”或等待解析；后台线程只做纯计算，插件/UI 操作不进入 worker。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "3. 覆盖率行号栏内联", "b": "3.2.2 的覆盖率只在独立 Treeview 里看，编辑时看不到行状态。3.2.3 把覆盖率画进行号栏。\n\n- redrawlineno() 增加两段：诊断标记（错误红色下划线、警告黄色下划线，读取 pane 自己的 problemmarks）与覆盖率条（x=3..5，绿色=命中、红色=可执行但未命中）。\n- 覆盖率条仅在当前 pane 路径与 app.coveragetarget 一致时显示。\n- App.coverageexec、App.coverageoffset 新增；异步 payload 从 (path, snapshot) 扩展为 (path, snapshot, execlines, offset)，pollqueue 兼容旧三元组。\n- worker 用 stripheader 后的正文计算可执行行；header 偏移随 payload 回传，行号栏与 Treeview 都按显示行号对齐。\n- showcoverage() 对可执行行和命中行统一加 offset，修复 header 行导致的错位；新增“跳下一个未覆盖”按钮，nextuncovered() 定位到下一个未命中可执行行。\n\n实测（gui323.json）：带 header 的示例运行后 lastcoverage 有数据，coverageexec=7 行、coverageoffset=1，行号栏出现覆盖率条；“跳下一个未覆盖”跳到第 2 行。\n\n边界：只覆盖解释器路径，C 产物不产覆盖率；只显示当前文件；表达式不单独计行；折叠/虚拟滚动时只画可视行。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "4. Git 三方合并编辑器", "b": "旧版冲突入口只能打开原文件看标记。3.2.3 提供 base / ours / theirs 三栏与逐块接受。\n\n- splitconflictmarkers(text) 支持 merge 与 diff3 标记；返回 segments（普通字符串或 hunk dict）与 hunks；未闭合标记按普通文本保留，避免保存丢内容。\n- gitconflicts() 双击行为从“打开原文件”改为 openconflictmerge(path, repopath)。\n- App.gitmergetext(path)：git show :2/:1/:3 取 ours/base/theirs，写临时文件后执行 git merge-file -p --diff3 -L ours -L base -L theirs ours base theirs；returncode 0/1 都接受（1 表示有冲突）。\n- openconflictmerge：1240×780 窗口；左侧冲突块列表；右侧 BASE / OURS / THEIRS 三栏只读 Text；下方合并结果预览。\n- 逐 hunk 按钮：采用 OURS、采用 THEIRS、采用 BASE、保留双方；选择后列表标记“已解决”。\n- 保存前检查未解决数量；全部解决后用 Parser(tokenize(stripheader(text))) 做语法校验，失败中止保存。\n- 原子写回：先写 path + \".impor-merge.tmp\"，再 os.replace。\n- 两个保存入口：“保存工作区”和“保存并 git add”；后者执行 git add -- repopath。\n- 保存后刷新已打开 pane 内容、重置 modified 标记并重新高亮。\n- 命令面板新增“Git 三方合并”入口。\n\n实测：git323.json 用临时 Git 仓库制造真实冲突，gitmergetext 返回含  theirs 的 diff3 文本；gui323.json 中合并窗口成功构建 10 个 Text 控件（三栏 + 预览 + 列表等）。\n\n边界：依赖本机 git（shutil.which 或 D:\\Git\\cmd\\git.exe）；只处理当前仓库内的路径；语法校验只保证能解析，不保证语义正确；保存并 git add 默认不提交。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "5. 插件管理器", "b": "旧版插件只能靠项目设置或手放目录，启停/卸载/版本信息没有统一入口。3.2.3 增加本地插件管理器。\n\n- impor/studioext.py 的 PluginManager 新增：\n  - homeroot() → ~/.imporstudio/plugins。\n  - statepath() → ~/.imporstudio/pluginsstate.json；readstate / writestate。\n  - isenabled(path) / setenabled(path, enabled)。\n  - iterpluginfiles(root)：根级 .py + 一级子目录的 plugin.py / main.py / init.py，或子目录唯一 .py。\n  - discover()：遍历 roots() 去重。\n  - meta(path)：读取  impor-name、 impor-version、 impor-description、 impor-permissions，也支持同目录 plugin.json 的 name/version/description。\n  - installfolder(src)：单文件复制到 home root；文件夹复制为 home/，重名追加时间戳；无插件文件则回滚并抛错。\n  - installzip(zippath)：先做 zip 路径越界检查，再解压；单目录安装目录，根级 .py 直接复制到 home root。\n  - uninstall(path)：只允许删除插件根内路径；单文件删文件，包内文件删其父目录。\n  - reload()：shutdown 隔离进程、清空 plugins/commands/panels/statusitems/themes/formatters/errors、重置 loaded 后重新 load()。\n- load() 改为基于 discover()，跳过 isenabled=False 的插件。\n- editor.py 新增 App.showpluginmanager()：980×620 窗口；Treeview 列“状态 / 名称 / 版本 / 权限 / 路径”；按钮“安装文件夹、安装 ZIP、启用/禁用、重新加载、卸载、关闭”；详情区显示描述、读/写/网络/子进程权限、声明列表、路径；双击行切换启用状态；卸载前确认。\n- 安装/卸载后自动 reload()，启停即时生效；命令面板新增“插件管理器”。\n\n实测（gui323.json）：临时插件目录安装后管理器列表 1 行，名称 Demo323、版本 3.2.3、权限 read、write；tests/testv323.py 覆盖 installfolder / meta / 启停 / uninstall / installzip / zip 路径穿越拒绝。\n\n边界：只做本地文件夹 / ZIP 安装，不含在线市场；in-proc 插件无法真正卸载已导入模块，reload() 清空注册表后重新加载；隔离插件会 stop 后重启；安装文件夹会整包复制，可能带入无关文件。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "测试与证据", "b": "- python -m unittest tests.testv323 -v：10 项全部通过（0.128s），输出见 tests/v323test.txt。\n- python -m pycompile impor\\editor.py impor\\studioext.py：通过。\n- gui323.py → gui323.json：真实 Tk 验证语义高亮、异步诊断、覆盖率行号栏、插件管理器、三方合并窗口。\n- git323.py → git323.json：真实 Git 冲突与 git merge-file --diff3 数据路径。\n- 版本号五处：Impor.py、impor/init.py、pyproject.toml、vscode-impor/package.json、bootstrap/imporc.impor，均为 3.2.3。\n- python -m unittest tests.testv38.TestImporcClass.testversionmode -v：通过（0.141s），imporc.exe 版本模式返回 3.2.3。\n- 全量 python -m unittest discover -s tests -v：573 项，23 failures / 22 errors / 4 skipped，属历史遗留测试与当前语言策略冲突，详见 tests/all323.txt；本版新增 testv323 10 项全绿。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "编辑器-3.2.3", "h": "构建与桌面同步", "b": "- Impor-3.2.3-Windows-x64.zip 与 vscode-impor-3.2.3.vsix 已生成在桌面 总Impor文件；最终大小与 SHA256 见同目录 Impor 3.2.3 发布说明.md 与仓库 build323.json。\n- ZIP 内 Impor.py、impor/init.py、vscode-impor/package.json 均为 3.2.3；site/update.json 的 VSIX 哈希与实际文件一致；包内官网为轻量版，版本 3.2.3。\n- 桌面 Impor(I++) 3.2.3\\ 解压即用，python Impor.py version 实测输出 Impor (I++) 3.2.3，C 后端与自举编译器均可用。\n- 3.2.2 目录、ZIP、VSIX 保留，未删除。", "c": "编辑器", "p": "docs/编辑器-3.2.3.md"}, {"d": "语言-3.0", "h": "Impor 3.0 语言与工具链", "b": "版本：3.0.0 · 2026-11-12\n\n 本版把「语言可信、工具链可验证」落到可运行代码：可选类型标注、返回类型检查、枚举穷尽性、private/protected 访问控制、增量构建、impor conformance 门禁与依赖审计。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "1. 可选类型标注", "b": "变量、参数和返回值可以写类型；类型标注是可选的，不改变运行时动态语义，只在 impor check / 编辑器诊断中做静态检查。\n\nvar count: int = 3\nvar name: str = \"Impor\"\nvar ratio: float = 0.75\nvar maybe: int? = null\n\nfunc add(a: int, b: int) - int\n    return a + b\n\n规则：\n\n- int / float 同属数值，允许双向赋值；int 赋 float 不再误报。\n- str / string / 文本 互为别名；bool / boolean 同理。\n- T? 表示可空，null / nil / none 可赋给可空类型；非可空类型拒绝 null。\n- any / ? 跳过检查，用于渐进迁移。\n- 返回类型与实际 return 值不一致报 return-type；变量赋错类型报 type-mismatch。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "2. 枚举穷尽性", "b": "match 没有 else / default / 绑定通配分支时，类型检查要求覆盖枚举全部成员：\n\nenum Color { RED, GREEN, BLUE }\n\nfunc label(c)\n    match c\n        case Color.RED:\n            return \"红\"\n        case Color.GREEN:\n            return \"绿\"\n        case Color.BLUE:\n            return \"蓝\"\n\n少写一个成员会得到 match-exhaustive 缺少 BLUE。绑定模式 case v: 与  视为兜底，不再要求穷尽。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "3. `private` / `protected`", "b": "访问控制同时做两层：\n\n- 解释器运行时：外部读取 private / protected 成员抛 AccessError，消息为中文并带成员名。\n- 同文件静态检查：impor check 报 access-private / access-protected，在运行前就能定位。\n\nclass Box\n    private var secret: str = \"hidden\"\n    protected var shared: int = 1\n\n    def getsecret()\n        return self.secret       // 类内允许\n\nclass Child(Box)\n    def readshared()\n        return self.shared       // 子类允许 protected\n\nvar b = new Box()\n// b.secret                       // AccessError / access-private\n\n边界：跨文件访问控制尚未做全局分析；当前静态检查覆盖同一文件，运行时检查覆盖所有文件。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "4. 增量构建", "b": "impor build 默认启用构建缓存，缓存位于 ~/.impor/build-cache.json。缓存键包含：\n\n- 源码 UTF-8 内容\n- Impor 版本\n- 输入、输出绝对路径\n- TCC 的 mtime 与大小\n- 被导入 .impor 依赖的内容\n\n命中且输出文件 sha256 / 大小一致时，跳过转译与 TCC。强制全量：\n\nimpor build hello.impor -o hello.exe --no-cache\n\n实测同一文件：首次 0.66 s，第二次 0.05 s，第三次 0.03 s（输出 100 KB，Windows + TCC）。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "5. 一致性门禁", "b": "impor conformance            :: 跑全部用例\nimpor conformance --ci       :: CI 模式，失败退出非零\nimpor conformance --only 01  :: 只跑 01 开头用例\nimpor conformance --json     :: 机器可读结果\n\nrunner 会在运行 imporc 前保存 imporcargs.txt 原字节，结束后恢复，避免测试污染自举参数。21+ 个用例覆盖算术、字符串、数组、字典、类、继承、match、异常、闭包等。\n\n性能门槛：\n\nimpor bench --gate\n\n读取 benchmarks/gate.json 的 interpreterloopmaxms，超标即返回非零。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "6. 依赖图与审计", "b": "impor pkg graph    :: 从 impor.lock 打印依赖树，标记循环与未安装\nimpor pkg audit    :: 缺失 lock、版本/哈希不一致、明文 HTTP 源、缺哈希、requires 缺失\n\naudit 有「错误」退出 1，只有提示/警告退出 0，适合放进 CI。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "7. 编辑器与教学入口", "b": "- 项目质量检查：遍历工作区 .impor，聚合 lint 与类型诊断到「问题」面板，最多 300 条。\n- 教学大纲（12 课）：打开 docs/教学大纲.md；命令行 impor teach 提供可判题版本。\n- 插件写 API：writefile(path, content) / writecurrent(content)，默认拒绝，需在 .impor/settings.json 的 pluginwriteallow 授权，路径限制在工作区。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.0", "h": "8. 本版未完成（明确边界）", "b": "- 带载荷 ADT（Option / Result 的 Some(value) / Ok(value) 构造与解构）尚未实现；当前 enum 仍是整型常量枚举。\n- async/await 与最小并发运行时未实现，仍为保留字。\n- C 后端与自举对 JSON、正则、lambda 的覆盖未补齐；解释器可用，跨后端一致性只保证 conformance 现有用例。\n- 增量缓存键未包含 transpiler.py / ctrans.py 自身内容；修改后端代码后请用 --no-cache。\n- 跨文件访问控制、UIA 屏幕阅读器全量适配、插件独立进程隔离未完成。", "c": "语言", "p": "docs/语言-3.0.md"}, {"d": "语言-3.1", "h": "Impor 3.1 语言与工具链", "b": "版本：3.1.0 · 2026-11-13\n\n 本版把「语言可信、工具链可验证」落到可运行代码：可选类型标注、返回类型检查、枚举穷尽性、private/protected 访问控制、增量构建、impor conformance 门禁与依赖审计。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "1. 可选类型标注", "b": "变量、参数和返回值可以写类型；类型标注是可选的，不改变运行时动态语义，只在 impor check / 编辑器诊断中做静态检查。\n\nvar count: int = 3\nvar name: str = \"Impor\"\nvar ratio: float = 0.75\nvar maybe: int? = null\n\nfunc add(a: int, b: int) - int\n    return a + b\n\n规则：\n\n- int / float 同属数值，允许双向赋值；int 赋 float 不再误报。\n- str / string / 文本 互为别名；bool / boolean 同理。\n- T? 表示可空，null / nil / none 可赋给可空类型；非可空类型拒绝 null。\n- any / ? 跳过检查，用于渐进迁移。\n- 返回类型与实际 return 值不一致报 return-type；变量赋错类型报 type-mismatch。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "2. 枚举穷尽性", "b": "match 没有 else / default / 绑定通配分支时，类型检查要求覆盖枚举全部成员：\n\nenum Color { RED, GREEN, BLUE }\n\nfunc label(c)\n    match c\n        case Color.RED:\n            return \"红\"\n        case Color.GREEN:\n            return \"绿\"\n        case Color.BLUE:\n            return \"蓝\"\n\n少写一个成员会得到 match-exhaustive 缺少 BLUE。绑定模式 case v: 与  视为兜底，不再要求穷尽。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "3. `private` / `protected`", "b": "访问控制同时做两层：\n\n- 解释器运行时：外部读取 private / protected 成员抛 AccessError，消息为中文并带成员名。\n- 同文件静态检查：impor check 报 access-private / access-protected，在运行前就能定位。\n\nclass Box\n    private var secret: str = \"hidden\"\n    protected var shared: int = 1\n\n    def getsecret()\n        return self.secret       // 类内允许\n\nclass Child(Box)\n    def readshared()\n        return self.shared       // 子类允许 protected\n\nvar b = new Box()\n// b.secret                       // AccessError / access-private\n\n边界：跨文件访问控制尚未做全局分析；当前静态检查覆盖同一文件，运行时检查覆盖所有文件。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "4. 增量构建", "b": "impor build 默认启用构建缓存，缓存位于 ~/.impor/build-cache.json。缓存键包含：\n\n- 源码 UTF-8 内容\n- Impor 版本\n- 输入、输出绝对路径\n- TCC 的 mtime 与大小\n- 被导入 .impor 依赖的内容\n\n命中且输出文件 sha256 / 大小一致时，跳过转译与 TCC。强制全量：\n\nimpor build hello.impor -o hello.exe --no-cache\n\n实测同一文件：首次 0.66 s，第二次 0.05 s，第三次 0.03 s（输出 100 KB，Windows + TCC）。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "5. 一致性门禁", "b": "impor conformance            :: 跑全部用例\nimpor conformance --ci       :: CI 模式，失败退出非零\nimpor conformance --only 01  :: 只跑 01 开头用例\nimpor conformance --json     :: 机器可读结果\n\nrunner 会在运行 imporc 前保存 imporcargs.txt 原字节，结束后恢复，避免测试污染自举参数。21+ 个用例覆盖算术、字符串、数组、字典、类、继承、match、异常、闭包等。\n\n性能门槛：\n\nimpor bench --gate\n\n读取 benchmarks/gate.json 的 interpreterloopmaxms，超标即返回非零。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "6. 依赖图与审计", "b": "impor pkg graph    :: 从 impor.lock 打印依赖树，标记循环与未安装\nimpor pkg audit    :: 缺失 lock、版本/哈希不一致、明文 HTTP 源、缺哈希、requires 缺失\n\naudit 有「错误」退出 1，只有提示/警告退出 0，适合放进 CI。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "7. 编辑器与教学入口", "b": "- 项目质量检查：遍历工作区 .impor，聚合 lint 与类型诊断到「问题」面板，最多 300 条。\n- 教学大纲（12 课）：打开 docs/教学大纲.md；命令行 impor teach 提供可判题版本。\n- 插件写 API：writefile(path, content) / writecurrent(content)，默认拒绝，需在 .impor/settings.json 的 pluginwriteallow 授权，路径限制在工作区。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "语言-3.1", "h": "8. 本版未完成（明确边界）", "b": "- 带载荷 ADT（Option / Result 的 Some(value) / Ok(value) 构造与解构）尚未实现；当前 enum 仍是整型常量枚举。\n- async/await 与最小并发运行时未实现，仍为保留字。\n- C 后端与自举对 JSON、正则、lambda 的覆盖未补齐；解释器可用，跨后端一致性只保证 conformance 现有用例。\n- 增量缓存键未包含 transpiler.py / ctrans.py 自身内容；修改后端代码后请用 --no-cache。\n- 跨文件访问控制、UIA 屏幕阅读器全量适配、插件独立进程隔离未完成。", "c": "语言", "p": "docs/语言-3.1.md"}, {"d": "路线图-v5.6", "h": "Impor (I++) v5.6 路线图与开工状态", "b": "定位：面向中文母语的编程入门 + Windows 小工具独立 exe。不追“语言之王”，追“学得快、发得出去、出错看得懂”。\n\n状态口径：已完成 = 本轮可运行并验证；进行中 = 已有代码/文档入口，仍有明确缺口；计划 = 只完成设计或骨架。", "c": "路线图", "p": "docs/路线图-v5.6.md"}, {"d": "路线图-v5.6", "h": "A. 可信度（最高优先级）", "b": "| 项目 | 状态 | 本轮落点 | 剩余缺口 |\n|---|---|---|---|\n| 运行时模块完整性 | 已完成 | 桌面镜像 impor/ 39/39，doctor 逐模块检查 | 发布包需持续跑 doctor |\n| 三端语法一致 | 进行中 | lambda 在 C 后端给出明确“不支持”错误，不再静默 | C 后端/自举实现 lambda、interface、record、namespace |\n| 修饰符语义 | 进行中 | 语法接受，文档明确“当前无访问控制语义” | 真 private/protected 访问检查，或从关键字表移除 |\n| implements 契约 | 计划 | 语法接受接口名 | 方法存在性/签名校验 |\n| 统一诊断 | 已完成 | 错误码、行列、调用栈、修复建议 | 更多错误类型补错误码 |\n| 桌面同步自检 | 已完成 | 同步后跑 version/run/build 三条冒烟 | 纳入发布脚本 |", "c": "路线图", "p": "docs/路线图-v5.6.md"}, {"d": "路线图-v5.6", "h": "B. 功能", "b": "| 项目 | 状态 | 本轮落点 | 剩余缺口 |\n|---|---|---|---|\n| JSON | 已完成（解释器） | jsonencode / jsondecode | C 后端与 imporc 同步 |\n| 正则 | 已完成（解释器） | regexmatch / regexfind / regexreplace | C 后端与 imporc 同步 |\n| 文件/时间 | 已完成 | 已有 fileread / filewrite / now / clock | 目录遍历、路径对象 |\n| 模块与包 | 进行中 | 本地包、版本锁、私有源已有 | 依赖解析、离线包、冲突诊断 |\n| GUI 小工具 | 进行中 | Tk 编辑器、独立 exe、图标注入 | 表单/表格组件、托盘、单文件发布向导 |\n| FFI | 计划 | 设计：DLL 调用按 ctypes 风格暴露 | 头文件解析、类型映射、安全边界 |\n| 并发 | 计划 | 设计：线程池 + 异步 I/O 最小模型 | 调度器、取消、异常传播 |\n| 中文处理 | 计划 | 差异化方向：拼音、分词、简繁转换 | 词典与性能 |", "c": "路线图", "p": "docs/路线图-v5.6.md"}, {"d": "路线图-v5.6", "h": "C. 性能", "b": "| 项目 | 状态 | 本轮落点 | 剩余缺口 |\n|---|---|---|---|\n| 基准套件 | 已完成 | benchmarks/benchcompare.py：循环/字符串/递归三类，对比 Python | 更多真实程序、内存峰值 |\n| 解释器优化 | 进行中 | 常量折叠、局部变量槽已列清单 | 字节码 VM、内联缓存、分代 GC |\n| 启动与体积 | 已完成 | 独立 exe ≈70–110 KB，无需 Python | 冷启动统计与回归阈值 |", "c": "路线图", "p": "docs/路线图-v5.6.md"}, {"d": "路线图-v5.6", "h": "D. 适用人群与生态", "b": "| 项目 | 状态 | 本轮落点 | 剩余缺口 |\n|---|---|---|---|\n| 教学大纲 | 已完成 | docs/教学大纲.md 12 课 | 每课练习与答案、教师讲义 |\n| 新手教程 | 已完成 | 已有 docs/新手教程.md | 截图更新到 v5.6 |\n| 示例库 | 已完成 | examples/ 22 个、demos/ 3 个可执行示例 | 按课程编号重组 |\n| LSP / DAP | 进行中 | 补全、跳转、断点已有 | 重命名、签名帮助、调试变量树 |\n| VSIX | 已完成 | vscode-impor-5.6.0.vsix | Marketplace 上架需 PAT |\n| CI | 已完成 | .github/workflows/ci.yml | 接入真实仓库后跑绿 |\n| 社区 | 计划 | Issue 模板、贡献指南 | 仓库公开与版本发布节奏 |", "c": "路线图", "p": "docs/路线图-v5.6.md"}, {"d": "路线图-v5.6", "h": "v5.6 验收命令", "b": "python Impor.py doctor\npython Impor.py version\npython Impor.py run examples\\hello.impor\npython Impor.py build examples\\hello.impor -o hello.exe\npython -m unittest tests.testv37.TestEnglishKeywords tests.testv43.TestKeywordCountUnchanged\npython benchmarks\\benchcompare.py", "c": "路线图", "p": "docs/路线图-v5.6.md"}];
+const META = {docs: 32, sections: 238};
+const state = {cat: '全部', query: ''};
+const featuredPaths = [
+  'docs/Impor 3.6.17 发布说明.md',
+  'docs/新手教程.md',
+  'docs/语法查询.md',
+  'docs/语言规范.md',
+  'README.md',
+  'docs/编辑器-7.2.md'
+];
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function termsOf(q){
+  return q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+}
+function highlight(text, terms){
+  let safe = escapeHTML(text);
+  terms.forEach(t => {
+    if(!t) return;
+    safe = safe.split(escapeHTML(t)).join('<mark>' + escapeHTML(t) + '</mark>');
+  });
+  return safe;
+}
+function snippetFor(item, q, terms){
+  const lower = item.b.toLowerCase();
+  let at = q ? lower.indexOf(q.toLowerCase()) : -1;
+  if(at < 0 && terms.length){ at = lower.indexOf(terms[0]); }
+  if(at < 0) at = 0;
+  const start = Math.max(0, at - 90);
+  const end = Math.min(item.b.length, at + 180);
+  let s = (start > 0 ? '…' : '') + item.b.slice(start, end).replace(/\n+/g, ' ') + (end < item.b.length ? '…' : '');
+  return highlight(s, terms);
+}
+function search(q){
+  const terms = termsOf(q), whole = q.trim().toLowerCase();
+  const scored = CORPUS.map(item => {
+    const h = item.h.toLowerCase(), b = item.b.toLowerCase(), d = item.d.toLowerCase();
+    let score = 0, all = true;
+    terms.forEach(t => {
+      const inH = h.includes(t), inB = b.includes(t), inD = d.includes(t);
+      if(!(inH || inB || inD)) all = false;
+      score += (inH ? 28 : 0) + (inD ? 10 : 0) + Math.min(28, b.split(t).length - 1) * 3;
+    });
+    if(whole){
+      if(h.includes(whole)) score += 48;
+      if(d.includes(whole)) score += 18;
+      if(b.includes(whole)) score += 12;
+    }
+    return {...item, score, all};
+  });
+  let hits = scored.filter(x => x.score > 0 && x.all);
+  if(!hits.length) hits = scored.filter(x => x.score > 0);
+  return hits.sort((a,b) => b.score - a.score).slice(0, 12);
+}
+function featured(){
+  const out = [];
+  featuredPaths.forEach(p => {
+    const item = CORPUS.find(x => x.p === p && x.b.length > 90 && x.h !== '文档开头');
+    if(item) out.push(item);
+  });
+  if(out.length < 6){
+    CORPUS.filter(x => x.b.length > 100 && x.h !== '文档开头').slice(0, 6).forEach(x => {
+      if(!out.includes(x)) out.push(x);
+    });
+  }
+  return out.slice(0, 6);
+}
+function render(){
+  const q = state.query.trim();
+  let list = q ? search(q) : featured();
+  if(state.cat !== '全部') list = list.filter(x => x.c === state.cat);
+  const title = document.getElementById('resultTitle');
+  const count = document.getElementById('resultCount');
+  const box = document.getElementById('results');
+  title.textContent = q ? '“' + q + '” 的检索结果' : '最新真实条目';
+  count.textContent = q ? (list.length + ' 条命中 / 仅真实文档') : ('DOCS ' + META.docs + ' / SECTIONS ' + META.sections);
+  if(!list.length){
+    box.innerHTML = '<div class="empty"><b>没有匹配的真实文档条目。</b><br>这页不会用编造内容填补结果。换一个更短的关键词，或先浏览“最新真实条目”；也可以直接查 README、CHANGELOG 与 docs 目录。</div>';
+    return;
+  }
+  box.innerHTML = '';
+  list.forEach((item, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'hit';
+    btn.type = 'button';
+    btn.innerHTML =
+      '<span class="hit-index">' + String(i + 1).padStart(2, '0') + '</span>' +
+      '<div class="hit-main">' +
+        '<div class="hit-meta"><span class="cat">' + escapeHTML(item.c) + '</span><span>' + escapeHTML(item.p) + '</span></div>' +
+        '<h3>' + highlight(item.h, termsOf(q)) + '</h3>' +
+        '<p>' + snippetFor(item, q, termsOf(q)) + '</p>' +
+      '</div>' +
+      '<span class="hit-arrow">↗</span>';
+    btn.addEventListener('click', () => openReader(item));
+    box.appendChild(btn);
+  });
+}
+function openReader(item){
+  document.getElementById('readerCat').textContent = item.c;
+  document.getElementById('readerSrc').textContent = item.p;
+  document.getElementById('readerTitle').textContent = item.h;
+  document.getElementById('readerDoc').textContent = item.d;
+  document.getElementById('readerText').textContent = item.b;
+  const reader = document.getElementById('reader');
+  reader.classList.add('open');
+  reader.setAttribute('aria-hidden', 'false');
+  document.getElementById('readerClose').focus();
+}
+function closeReader(){
+  const reader = document.getElementById('reader');
+  reader.classList.remove('open');
+  reader.setAttribute('aria-hidden', 'true');
+}
+const LS_POSTS = 'impor_community_posts_v1';
+const LS_REPLIES = 'impor_community_replies_v1';
+const LS_NICK = 'impor_community_nick_v1';
+const OFFICIAL_PATHS = [
+  'docs/Impor 3.6.17 发布说明.md',
+  'docs/Impor 3.6.4 发布说明.md',
+  'docs/Impor 3.6.3 发布说明.md'
+];
+let posts = [];
+let replies = [];
+let feedMode = '全部';
+let activePostId = null;
+try { posts = JSON.parse(localStorage.getItem(LS_POSTS) || '[]'); } catch(e) { posts = []; }
+try { replies = JSON.parse(localStorage.getItem(LS_REPLIES) || '[]'); } catch(e) { replies = []; }
+function saveCommunity(){
+  localStorage.setItem(LS_POSTS, JSON.stringify(posts));
+  localStorage.setItem(LS_REPLIES, JSON.stringify(replies));
+}
+function currentNick(){
+  try { return localStorage.getItem(LS_NICK) || ''; } catch(e) { return ''; }
+}
+function rememberNick(nick){
+  try { localStorage.setItem(LS_NICK, nick); } catch(e) {}
+}
+function fmtDate(iso){
+  try {
+    return new Date(iso).toLocaleString('zh-CN', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+  } catch(e){ return iso; }
+}
+function officialItems(){
+  return OFFICIAL_PATHS.map(path => {
+    const item = CORPUS.find(x => x.p === path);
+    return item ? {item, path} : null;
+  }).filter(Boolean);
+}
+function renderCommunity(){
+  const postsEl = document.getElementById('posts');
+  const official = officialItems();
+  let userPosts = posts.slice().sort((a,b) => b.created.localeCompare(a.created));
+  if(feedMode === '官方') userPosts = [];
+  if(feedMode === '我的'){
+    const nick = currentNick();
+    userPosts = nick ? userPosts.filter(p => p.nick === nick) : [];
+  }
+  document.getElementById('statPosts').innerHTML = posts.length + ' <small>条</small>';
+  document.getElementById('sidePosts').textContent = posts.length;
+  document.getElementById('sideReplies').textContent = replies.length;
+  document.getElementById('feedHint').textContent = feedMode === '全部'
+    ? 'REAL POSTS ONLY'
+    : (feedMode === '官方' ? 'OFFICIAL / TRACEABLE' : 'MINE / LOCAL');
+  postsEl.innerHTML = '';
+  if(feedMode !== '我的'){
+    official.forEach(({item}) => {
+      const card = document.createElement('button');
+      card.className = 'post official';
+      card.type = 'button';
+      card.innerHTML =
+        '<div><div class="p-meta"><span class="p-tag">官方发布</span><span>' + escapeHTML(item.p) + '</span></div>' +
+        '<h3>' + escapeHTML(item.d) + ' · ' + escapeHTML(item.h) + '</h3>' +
+        '<p>' + escapeHTML(item.b.slice(0, 120).replace(/\n+/g, ' ')) + '…</p></div>' +
+        '<span class="p-arrow">↗</span>';
+      card.addEventListener('click', () => openReader(item));
+      postsEl.appendChild(card);
+    });
+  }
+  if(feedMode === '官方'){
+    if(!official.length){
+      postsEl.innerHTML += '<div class="feed-empty"><b>没有可展示的官方发布记录。</b>索引里没有找到发布说明文档。</div>';
+    }
+  } else {
+    userPosts.forEach(p => {
+      const card = document.createElement('button');
+      card.className = 'post';
+      card.type = 'button';
+      card.innerHTML =
+        '<div><div class="p-meta"><span class="p-tag">' + escapeHTML(p.tag) + '</span><span>' + escapeHTML(p.nick) + '</span><span>' + escapeHTML(fmtDate(p.created)) + '</span></div>' +
+        '<h3>' + escapeHTML(p.title) + '</h3>' +
+        '<p>' + escapeHTML(p.body.slice(0, 120).replace(/\n+/g, ' ')) + '…</p></div>' +
+        '<span class="p-arrow">↗</span>';
+      card.addEventListener('click', () => openPost(p.id));
+      postsEl.appendChild(card);
+    });
+    if(!userPosts.length){
+      const empty = document.createElement('div');
+      empty.className = 'feed-empty';
+      if(feedMode === '我的'){
+        empty.innerHTML = '<b>还没有你的帖子。</b>' + (currentNick() ? '你当前昵称下没有发过帖子。' : '先发一条帖子，昵称会记住。') + '点右上角「写一条帖子」开始，系统不会替你生成。';
+      } else {
+        empty.innerHTML = '<b>还没有社区帖子。</b>第一条不是系统生成的。点右上角「写一条帖子」，用真实昵称、真实问题或真实经验开个头。';
+      }
+      postsEl.appendChild(empty);
+    }
+  }
+}
+function openComposer(){
+  document.getElementById('postNick').value = currentNick();
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postBody').value = '';
+  document.getElementById('composer').classList.add('open');
+  document.getElementById('composer').setAttribute('aria-hidden', 'false');
+  document.getElementById('postTitle').focus();
+}
+function closeComposer(){
+  document.getElementById('composer').classList.remove('open');
+  document.getElementById('composer').setAttribute('aria-hidden', 'true');
+}
+function openPost(id){
+  const post = posts.find(p => p.id === id);
+  if(!post) return;
+  activePostId = id;
+  document.getElementById('pvTag').textContent = post.tag;
+  document.getElementById('pvMeta').textContent = post.nick + ' · ' + fmtDate(post.created);
+  document.getElementById('pvTitle').textContent = post.title;
+  document.getElementById('pvBy').textContent = '本机真实帖子 · ' + post.nick;
+  document.getElementById('pvText').textContent = post.body;
+  document.getElementById('replyNick').value = currentNick() || post.nick;
+  document.getElementById('replyBody').value = '';
+  renderReplies();
+  const view = document.getElementById('postView');
+  view.classList.add('open');
+  view.setAttribute('aria-hidden', 'false');
+  document.getElementById('pvClose').focus();
+  renderCommunity();
+}
+function closePost(){
+  document.getElementById('postView').classList.remove('open');
+  document.getElementById('postView').setAttribute('aria-hidden', 'true');
+}
+function renderReplies(){
+  const box = document.getElementById('pvReplies');
+  const list = replies.filter(r => r.postId === activePostId).sort((a,b) => a.created.localeCompare(b.created));
+  box.innerHTML = '';
+  if(!list.length){
+    box.innerHTML = '<div class="side-note" style="margin:0 0 10px">还没有回复。你可以写第一条，系统不会生成假回复。</div>';
+    return;
+  }
+  list.forEach(r => {
+    const el = document.createElement('div');
+    el.className = 'reply';
+    el.innerHTML = '<div class="r-meta">' + escapeHTML(r.nick) + ' · ' + escapeHTML(fmtDate(r.created)) + '</div>' +
+                   '<div class="r-body">' + escapeHTML(r.body) + '</div>';
+    box.appendChild(el);
+  });
+}
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+document.getElementById('newPost').addEventListener('click', openComposer);
+document.getElementById('composerClose').addEventListener('click', closeComposer);
+document.getElementById('pvClose').addEventListener('click', closePost);
+document.getElementById('composer').addEventListener('click', e => { if(e.target.id === 'composer') closeComposer(); });
+document.getElementById('postView').addEventListener('click', e => { if(e.target.id === 'postView') closePost(); });
+document.getElementById('feedFilters').addEventListener('click', e => {
+  const btn = e.target.closest('.feed-filter');
+  if(!btn) return;
+  document.querySelectorAll('.feed-filter').forEach(x => x.classList.remove('active'));
+  btn.classList.add('active');
+  feedMode = btn.dataset.mode;
+  renderCommunity();
+});
+document.getElementById('postForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const nick = document.getElementById('postNick').value.trim();
+  const title = document.getElementById('postTitle').value.trim();
+  const body = document.getElementById('postBody').value.trim();
+  const tag = document.getElementById('postTag').value;
+  if(!nick || !title || !body){ toast('请填写昵称、标题和正文'); return; }
+  rememberNick(nick);
+  posts.push({id: 'p' + Date.now() + Math.floor(Math.random() * 1000), nick, title, body, tag,
+              created: new Date().toISOString()});
+  saveCommunity();
+  closeComposer();
+  renderCommunity();
+  toast('已发布到本机社区');
+});
+document.getElementById('replyForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if(!activePostId) return;
+  const nick = document.getElementById('replyNick').value.trim();
+  const body = document.getElementById('replyBody').value.trim();
+  if(!nick || !body){ toast('请填写昵称和回复内容'); return; }
+  rememberNick(nick);
+  replies.push({id: 'r' + Date.now() + Math.floor(Math.random() * 1000), postId: activePostId,
+                nick, body, created: new Date().toISOString()});
+  saveCommunity();
+  document.getElementById('replyBody').value = '';
+  renderReplies();
+  renderCommunity();
+  toast('回复已保存在本机');
+});
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if(!posts.length && !replies.length){ toast('还没有真实社区数据可导出'); return; }
+  const data = JSON.stringify({exported: new Date().toISOString(), posts, replies}, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'impor-community-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('已导出真实社区数据');
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape'){ closeComposer(); closePost(); closeReader(); }
+});
+const officialList = document.getElementById('officialList');
+officialItems().forEach(({item}) => {
+  const btn = document.createElement('button');
+  btn.className = 'side-release';
+  btn.type = 'button';
+  btn.innerHTML = escapeHTML(item.d) + '<span>' + escapeHTML(item.p) + '</span>';
+  btn.addEventListener('click', () => openReader(item));
+  officialList.appendChild(btn);
+});
+const input = document.getElementById('q');
+input.addEventListener('input', () => { state.query = input.value; render(); });
+document.getElementById('chips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  state.cat = chip.dataset.cat;
+  render();
+});
+document.getElementById('readerClose').addEventListener('click', closeReader);
+document.getElementById('reader').addEventListener('click', e => { if(e.target.id === 'reader') closeReader(); });
+document.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); input.focus(); input.select(); }
+  if(e.key === 'Escape') closeReader();
+});
+document.getElementById('statDocs').innerHTML = META.docs + ' <small>份</small>';
+document.getElementById('statSections').innerHTML = META.sections + ' <small>节</small>';
+const initialQ = new URLSearchParams(location.search).get('q');
+if(initialQ){ input.value = initialQ; state.query = initialQ; }
+render();
+renderCommunity();
+</script>
+</body>
+</html>

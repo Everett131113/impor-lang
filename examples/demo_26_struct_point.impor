@@ -1,0 +1,11 @@
+important<<DAY<<english("English"):
+// struct 记录类型
+struct Point
+    var x = 0
+    var y = 0
+
+var p = new Point(3, 4)
+print("点坐标:", p.x, p.y)
+set p.x = 10
+print("修改后:", p.x, p.y)
+print("坐标和:", p.x + p.y)

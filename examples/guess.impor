@@ -1,0 +1,21 @@
+important<<DAY<<english("English"):
+// 入门示例 2：猜数字游戏
+// 运行：impor run examples/guess.impor
+var secret = randi(1, 100)
+print("我猜了一个 1~100 之间的数字，来猜猜看吧")
+var tries = 0
+loop
+    print("你的猜测:")
+    var n = to_num(inputstr())
+    set tries = tries + 1
+    if n < secret
+        print("太小了")
+    elseif n > secret
+        print("太大了")
+    else
+        print("恭喜！你猜了", tries, "次就猜中了")
+        break
+    if tries >= 7
+        print("猜了 7 次还没中，答案是", secret)
+        break
+print("游戏结束")

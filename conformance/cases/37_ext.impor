@@ -1,0 +1,6 @@
+important<<DAY<<english("English"):
+var s = "golf"
+print(len(s), s[0], s[len(s) - 1])
+print(strcut(s, 1, len(s) - 1))
+print(s + s, s * 2)
+print(s == "golf")

@@ -1,0 +1,19 @@
+important<<DAY<<english("English"):
+// 用类实现栈
+class Stack
+    def __init__()
+        set self.items = []
+    def push(x)
+        arrappend(self.items, x)
+    def pop()
+        return arrpop(self.items)
+    def size()
+        return len(self.items)
+
+var s = new Stack()
+s.push(1)
+s.push(2)
+s.push(3)
+print("栈大小:", s.size())
+print("弹出:", s.pop())
+print("再弹出:", s.pop())

@@ -1,0 +1,11 @@
+important<<DAY<<english("English"):
+// FizzBuzz
+for i in range(1, 16)
+    if i % 15 == 0
+        print("FizzBuzz")
+    elseif i % 3 == 0
+        print("Fizz")
+    elseif i % 5 == 0
+        print("Buzz")
+    else
+        print(i)

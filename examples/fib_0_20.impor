@@ -1,0 +1,12 @@
+important<<DAY<<english("English"):
+// fib_0_20.impor — 一次算完 0..20 的斐波那契数列
+// 运行：impor run examples/fib_0_20.impor
+// 构建：impor build examples/fib_0_20.impor -o fib_0_20.exe
+
+var a = 0
+var b = 1
+for i in range(0, 21)
+    print("fib(", i, ") =", a)
+    var t = a + b
+    set a = b
+    set b = t

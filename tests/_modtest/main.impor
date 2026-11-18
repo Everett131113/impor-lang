@@ -1,0 +1,10 @@
+import mod as m
+
+func apply_mod(x)
+    return x.add(1, 2) + x.base
+
+var mm = m
+
+print(apply_mod(mm))
+print(mm.add(10, 20))
+print(type_of(mm))

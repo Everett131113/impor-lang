@@ -1,0 +1,5 @@
+func inc(x)
+    return x + 1
+func dbl(x)
+    return x * 2
+print(dbl(inc(inc(3))))

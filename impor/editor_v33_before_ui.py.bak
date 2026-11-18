@@ -1,0 +1,1548 @@
+# -*- coding: utf-8 -*-
+"""Impor (I++) 高级图形化代码工作室（v3.2）。
+
+深色现代界面：DWM 深色标题栏 + 圆角窗口、自绘圆角工具栏、资源管理器侧栏、
+多标签编辑、token 级多色语法高亮、当前行 / 括号配对、自动缩进与括号补全、
+命令面板（Ctrl+Shift+P）、彩色输出 / 问题 / 变量 / 内存四联面板、
+状态栏（行列 / 编码 / 内存 / 版本），后台线程运行脚本不冻结界面。
+
+快捷键：Ctrl+N 新建 · Ctrl+O 打开 · Ctrl+S 保存 · Ctrl+Shift+S 另存
+        Ctrl+Enter / F5 运行 · Ctrl+B 构建 exe · Ctrl+Shift+P 命令面板
+        Ctrl+F 查找 · Ctrl+G 跳行 · Ctrl+W 关闭标签 · Ctrl+Shift+E 侧栏
+"""
+
+import ctypes
+import os
+import queue
+import re
+import subprocess
+import sys
+import threading
+import tkinter as tk
+import tkinter.font as tkfont
+from tkinter import ttk, filedialog, messagebox
+
+from . import __version__
+from .lexer import KEYWORDS, BUILTIN_NAMES, CN_KEYS
+from .parser import Parser
+from .lexer import tokenize
+from .interpreter import Interpreter, ImporException, strip_header
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+SPYP_SUFFIX = ".impor"
+SPYP_FILETYPES = [("Impor 脚本", "*.impor"), ("文本", "*.txt"), ("所有文件", "*.*")]
+HEADER_MARK = 'important<<DAY<<english("English"):'
+
+THEME = {
+    "bg": "#0b0e14",
+    "panel": "#11151c",
+    "panel_alt": "#161b22",
+    "hover": "#1c232e",
+    "border": "#1f2630",
+    "fg": "#c9d1d9",
+    "muted": "#6e7681",
+    "accent": "#7aa2f7",
+    "accent_hover": "#8fb4ff",
+    "accent_dim": "#1b2b45",
+    "green": "#9ece6a",
+    "orange": "#ff9e64",
+    "red": "#f7768e",
+    "yellow": "#e0af68",
+    "cyan": "#2ac3de",
+    "comment": "#565f89",
+    "editor": "#0d1117",
+    "curline": "#161c24",
+    "selection": "#264f78",
+    "bracket": "#2d4f67",
+    "search": "#3a4b6b",
+}
+
+FLOW_WORDS = {
+    "if", "else", "elseif", "while", "for", "def", "func", "class", "return",
+    "try", "catch", "finally", "match", "switch", "case", "default", "repeat",
+    "exception", "raise", "import", "from", "export", "const", "new", "super",
+    "loop", "with", "async", "await", "static", "readonly", "yield", "do",
+}
+
+EXAMPLES = [
+    ("1. 你好世界", f'''{HEADER_MARK}
+// 单行注释 # 也可以
+var name = "世界"
+var n = 100
+print("你好,", name, "数字:", n)
+print("1+2*3 =", 1 + 2 * 3)
+'''),
+    ("2. 变量与三元", f'''{HEADER_MARK}
+var a = 100
+var b = 200
+a += 50          // 复合赋值
+var big = a > b ? "a更大" : "b更大"
+print(big)
+var s = "Impor"
+print("大写:", upper(s), "长度:", len(s))
+'''),
+    ("3. 循环与数组", f'''{HEADER_MARK}
+var total = 0
+for i in range(1, 6)
+    total += i
+print("1..5 求和 =", total)
+
+var arr = [10, 20, 30, "abc"]
+arr[0] = 99
+print(arr)
+print("最大:", max_arr(arr), "最小:", min_arr(arr), "和:", sum_arr(arr))
+'''),
+    ("4. 函数与闭包", f'''{HEADER_MARK}
+func add(x, y)
+    return x + y
+
+func make_counter(start)
+    def inc()
+        nonlocal set start = start + 1
+        return start
+    return inc
+
+print("add:", add(3, 5))
+var c = make_counter(0)
+print(c())
+print(c())
+'''),
+    ("5. 类与继承 super", f'''{HEADER_MARK}
+class Person
+    def __init__(name)
+        set self.name = name
+    def say()
+        print("我是", self.name)
+
+class Student(Person)
+    def say()
+        super().say()
+        print("我是学生")
+
+var s = new Student("李四")
+s.say()
+'''),
+    ("6. 异常与 finally", f'''{HEADER_MARK}
+exception MyError
+
+try
+    raise MyError("出错了！")
+catch MyError e
+    print("捕获自定义异常:", e.msg)
+finally
+    print("无论是否异常都执行")
+'''),
+    ("7. 自动内存管理", f'''{HEADER_MARK}
+// v3.2：mem() 查看内存，gc() 手动回收，autogc(N) 调整阈值
+print("当前阈值:", autogc())
+var arr = [1, 2, 3]
+print(mem())
+gc()
+print(mem())
+'''),
+    ("8. 标准库 import", f'''{HEADER_MARK}
+import math
+import random as rnd
+
+print("π =", math.pi)
+print("sin(90°) =", math.sin(math.radians(90)))
+print("随机数:", rnd.randint(1, 100))
+'''),
+    ("9. 字典与字符串", f'''{HEADER_MARK}
+var dic = {{"name": "小明", "age": 16}}
+print(dic["name"], dic["age"])
+dic["age"] = 17
+print("新年龄:", dic["age"])
+
+var s = """多行
+字符串"""
+print(s)
+print("切割:", strcut("abcdef", 1, 4))
+'''),
+    ("10. 斐波那契", f'''{HEADER_MARK}
+func fib(n)
+    if n < 2
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+for i in range(0, 10)
+    print("fib(", i, ") =", fib(i))
+'''),
+]
+
+
+# ---------------- 平台美化 ----------------
+def enable_dpi_awareness():
+    """开启 DPI 感知，避免高分屏下窗口尺寸换算错误、界面被屏幕边缘裁掉。"""
+    if sys.platform != "win32":
+        return
+    try:
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
+
+def enable_dwm(root):
+    """Windows 11：深色标题栏、深色边框、圆角窗口。失败静默降级。"""
+    if sys.platform != "win32":
+        return
+    try:
+        root.update_idletasks()
+        hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
+        if not hwnd:
+            hwnd = root.winfo_id()
+        dwm = ctypes.windll.dwmapi
+        dwm.DwmSetWindowAttribute.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_uint]
+
+        def set_attr(attr, value, size=4):
+            dwm.DwmSetWindowAttribute(hwnd, attr, ctypes.byref(value), size)
+
+        dark = ctypes.c_int(1)
+        set_attr(20, dark)                    # DWMWA_USE_IMMERSIVE_DARK_MODE
+        caption = ctypes.c_int(0x00140E0B)    # #0b0e14 -> COLORREF
+        set_attr(35, caption)                 # DWMWA_CAPTION_COLOR
+        border = ctypes.c_int(0x0030261F)     # #1f2630
+        set_attr(34, border)                  # DWMWA_BORDER_COLOR
+        text = ctypes.c_int(0x00D9D1C9)       # #c9d1d9
+        set_attr(36, text)                    # DWMWA_TEXT_COLOR
+        corner = ctypes.c_int(2)              # DWMWCP_ROUND
+        set_attr(33, corner)                  # DWMWA_WINDOW_CORNER_PREFERENCE
+    except Exception:
+        pass
+
+
+def preferred_mono(root):
+    try:
+        fams = set(tkfont.families(root))
+    except Exception:
+        fams = set()
+    for name in ("Cascadia Code", "JetBrains Mono", "Fira Code", "Consolas"):
+        if name in fams:
+            return name
+    return "Consolas"
+
+
+def round_rect(canvas, x1, y1, x2, y2, r, **kw):
+    r = max(1, min(r, (x2 - x1) // 2, (y2 - y1) // 2))
+    pts = [x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
+           x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
+           x1, y2, x1, y2 - r, x1, y1 + r, x1, y1]
+    return canvas.create_polygon(pts, smooth=True, **kw)
+
+
+class FlatButton(tk.Canvas):
+    """自绘圆角按钮（深色主题，hover 高亮）。"""
+
+    def __init__(self, master, text, command=None, kind="ghost", width=None,
+                 height=30, padx=14):
+        self._base_bg = master.cget("bg")
+        label = text
+        w = width or max(58, len(label) * 12 + padx * 2)
+        super().__init__(master, width=w, height=height, bg=self._base_bg,
+                         highlightthickness=0, bd=0, cursor="hand2")
+        self.kind = kind
+        self.label = label
+        self.command = command
+        self._hover = False
+        self._active = True
+        self.bind("<Enter>", self._enter)
+        self.bind("<Leave>", self._leave)
+        self.bind("<Button-1>", self._press)
+        self.bind("<ButtonRelease-1>", self._release)
+        self._render()
+
+    def _colors(self):
+        if not self._active:
+            return THEME["panel"], THEME["muted"], THEME["border"]
+        if self.kind == "primary":
+            bg = THEME["accent_hover"] if self._hover else THEME["accent"]
+            return bg, THEME["bg"], bg
+        if self.kind == "success":
+            bg = THEME["green"] if not self._hover else "#b3e08a"
+            return bg, THEME["bg"], bg
+        if self.kind == "danger":
+            bg = THEME["red"] if not self._hover else "#ffa0b2"
+            return bg, THEME["bg"], bg
+        bg = THEME["hover"] if self._hover else THEME["panel_alt"]
+        return bg, THEME["fg"], THEME["border"]
+
+    def _render(self):
+        self.delete("all")
+        w, h = int(self["width"]), int(self["height"])
+        fill, fg, outline = self._colors()
+        round_rect(self, 1, 1, w - 1, h - 1, 6, fill=fill, outline=outline)
+        self.create_text(w // 2, h // 2, text=self.label, fill=fg,
+                         font=("Microsoft YaHei UI", 9))
+
+    def _enter(self, _e=None):
+        self._hover = True
+        self._render()
+
+    def _leave(self, _e=None):
+        self._hover = False
+        self._render()
+
+    def _press(self, _e=None):
+        self.move("all", 1, 1)
+
+    def _release(self, e=None):
+        self._render()
+        if self._active and self.command:
+            try:
+                if 0 <= e.x <= int(self["width"]) and 0 <= e.y <= int(self["height"]):
+                    self.command()
+            except Exception:
+                pass
+
+    def set_active(self, flag):
+        self._active = bool(flag)
+        self._render()
+
+    def set_text(self, text):
+        self.label = text
+        self._render()
+
+
+# ---------------- 编辑面板 ----------------
+class EditorPane(tk.Frame):
+    def __init__(self, master, app, path=None, content=""):
+        super().__init__(master, bg=THEME["editor"])
+        self.app = app
+        self.path = path
+        self._dirty = False
+        self._hl_job = None
+        self._suspend = False
+
+        self.lineno = tk.Canvas(self, width=56, bg=THEME["editor"], highlightthickness=0)
+        self.lineno.pack(side=tk.LEFT, fill=tk.Y)
+
+        self.text = tk.Text(
+            self, wrap="none", undo=True, bg=THEME["editor"], fg=THEME["fg"],
+            insertbackground=THEME["accent"], insertwidth=2,
+            selectbackground=THEME["selection"], selectforeground="#ffffff",
+            font=(app.mono, app.font_size), relief="flat", bd=0,
+            padx=10, pady=8, tabs="4c", autoseparators=True, maxundo=-1,
+        )
+        self.scroll = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.text.yview)
+        self.text.configure(yscrollcommand=self._on_yscroll)
+        self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self._configure_tags()
+        self._bind_events()
+        self.text.insert("1.0", content)
+        self.text.edit_reset()
+        self.text.edit_modified(False)
+        self.after(50, self.highlight)
+        self.redraw_lineno()
+
+    # ---------- 标签 ----------
+    def _configure_tags(self):
+        mono = self.app.mono
+        size = self.app.font_size
+        t = self.text
+        t.tag_config("kw", foreground=THEME["orange"])
+        t.tag_config("kw2", foreground=THEME["cyan"])
+        t.tag_config("builtin", foreground=THEME["cyan"])
+        t.tag_config("string", foreground=THEME["green"])
+        t.tag_config("num", foreground=THEME["orange"])
+        t.tag_config("comment", foreground=THEME["comment"], font=(mono, size, "italic"))
+        t.tag_config("func", foreground=THEME["accent"])
+        t.tag_config("cls", foreground=THEME["yellow"])
+        t.tag_config("decl", foreground=THEME["fg"])
+        t.tag_config("op", foreground=THEME["muted"])
+        t.tag_config("curline", background=THEME["curline"])
+        t.tag_config("bracket", background=THEME["bracket"])
+        t.tag_config("search", background=THEME["search"])
+        t.tag_raise("kw")
+        t.tag_raise("kw2")
+        t.tag_raise("builtin")
+        t.tag_raise("string")
+        t.tag_raise("num")
+        t.tag_raise("comment")
+        t.tag_raise("func")
+        t.tag_raise("cls")
+        t.tag_raise("bracket")
+        t.tag_lower("curline")
+
+    def _bind_events(self):
+        t = self.text
+        t.bind("<<Modified>>", self._on_modified)
+        t.bind("<KeyRelease>", self._on_key)
+        t.bind("<ButtonRelease-1>", self._on_key)
+        t.bind("<Return>", self._auto_indent)
+        t.bind("<Tab>", self._indent)
+        t.bind("<Shift-Tab>", self._unindent)
+        t.bind("<Control-a>", self._select_all)
+        t.bind("<Control-d>", self._duplicate_line)
+        t.bind("<Control-slash>", self._toggle_comment)
+        t.bind("<Control-Key-/>", self._toggle_comment)
+
+    def _select_all(self, e=None):
+        self.text.tag_add("sel", "1.0", "end-1c")
+        return "break"
+
+    def _duplicate_line(self, e=None):
+        line = self.text.get("insert linestart", "insert lineend")
+        self.text.insert("insert lineend", "\n" + line)
+        return "break"
+
+    def _toggle_comment(self, e=None):
+        line = self.text.index("insert linestart")
+        content = self.text.get(line, f"{line} lineend")
+        if content.lstrip().startswith("#"):
+            idx = content.find("#")
+            self.text.delete(f"{line}.{idx}", f"{line}.{idx + 1}")
+        else:
+            self.text.insert(line, "# ")
+        return "break"
+
+    def _on_yscroll(self, first, last):
+        self.scroll.set(first, last)
+        self.redraw_lineno()
+
+    def _on_modified(self, e=None):
+        if self._suspend:
+            self.text.edit_modified(False)
+            return
+        if self.text.edit_modified():
+            self._dirty = True
+            self.text.edit_modified(False)
+            self.app.mark_dirty(self)
+            if self._hl_job:
+                self.after_cancel(self._hl_job)
+            self._hl_job = self.after(90, self.highlight)
+
+    def _on_key(self, e=None):
+        self.redraw_lineno()
+        self.app.update_status()
+        self._update_current_line()
+        self._match_bracket()
+
+    # ---------- 行号 ----------
+    def redraw_lineno(self):
+        c = self.lineno
+        c.delete("all")
+        try:
+            top = int(self.text.index("@0,0").split(".")[0])
+            bottom = int(self.text.index("@0,%d" % max(self.text.winfo_height(), 10)).split(".")[0])
+        except Exception:
+            return
+        total = int(self.text.index("end-1c").split(".")[0])
+        bottom = min(bottom + 1, total)
+        for ln in range(max(1, top), bottom + 1):
+            info = self.text.dlineinfo(f"{ln}.0")
+            if not info:
+                continue
+            y = info[1] + info[3] // 2
+            c.create_text(46, y, text=str(ln), anchor="e",
+                          fill=THEME["muted"], font=(self.app.mono, self.app.font_size - 1))
+
+    # ---------- 高亮 ----------
+    def highlight(self):
+        self._hl_job = None
+        t = self.text
+        content = t.get("1.0", "end-1c")
+        for tag in ("kw", "kw2", "builtin", "string", "num", "comment", "func", "cls", "decl", "op"):
+            t.tag_remove(tag, "1.0", "end")
+        in_block_comment = False
+        in_triple = None
+        prev_word = ""
+        for ln, line in enumerate(content.split("\n"), 1):
+            i, n = 0, len(line)
+            while i < n:
+                if in_block_comment:
+                    j = line.find("*/", i)
+                    if j < 0:
+                        t.tag_add("comment", f"{ln}.{i}", f"{ln}.end")
+                        break
+                    t.tag_add("comment", f"{ln}.{i}", f"{ln}.{j + 2}")
+                    i, in_block_comment = j + 2, False
+                    continue
+                if in_triple:
+                    j = line.find(in_triple, i)
+                    if j < 0:
+                        t.tag_add("string", f"{ln}.{i}", f"{ln}.end")
+                        break
+                    t.tag_add("string", f"{ln}.{i}", f"{ln}.{j + 3}")
+                    i, in_triple = j + 3, None
+                    continue
+                ch = line[i]
+                if ch == "#" or line.startswith("//", i):
+                    t.tag_add("comment", f"{ln}.{i}", f"{ln}.end")
+                    break
+                if line.startswith("/*", i):
+                    j = line.find("*/", i + 2)
+                    if j < 0:
+                        t.tag_add("comment", f"{ln}.{i}", f"{ln}.end")
+                        in_block_comment = True
+                        break
+                    t.tag_add("comment", f"{ln}.{i}", f"{ln}.{j + 2}")
+                    i = j + 2
+                    continue
+                if line.startswith('"""', i) or line.startswith("'''", i):
+                    q = line[i:i + 3]
+                    j = line.find(q, i + 3)
+                    if j < 0:
+                        t.tag_add("string", f"{ln}.{i}", f"{ln}.end")
+                        in_triple = q
+                        break
+                    t.tag_add("string", f"{ln}.{i}", f"{ln}.{j + 3}")
+                    i = j + 3
+                    continue
+                if ch in ('"', "'"):
+                    j = i + 1
+                    while j < n:
+                        if line[j] == "\\":
+                            j += 2
+                            continue
+                        if line[j] == ch:
+                            j += 1
+                            break
+                        j += 1
+                    t.tag_add("string", f"{ln}.{i}", f"{ln}.{j}")
+                    i = j
+                    continue
+                if ch.isdigit():
+                    m = re.match(r"[0-9][0-9_]*(\.[0-9_]+)?([eE][+-]?[0-9]+)?", line[i:])
+                    j = i + m.end()
+                    t.tag_add("num", f"{ln}.{i}", f"{ln}.{j}")
+                    i = j
+                    continue
+                if ch.isalpha() or ch == "_" or "\u4e00" <= ch <= "\u9fff":
+                    m = re.match(r"[A-Za-z0-9_\u4e00-\u9fff]+", line[i:])
+                    word = m.group(0)
+                    j = i + len(word)
+                    if word in KEYWORDS or word in CN_KEYS:
+                        t.tag_add("kw2" if word in FLOW_WORDS else "kw", f"{ln}.{i}", f"{ln}.{j}")
+                    elif word in BUILTIN_NAMES:
+                        t.tag_add("builtin", f"{ln}.{i}", f"{ln}.{j}")
+                    elif line[j:j + 1] == "(":
+                        t.tag_add("func", f"{ln}.{i}", f"{ln}.{j}")
+                    elif prev_word in ("class", "exception"):
+                        t.tag_add("cls", f"{ln}.{i}", f"{ln}.{j}")
+                    elif prev_word in ("var", "set", "const", "let"):
+                        t.tag_add("decl", f"{ln}.{i}", f"{ln}.{j}")
+                    prev_word = word
+                    i = j
+                    continue
+                m = re.match(r"[+\-*/%<>=!?:&|^~]+", line[i:])
+                if m:
+                    t.tag_add("op", f"{ln}.{i}", f"{ln}.{i + m.end()}")
+                    i += m.end()
+                    continue
+                i += 1
+            prev_word = ""
+        self._update_current_line()
+        self._match_bracket()
+
+    def _update_current_line(self):
+        t = self.text
+        t.tag_remove("curline", "1.0", "end")
+        try:
+            start = t.index("insert linestart")
+            t.tag_add("curline", start, f"{start} +1line")
+            t.tag_lower("curline")
+        except Exception:
+            pass
+
+    def _match_bracket(self):
+        t = self.text
+        t.tag_remove("bracket", "1.0", "end")
+        try:
+            full = t.get("1.0", "end")
+            off = len(t.get("1.0", "insert"))
+        except Exception:
+            return
+        if off >= len(full):
+            off = len(full) - 1
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        rev = {")": "(", "]": "[", "}": "{"}
+        ch, pos = None, off
+        if 0 <= off < len(full) and full[off] in "([{)]}":
+            ch = full[off]
+        elif off - 1 >= 0 and full[off - 1] in "([{)]}":
+            ch, pos = full[off - 1], off - 1
+        if not ch:
+            return
+        if ch in pairs:
+            depth = 0
+            for k in range(pos, len(full)):
+                if full[k] == ch:
+                    depth += 1
+                elif full[k] == pairs[ch]:
+                    depth -= 1
+                    if depth == 0:
+                        t.tag_add("bracket", f"1.0 +{pos}c", f"1.0 +{k + 1}c")
+                        return
+        elif ch in rev:
+            depth = 0
+            for k in range(pos, -1, -1):
+                if full[k] == ch:
+                    depth += 1
+                elif full[k] == rev[ch]:
+                    depth -= 1
+                    if depth == 0:
+                        t.tag_add("bracket", f"1.0 +{k}c", f"1.0 +{pos + 1}c")
+                        return
+
+    # ---------- 编辑增强 ----------
+    def _auto_indent(self, e=None):
+        t = self.text
+        line = t.get("insert linestart", "insert")
+        indent = re.match(r"[ \t]*", line).group(0)
+        stripped = line.strip()
+        extra = ""
+        if stripped.endswith(":") or re.match(
+                r"(if|else|elseif|while|for|def|func|class|try|catch|finally|match|switch|case|repeat|loop|with|do)\b",
+                stripped):
+            extra = " " * 4
+        t.insert("insert", "\n" + indent + extra)
+        t.see("insert")
+        return "break"
+
+    def _indent(self, e=None):
+        t = self.text
+        try:
+            sel_start = t.index("sel.first")
+            sel_end = t.index("sel.last")
+        except tk.TclError:
+            sel_start = sel_end = None
+        if sel_start:
+            start_line = int(sel_start.split(".")[0])
+            end_line = int(sel_end.split(".")[0])
+            for ln in range(start_line, end_line + 1):
+                t.insert(f"{ln}.0", "    ")
+            return "break"
+        t.insert("insert", "    ")
+        return "break"
+
+    def _unindent(self, e=None):
+        t = self.text
+        line = t.index("insert linestart")
+        head = t.get(line, f"{line} +4c")
+        if head.startswith("    "):
+            t.delete(line, f"{line} +4c")
+        elif head.startswith("\t"):
+            t.delete(line, f"{line} +1c")
+        return "break"
+
+    # ---------- 查找 ----------
+    def find_all(self, needle):
+        self.text.tag_remove("search", "1.0", "end")
+        if not needle:
+            return 0
+        count = 0
+        idx = "1.0"
+        while True:
+            idx = self.text.search(needle, idx, stopindex="end", nocase=True)
+            if not idx:
+                break
+            end = f"{idx}+{len(needle)}c"
+            self.text.tag_add("search", idx, end)
+            count += 1
+            idx = end
+        self.text.tag_raise("search")
+        return count
+
+    def find_next(self, needle):
+        if not needle:
+            return
+        pos = self.text.search(needle, "insert", stopindex="end", nocase=True)
+        if not pos:
+            pos = self.text.search(needle, "1.0", stopindex="end", nocase=True)
+        if pos:
+            self.text.mark_set("insert", f"{pos}+{len(needle)}c")
+            self.text.see(pos)
+            self.text.focus_set()
+
+    def focus_text(self):
+        self.text.focus_set()
+
+
+# ---------------- 命令面板 ----------------
+class CommandPalette(tk.Toplevel):
+    def __init__(self, app, commands):
+        super().__init__(app.root, bg=THEME["panel"])
+        self.app = app
+        self.commands = commands
+        self.filtered = list(commands)
+        self.overrideredirect(True)
+        self.attributes("-topmost", True)
+        w, h = 620, 360
+        sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        self.geometry("%dx%d+%d+%d" % (w, h, (sw - w) // 2, (sh - h) // 3))
+        self.configure(highlightbackground=THEME["border"], highlightthickness=1)
+
+        wrap = tk.Frame(self, bg=THEME["panel"], padx=10, pady=10)
+        wrap.pack(fill=tk.BOTH, expand=True)
+        self.entry = tk.Entry(wrap, bg=THEME["panel_alt"], fg=THEME["fg"],
+                              insertbackground=THEME["accent"], relief="flat",
+                              font=("Microsoft YaHei UI", 11))
+        self.entry.pack(fill=tk.X, ipady=7)
+        self.entry.insert(0, "> ")
+        self.listbox = tk.Listbox(
+            wrap, bg=THEME["panel"], fg=THEME["fg"], selectbackground=THEME["accent_dim"],
+            selectforeground=THEME["fg"], relief="flat", bd=0,
+            highlightthickness=0, font=("Microsoft YaHei UI", 10), activestyle="none")
+        self.listbox.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
+        self._render()
+        self.entry.bind("<KeyRelease>", self._on_key)
+        self.entry.bind("<Down>", self._down)
+        self.entry.bind("<Up>", self._up)
+        self.entry.bind("<Return>", self._run)
+        self.entry.bind("<Escape>", lambda e: self.destroy())
+        self.listbox.bind("<Double-Button-1>", self._run)
+        self.entry.focus_set()
+        self.grab_set()
+
+    def _query(self):
+        return self.entry.get().lstrip("> ").strip().lower()
+
+    def _render(self):
+        self.listbox.delete(0, tk.END)
+        q = self._query()
+        self.filtered = [c for c in self.commands if q in c[0].lower() or q in c[1].lower()]
+        for title, hint, _cb in self.filtered:
+            label = "  " + title + ("        " + hint if hint else "")
+            self.listbox.insert(tk.END, label)
+        if self.filtered:
+            self.listbox.selection_clear(0, tk.END)
+            self.listbox.selection_set(0)
+            self.listbox.activate(0)
+
+    def _on_key(self, e=None):
+        if e and e.keysym in ("Up", "Down", "Return", "Escape"):
+            return
+        self._render()
+
+    def _down(self, e=None):
+        if not self.filtered:
+            return
+        cur = self.listbox.curselection()
+        i = (cur[0] + 1) if cur else 0
+        i = min(i, len(self.filtered) - 1)
+        self.listbox.selection_clear(0, tk.END)
+        self.listbox.selection_set(i)
+        self.listbox.activate(i)
+        self.listbox.see(i)
+        return "break"
+
+    def _up(self, e=None):
+        if not self.filtered:
+            return
+        cur = self.listbox.curselection()
+        i = (cur[0] - 1) if cur else 0
+        i = max(0, i)
+        self.listbox.selection_clear(0, tk.END)
+        self.listbox.selection_set(i)
+        self.listbox.activate(i)
+        self.listbox.see(i)
+        return "break"
+
+    def _run(self, e=None):
+        cur = self.listbox.curselection()
+        if not cur or not self.filtered:
+            self.destroy()
+            return "break"
+        title, _hint, cb = self.filtered[cur[0]]
+        self.destroy()
+        try:
+            cb()
+        except Exception:
+            pass
+        return "break"
+
+
+# ---------------- 主应用 ----------------
+class App:
+    def __init__(self, root):
+        enable_dpi_awareness()
+        self.root = root
+        self.root.title(f"Impor (I++) {__version__} · Code Studio")
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        w, h = min(1400, sw - 80), min(880, sh - 140)
+        self.root.geometry("%dx%d+%d+%d" % (w, h, max(0, (sw - w) // 2), max(0, (sh - h) // 4)))
+        self.root.minsize(min(980, w), min(620, h))
+        self.mono = preferred_mono(root)
+        self.font_size = 11
+        self.panes = []
+        self._queue = queue.Queue()
+        self._running = False
+        self._interp = None
+        self._debug_mode = False
+        self._sandbox_mode = False
+        self._freeze = False
+        self._last_error = ""
+        self._find_visible = False
+
+        self.root.configure(bg=THEME["bg"])
+        self.root.grid_rowconfigure(2, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        self._build_styles()
+        self._build_toolbar()
+        self._build_main()
+        self._build_status()
+        self._build_shortcuts()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.after(60, lambda: enable_dwm(self.root))
+        self._poll_queue()
+        self._tick_memory()
+
+        self.open_new_tab(content=EXAMPLES[0][1], title="你好世界.impor")
+
+    # ---------- 样式 ----------
+    def _build_styles(self):
+        st = ttk.Style(self.root)
+        try:
+            st.theme_use("clam")
+        except Exception:
+            pass
+        st.configure("TNotebook", background=THEME["bg"], borderwidth=0)
+        st.configure("TNotebook.Tab", background=THEME["panel"], foreground=THEME["muted"],
+                     padding=(14, 6), borderwidth=0)
+        st.map("TNotebook.Tab",
+               background=[("selected", THEME["editor"])],
+               foreground=[("selected", THEME["fg"])])
+        st.configure("Treeview", background=THEME["panel_alt"], fieldbackground=THEME["panel_alt"],
+                     foreground=THEME["fg"], borderwidth=0, rowheight=24)
+        st.map("Treeview", background=[("selected", THEME["accent_dim"])],
+               foreground=[("selected", THEME["fg"])])
+        st.configure("TScrollbar", background=THEME["panel_alt"], troughcolor=THEME["bg"],
+                     bordercolor=THEME["bg"], arrowcolor=THEME["muted"])
+        st.configure("TPanedwindow", background=THEME["bg"])
+
+    # ---------- 工具栏 ----------
+    def _build_toolbar(self):
+        bar = tk.Frame(self.root, bg=THEME["panel"], height=48)
+        bar.grid(row=0, column=0, sticky="ew")
+        bar.pack_propagate(False)
+        tk.Label(bar, text="I++", bg=THEME["panel"], fg=THEME["accent"],
+                 font=(self.mono, 15, "bold")).pack(side=tk.LEFT, padx=(14, 6))
+        tk.Label(bar, text="Code Studio", bg=THEME["panel"], fg=THEME["muted"],
+                 font=("Microsoft YaHei UI", 8)).pack(side=tk.LEFT, padx=(0, 12))
+        tk.Frame(bar, bg=THEME["border"], width=1, height=22).pack(side=tk.LEFT, padx=4)
+
+        for text, cb in (("新建", lambda: self.open_new_tab()),
+                         ("打开", self.open_file),
+                         ("保存", self.save_file)):
+            FlatButton(bar, text, command=cb).pack(side=tk.LEFT, padx=2, pady=9)
+        tk.Frame(bar, bg=THEME["border"], width=1, height=22).pack(side=tk.LEFT, padx=6)
+
+        self.btn_run = FlatButton(bar, "▶ 运行", command=self.run_code, kind="success", width=88)
+        self.btn_run.pack(side=tk.LEFT, padx=2, pady=9)
+        self.btn_build = FlatButton(bar, "⚡ 构建", command=self.build_exe, kind="primary", width=88)
+        self.btn_build.pack(side=tk.LEFT, padx=2, pady=9)
+
+        right = tk.Frame(bar, bg=THEME["panel"])
+        right.pack(side=tk.RIGHT, padx=10)
+        FlatButton(right, "⌘ 命令面板", command=self.open_palette, width=112).pack(side=tk.RIGHT, padx=4)
+        self.btn_sandbox = FlatButton(right, "沙盒: 关", command=self.toggle_sandbox, width=88)
+        self.btn_sandbox.pack(side=tk.RIGHT, padx=4)
+        self.btn_debug = FlatButton(right, "调试: 关", command=self.toggle_debug, width=88)
+        self.btn_debug.pack(side=tk.RIGHT, padx=4)
+
+    # ---------- 主体 ----------
+    def _build_main(self):
+        self.paned = tk.PanedWindow(self.root, orient=tk.HORIZONTAL, bg=THEME["bg"],
+                                    sashwidth=4, bd=0, sashrelief="flat")
+        self.paned.grid(row=2, column=0, sticky="nsew")
+
+        side = tk.Frame(self.paned, bg=THEME["panel"])
+        head = tk.Frame(side, bg=THEME["panel"], height=30)
+        head.pack(fill=tk.X)
+        tk.Label(head, text="资源管理器", bg=THEME["panel"], fg=THEME["muted"],
+                 font=("Microsoft YaHei UI", 8)).pack(side=tk.LEFT, padx=10, pady=8)
+        self.tree = ttk.Treeview(side, show="tree", selectmode="browse")
+        self.tree.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
+        self.tree.bind("<Double-Button-1>", self._on_tree_open)
+        self.tree.bind("<Return>", self._on_tree_open)
+        side.pack_propagate(False)
+        side.configure(width=210)
+        self.sidebar_ref = side
+        self.paned.add(side, minsize=150, width=210)
+        self._fill_tree()
+
+        self.center = tk.PanedWindow(self.paned, orient=tk.VERTICAL, bg=THEME["bg"],
+                                     sashwidth=4, bd=0, sashrelief="flat")
+        self.paned.add(self.center, stretch="always")
+
+        self.notebook = ttk.Notebook(self.center)
+        self.center.add(self.notebook, height=420)
+        self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.update_status())
+
+        self.bottom = tk.Frame(self.center, bg=THEME["panel"])
+        self._build_bottom(self.bottom)
+        self.center.add(self.bottom, height=230, minsize=120)
+
+    def _build_bottom(self, parent):
+        head = tk.Frame(parent, bg=THEME["panel"], height=30)
+        head.pack(fill=tk.X, padx=(8, 8))
+        self.tabbar = {}
+        for key, label in (("out", "输出"), ("problems", "问题"), ("watch", "变量"), ("mem", "内存")):
+            lbl = tk.Label(head, text=label, bg=THEME["panel"], fg=THEME["muted"],
+                           font=("Microsoft YaHei UI", 9), padx=10, pady=6, cursor="hand2")
+            lbl.pack(side=tk.LEFT)
+            lbl.bind("<Button-1>", lambda e, k=key: self.show_bottom(k))
+            self.tabbar[key] = lbl
+        tk.Label(head, text="清空", bg=THEME["panel"], fg=THEME["muted"],
+                 font=("Microsoft YaHei UI", 8), padx=8, cursor="hand2").pack(side=tk.RIGHT)
+        head.winfo_children()[-1].bind("<Button-1>", lambda e: self.clear_output())
+
+        self.bottom_body = tk.Frame(parent, bg=THEME["editor"])
+        self.bottom_body.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 6))
+
+        self.out = tk.Text(self.bottom_body, bg=THEME["editor"], fg=THEME["fg"], relief="flat",
+                           bd=0, font=(self.mono, 10), padx=10, pady=8, wrap="word",
+                           insertbackground=THEME["accent"])
+        self.out.tag_config("info", foreground=THEME["fg"])
+        self.out.tag_config("ok", foreground=THEME["green"])
+        self.out.tag_config("err", foreground=THEME["red"])
+        self.out.tag_config("warn", foreground=THEME["yellow"])
+        self.out.tag_config("dim", foreground=THEME["muted"])
+
+        self.problems = tk.Text(self.bottom_body, bg=THEME["editor"], fg=THEME["fg"], relief="flat",
+                                bd=0, font=(self.mono, 10), padx=10, pady=8, wrap="word")
+        self.problems.tag_config("err", foreground=THEME["red"])
+        self.problems.tag_config("dim", foreground=THEME["muted"])
+
+        self.watch_tree = ttk.Treeview(self.bottom_body, columns=("vtype", "val"),
+                                       show="tree headings", height=6)
+        self.watch_tree.heading("#0", text="变量名")
+        self.watch_tree.heading("vtype", text="类型")
+        self.watch_tree.heading("val", text="值")
+        self.watch_tree.column("#0", width=160)
+        self.watch_tree.column("vtype", width=90)
+        self.watch_tree.column("val", width=420)
+
+        self.mem_text = tk.Text(self.bottom_body, bg=THEME["editor"], fg=THEME["fg"], relief="flat",
+                                bd=0, font=(self.mono, 10), padx=10, pady=8, wrap="word")
+
+        self._bottom_widgets = {"out": self.out, "problems": self.problems,
+                                "watch": self.watch_tree, "mem": self.mem_text}
+        self._bottom_kind = "out"
+        self.show_bottom("out")
+
+    def show_bottom(self, key):
+        self._bottom_kind = key
+        for k, w in self._bottom_widgets.items():
+            if k == key:
+                w.pack(fill=tk.BOTH, expand=True)
+            else:
+                w.pack_forget()
+        for k, lbl in self.tabbar.items():
+            lbl.configure(fg=THEME["fg"] if k == key else THEME["muted"])
+        if key == "mem":
+            self._render_memory()
+
+    # ---------- 状态栏 ----------
+    def _build_status(self):
+        bar = tk.Frame(self.root, bg=THEME["panel"], height=26)
+        bar.grid(row=3, column=0, sticky="ew")
+        bar.pack_propagate(False)
+        self.status_bar = bar
+        self.status_left = tk.Label(bar, text=f"● I++ {__version__}", bg=THEME["panel"],
+                                    fg=THEME["green"], font=("Microsoft YaHei UI", 9))
+        self.status_left.pack(side=tk.LEFT, padx=10)
+        self.status_file = tk.Label(bar, text="未命名", bg=THEME["panel"], fg="#9aa4b2",
+                                    font=("Microsoft YaHei UI", 9))
+        self.status_file.pack(side=tk.LEFT, padx=10)
+        self.status_right = tk.Label(bar, text="Ln 1, Col 1   UTF-8   Python + C 后端",
+                                     bg=THEME["panel"], fg="#9aa4b2",
+                                     font=("Microsoft YaHei UI", 9))
+        self.status_right.pack(side=tk.RIGHT, padx=10)
+        self.status_mem = tk.Label(bar, text="内存 --", bg=THEME["panel"], fg="#9aa4b2",
+                                   font=("Microsoft YaHei UI", 9))
+        self.status_mem.pack(side=tk.RIGHT, padx=10)
+
+    def update_status(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        try:
+            line, col = pane.text.index("insert").split(".")
+        except Exception:
+            line, col = "1", "1"
+        self.status_right.configure(text=f"Ln {line}, Col {int(col) + 1}   UTF-8   Impor 脚本")
+        name = os.path.basename(pane.path) if pane.path else "未命名"
+        mark = " ●" if pane._dirty else ""
+        self.status_file.configure(text=name + mark)
+
+    def _tick_memory(self):
+        try:
+            from .memory import process_memory_report
+            rss = process_memory_report()
+            m = re.search(r"RSS (\S+ \S+)", rss)
+            text = "内存 " + (m.group(1) if m else "--")
+            if self._interp is not None:
+                text += f" · 分配 {self._interp.memory.alloc_count}"
+            self.status_mem.configure(text=text)
+            if self._bottom_kind == "mem":
+                self._render_memory()
+        except Exception:
+            pass
+        self.root.after(2200, self._tick_memory)
+
+    # ---------- 资源管理器 ----------
+    def _fill_tree(self):
+        self.tree.delete(*self.tree.get_children())
+        root_node = self.tree.insert("", tk.END, text="ImporLang", open=True, values=("dir", ROOT_DIR))
+        for name in ("examples", "docs", "bootstrap", os.path.join("impor", "std"), "tests"):
+            path = os.path.join(ROOT_DIR, name)
+            if os.path.isdir(path):
+                node = self.tree.insert(root_node, tk.END, text=os.path.basename(name), values=("dir", path))
+                try:
+                    for fn in sorted(os.listdir(path)):
+                        if fn.endswith(".impor"):
+                            self.tree.insert(node, tk.END, text=fn, values=("file", os.path.join(path, fn)))
+                except OSError:
+                    pass
+        for fn in sorted(os.listdir(ROOT_DIR)):
+            if fn.endswith(".impor"):
+                self.tree.insert(root_node, tk.END, text=fn, values=("file", os.path.join(ROOT_DIR, fn)))
+
+    def _on_tree_open(self, e=None):
+        sel = self.tree.focus()
+        if not sel:
+            return
+        vals = self.tree.item(sel, "values")
+        if vals and vals[0] == "file":
+            self.open_path(vals[1])
+
+    # ---------- 标签 ----------
+    def current_pane(self):
+        try:
+            sel = self.notebook.select()
+        except Exception:
+            return None
+        if not sel:
+            return None
+        try:
+            w = self.notebook.nametowidget(sel)
+        except Exception:
+            return None
+        return w if isinstance(w, EditorPane) else None
+
+    def open_new_tab(self, content=None, title=None, path=None):
+        if content is None:
+            content = f'{HEADER_MARK}\n// 新脚本\nprint("你好，Impor!")\n'
+        pane = EditorPane(self.notebook, self, path=path, content=content)
+        self.panes.append(pane)
+        name = title or (os.path.basename(path) if path else "未命名")
+        self.notebook.add(pane, text=name)
+        self.notebook.select(pane)
+        pane.focus_text()
+        self.update_status()
+        return pane
+
+    def mark_dirty(self, pane):
+        title = os.path.basename(pane.path) if pane.path else "未命名"
+        if pane._dirty:
+            title += " ●"
+        try:
+            self.notebook.tab(pane, text=title)
+        except Exception:
+            pass
+
+    def close_current_tab(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        if pane._dirty:
+            if not messagebox.askyesno("关闭标签", "当前文件有未保存的修改，仍要关闭吗？"):
+                return
+        idx = self.panes.index(pane)
+        self.notebook.forget(pane)
+        self.panes.remove(pane)
+        pane.destroy()
+        if not self.panes:
+            self.open_new_tab()
+        self.update_status()
+
+    def open_path(self, path):
+        for pane in self.panes:
+            if pane.path and os.path.abspath(pane.path) == os.path.abspath(path):
+                self.notebook.select(pane)
+                return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            messagebox.showerror("读取失败", str(e))
+            return
+        self.open_new_tab(content=content, path=path)
+        self.show_bottom("out")
+        self._set_out(f"已打开 {path}\n", "dim")
+
+    def open_file(self):
+        p = filedialog.askopenfilename(filetypes=SPYP_FILETYPES, initialdir=ROOT_DIR)
+        if p:
+            self.open_path(p)
+
+    def save_file(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        if not pane.path:
+            return self.save_file_as()
+        try:
+            with open(pane.path, "w", encoding="utf-8") as f:
+                f.write(pane.text.get("1.0", "end-1c"))
+            pane._dirty = False
+            self.mark_dirty(pane)
+            self.update_status()
+            self._set_out(f"已保存 {pane.path}\n", "ok")
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e))
+
+    def save_file_as(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        p = filedialog.asksaveasfilename(defaultextension=SPYP_SUFFIX, filetypes=SPYP_FILETYPES,
+                                         initialdir=ROOT_DIR)
+        if not p:
+            return
+        pane.path = p
+        self.save_file()
+        self.notebook.tab(pane, text=os.path.basename(p))
+
+    # ---------- 输出 ----------
+    def _set_out(self, text, kind="info"):
+        self.out.insert(tk.END, text, kind)
+        self.out.see(tk.END)
+
+    def append_out(self, text, kind=None):
+        if kind is None:
+            low = text.lower()
+            kind = "info"
+            if "❌" in text or "🔴" in text or "error" in low or "异常" in text:
+                kind = "err"
+            elif text.startswith("✓") or text.startswith("c 运行") or "成功" in text:
+                kind = "ok"
+            elif "警告" in text or text.startswith("⚠"):
+                kind = "warn"
+        self._set_out(text + "\n", kind)
+        if kind == "err":
+            self._last_error = text
+            self.problems.insert(tk.END, text + "\n", "err")
+            self.problems.see(tk.END)
+
+    def clear_output(self):
+        self.out.delete("1.0", tk.END)
+        self.problems.delete("1.0", tk.END)
+        self.watch_tree.delete(*self.watch_tree.get_children())
+
+    # ---------- 内存面板 ----------
+    def _render_memory(self):
+        self.mem_text.delete("1.0", tk.END)
+        try:
+            from .memory import process_memory_report
+            self.mem_text.insert(tk.END, process_memory_report() + "\n\n")
+        except Exception:
+            pass
+        if self._interp is not None:
+            st = self._interp.memory.stats()
+            self.mem_text.insert(tk.END, "本次运行内存统计\n", "info")
+            self.mem_text.insert(tk.END, "  分配对象数   %d\n" % st["alloc"])
+            self.mem_text.insert(tk.END, "  峰值         %d\n" % st["peak"])
+            self.mem_text.insert(tk.END, "  当前存活     %d\n" % st["live"])
+            self.mem_text.insert(tk.END, "  回收次数     %d\n" % st["collections"])
+            self.mem_text.insert(tk.END, "  自动阈值     %d（%s）\n" % (st["threshold"], "开" if st["auto"] else "关"))
+            kinds = st["live_by_type"]
+            if kinds:
+                self.mem_text.insert(tk.END, "  分类         " + "、".join(
+                    f"{k} {v}" for k, v in sorted(kinds.items())) + "\n")
+        else:
+            self.mem_text.insert(tk.END, "\n运行脚本后这里显示本次分配 / 回收 / 存活统计。", "dim")
+        self.mem_text.tag_config("dim", foreground=THEME["muted"])
+
+    # ---------- 运行 ----------
+    def _set_running(self, flag):
+        self._running = flag
+        self.btn_run.set_text("● 运行中" if flag else "▶ 运行")
+        self.btn_run.set_active(not flag)
+        if flag:
+            self.status_left.configure(text="● 运行中", fg=THEME["yellow"])
+        else:
+            self.status_left.configure(text=f"● I++ {__version__}", fg=THEME["green"])
+
+    def run_code(self):
+        if self._running:
+            return
+        pane = self.current_pane()
+        if pane is None:
+            return
+        src = pane.text.get("1.0", "end-1c")
+        self.clear_output()
+        self.show_bottom("out")
+        self.append_out("▶ 运行 " + (pane.path or "未命名") + " …")
+        self._set_running(True)
+        if self._debug_mode:
+            self._run_sync(src, pane.path)
+        else:
+            threading.Thread(target=self._run_worker, args=(src, pane.path), daemon=True).start()
+
+    def _run_worker(self, src, path):
+        try:
+            self._run_worker_inner(src, path)
+        except Exception as e:
+            self._queue.put(("out", f"🔴 底层异常：{e}"))
+        finally:
+            self._queue.put(("done", None))
+
+    def _run_worker_inner(self, src, path):
+        try:
+            try:
+                body = strip_header(src)
+            except ImporException as e:
+                self._queue.put(("out", f"❌ {e.name}: {e.msg}"))
+                return
+            except Exception as e:
+                self._queue.put(("out", f"❌ 头部解析失败: {e}"))
+                return
+            try:
+                ast = Parser(tokenize(body)).program()
+            except SyntaxError as e:
+                self._queue.put(("out", f"🔴 语法错误：{e}"))
+                return
+            except Exception as e:
+                self._queue.put(("out", f"🔴 解析失败：{e}"))
+                return
+            interp = Interpreter(log_cb=lambda t: self._queue.put(("out", t)),
+                                 snapshot_cb=lambda g, w: self._queue.put(("watch", (g, set(w)))),
+                                 sandbox_mode=self._sandbox_mode,
+                                 gui_root=self.root,
+                                 debug_mode=False,
+                                 filename=path)
+            self._interp = interp
+            self._queue.put(("interp", interp))
+            try:
+                interp.run(ast)
+            except ImporException as err:
+                self._queue.put(("out", f"🔴 运行异常 第{err.lineno}行: {err.name}: {err.msg}"))
+                if getattr(err, "stack", None):
+                    for fr in reversed(err.stack):
+                        self._queue.put(("out", f"  {fr.name}（第{fr.lineno}行）"))
+            except Exception as e:
+                self._queue.put(("out", f"🔴 底层异常：{e}"))
+        except Exception as e:
+            self._queue.put(("out", f"🔴 底层异常：{e}"))
+
+    def _run_sync(self, src, path):
+        try:
+            body = strip_header(src)
+        except ImporException as e:
+            self.append_out(f"❌ {e.name}: {e.msg}")
+            self._set_running(False)
+            return
+        try:
+            ast = Parser(tokenize(body)).program()
+        except SyntaxError as e:
+            self.append_out(f"🔴 语法错误：{e}")
+            self._set_running(False)
+            return
+        interp = Interpreter(log_cb=self.append_out, snapshot_cb=self._watch_update,
+                             sandbox_mode=self._sandbox_mode, gui_root=self.root,
+                             debug_mode=True, debug_pause_callback=self._debug_pause,
+                             filename=path)
+        self._interp = interp
+        self._dbg_interp = interp
+        try:
+            interp.run(ast)
+        except ImporException as err:
+            self.append_out(f"🔴 运行异常 第{err.lineno}行: {err.name}: {err.msg}")
+        except Exception as e:
+            self.append_out(f"🔴 底层异常：{e}")
+        finally:
+            self._set_running(False)
+            self._render_memory()
+
+    def _poll_queue(self):
+        try:
+            for _ in range(200):
+                kind, payload = self._queue.get_nowait()
+                if kind == "out":
+                    self.append_out(payload)
+                elif kind == "watch":
+                    self._watch_update(*payload)
+                elif kind == "interp":
+                    self._interp = payload
+                elif kind == "done":
+                    self._set_running(False)
+                    self._render_memory()
+                    self.append_out("✓ 运行结束", "ok")
+        except queue.Empty:
+            pass
+        self.root.after(80, self._poll_queue)
+
+    def _watch_update(self, g, w):
+        self.watch_tree.delete(*self.watch_tree.get_children())
+        names = sorted(set(w) | set(g.keys()))
+        for name in names:
+            if name.startswith("__") or name not in g:
+                continue
+            val = g[name]
+            if callable(val):
+                continue
+            try:
+                vtype = type(val).__name__
+                sval = repr(val)
+            except Exception:
+                vtype, sval = "?", "?"
+            if len(sval) > 120:
+                sval = sval[:117] + "..."
+            self.watch_tree.insert("", tk.END, iid=name, text=name, values=(vtype, sval))
+
+    # ---------- 调试 ----------
+    def _debug_pause(self, lineno, env):
+        self._show_dbg_panel(lineno)
+
+    def _show_dbg_panel(self, lineno):
+        win = tk.Toplevel(self.root, bg=THEME["panel"])
+        win.title(f"Impor 调试器 · 暂停于第 {lineno} 行")
+        win.transient(self.root)
+        win.grab_set()
+        win.geometry("640x520")
+        interp = getattr(self, "_dbg_interp", None)
+        tk.Label(win, text=f"调用栈（共 {len(interp.call_stack)} 帧）", bg=THEME["panel"],
+                 fg=THEME["fg"], font=("Microsoft YaHei UI", 10, "bold")).pack(anchor=tk.W, padx=12, pady=(10, 2))
+        stack = tk.Text(win, height=7, bg=THEME["editor"], fg=THEME["fg"], relief="flat",
+                        font=(self.mono, 10))
+        stack.pack(fill=tk.BOTH, expand=True, padx=12)
+        for fr in reversed(interp.call_stack):
+            stack.insert(tk.END, f"  {fr.name}（第{fr.lineno}行）\n")
+        stack.config(state=tk.DISABLED)
+        tk.Label(win, text="当前帧局部变量", bg=THEME["panel"], fg=THEME["fg"],
+                 font=("Microsoft YaHei UI", 10, "bold")).pack(anchor=tk.W, padx=12, pady=(8, 2))
+        var = tk.Text(win, height=8, bg=THEME["editor"], fg=THEME["fg"], relief="flat",
+                      font=(self.mono, 10))
+        var.pack(fill=tk.BOTH, expand=True, padx=12)
+        items = {k: v for k, v in interp.cur_env.store.items() if not k.startswith("__")}
+        for k in sorted(items):
+            var.insert(tk.END, f"  {k} = {items[k]!r}\n")
+        var.config(state=tk.DISABLED)
+
+        row = tk.Frame(win, bg=THEME["panel"])
+        row.pack(pady=10)
+
+        def act(mode):
+            if mode == "into":
+                interp.step_mode = "into"
+            elif mode == "over":
+                interp.step_mode = "over"
+                interp._dbg_step_target = interp._dbg_depth()
+            elif mode == "out":
+                interp.step_mode = "out"
+                interp._dbg_step_target = interp._dbg_depth() - 1
+            else:
+                interp.step_mode = None
+            win.destroy()
+
+        for label, mode in (("步入 (s)", "into"), ("步过 (n)", "over"), ("步出 (o)", "out"), ("继续 (c)", None)):
+            tk.Button(row, text=label, command=lambda m=mode: act(m), bg=THEME["panel_alt"],
+                      fg=THEME["fg"], relief="flat", padx=12, pady=4).pack(side=tk.LEFT, padx=4)
+        win.wait_window()
+
+    # ---------- 功能命令 ----------
+    def toggle_debug(self):
+        self._debug_mode = not self._debug_mode
+        self.btn_debug.set_text("调试: 开" if self._debug_mode else "调试: 关")
+        if self._debug_mode:
+            self._set_out("调试模式：run 在当前窗口同步执行，支持 breakpoint()/单步面板\n", "warn")
+
+    def toggle_sandbox(self):
+        self._sandbox_mode = not self._sandbox_mode
+        self.btn_sandbox.set_text("沙盒: 开" if self._sandbox_mode else "沙盒: 关")
+        if self._sandbox_mode:
+            self._set_out("沙盒模式：已禁用文件高危 API\n", "warn")
+
+    def toggle_freeze(self):
+        self._freeze = not self._freeze
+        self._set_out("变量监视器已冻结\n" if self._freeze else "变量监视器已恢复\n", "dim")
+
+    def build_exe(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        if not pane.path:
+            self.save_file_as()
+            if not pane.path:
+                return
+        self.save_file()
+        self.clear_output()
+        self.show_bottom("out")
+        self._set_out(f"⚡ 构建 {os.path.basename(pane.path)} …\n", "dim")
+
+        def work():
+            try:
+                r = subprocess.run([sys.executable, os.path.join(ROOT_DIR, "Impor.py"), "build", pane.path],
+                                   cwd=ROOT_DIR, capture_output=True, text=True, timeout=600)
+                text = (r.stdout or "") + (r.stderr or "")
+                self._queue.put(("out", text.strip()))
+                self._queue.put(("out", "✓ 构建完成（原生 exe，运行不依赖 Python）" if r.returncode == 0 else "❌ 构建失败"))
+            except Exception as e:
+                self._queue.put(("out", f"❌ 构建异常：{e}"))
+            finally:
+                self._queue.put(("done", None))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def compile_to_python(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        try:
+            body = strip_header(pane.text.get("1.0", "end-1c"), warn=True)
+            ast = Parser(tokenize(body)).program()
+            from .transpiler import transpile
+            src_lines = pane.text.get("1.0", "end-1c").split("\n")
+            py = transpile(ast, source_name=pane.path or "<impor>", src_lines=src_lines)
+        except Exception as e:
+            messagebox.showerror("编译失败", str(e))
+            return
+        out = filedialog.asksaveasfilename(defaultextension=".py", filetypes=[("Python 文件", "*.py")])
+        if not out:
+            return
+        try:
+            with open(out, "w", encoding="utf-8") as f:
+                f.write(py)
+            self._set_out(f"✓ 已生成 {out}\n", "ok")
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e))
+
+    def goto_line(self):
+        pane = self.current_pane()
+        if pane is None:
+            return
+        from tkinter import simpledialog
+        line = simpledialog.askinteger("跳行", "行号：", parent=self.root)
+        if line:
+            pane.text.mark_set("insert", f"{line}.0")
+            pane.text.see(f"{line}.0")
+            pane.focus_text()
+
+    def toggle_find(self):
+        if self._find_visible:
+            self._find_bar.grid_remove()
+            self._find_visible = False
+            return
+        if not hasattr(self, "_find_bar"):
+            self._find_bar = tk.Frame(self.root, bg=THEME["panel_alt"])
+            self._find_entry = tk.Entry(self._find_bar, bg=THEME["panel_alt"], fg=THEME["fg"],
+                                        insertbackground=THEME["accent"], relief="flat",
+                                        font=(self.mono, 10), width=40)
+            self._find_entry.pack(side=tk.LEFT, padx=8, pady=4, ipady=3)
+            tk.Button(self._find_bar, text="下一个", command=self._find_next, bg=THEME["panel_alt"],
+                      fg=THEME["fg"], relief="flat").pack(side=tk.LEFT, padx=4)
+            tk.Button(self._find_bar, text="关闭", command=self.toggle_find, bg=THEME["panel_alt"],
+                      fg=THEME["muted"], relief="flat").pack(side=tk.LEFT)
+            self._find_entry.bind("<Return>", lambda e: self._find_next())
+            self._find_entry.bind("<Escape>", lambda e: self.toggle_find())
+            self._find_entry.bind("<KeyRelease>", lambda e: self._find_live())
+        self._find_bar.grid(row=1, column=0, sticky="ew")
+        self._find_visible = True
+        self._find_entry.focus_set()
+
+    def _find_live(self):
+        pane = self.current_pane()
+        if pane:
+            pane.find_all(self._find_entry.get())
+
+    def _find_next(self):
+        pane = self.current_pane()
+        if pane:
+            pane.find_next(self._find_entry.get())
+
+    def open_palette(self):
+        cmds = [
+            ("运行当前脚本", "Ctrl+Enter", self.run_code),
+            ("构建独立可执行", "Ctrl+B", self.build_exe),
+            ("新建标签", "Ctrl+N", lambda: self.open_new_tab()),
+            ("打开文件", "Ctrl+O", self.open_file),
+            ("保存", "Ctrl+S", self.save_file),
+            ("另存为", "Ctrl+Shift+S", self.save_file_as),
+            ("关闭当前标签", "Ctrl+W", self.close_current_tab),
+            ("编译为 Python", "", self.compile_to_python),
+            ("查找", "Ctrl+F", self.toggle_find),
+            ("跳转到行", "Ctrl+G", self.goto_line),
+            ("清空输出", "", self.clear_output),
+            ("切换沙盒", "", self.toggle_sandbox),
+            ("切换调试", "", self.toggle_debug),
+            ("冻结/恢复变量监视", "", self.toggle_freeze),
+            ("内存统计", "", lambda: self.show_bottom("mem")),
+            ("关于 Impor", "", self.show_about),
+        ]
+        for title, code in EXAMPLES:
+            cmds.append(("示例：" + title, "", lambda c=code, t=title: self.open_new_tab(content=c, title=t.replace(". ", "-") + ".impor")))
+        return CommandPalette(self, cmds)
+
+    def show_about(self):
+        messagebox.showinfo(
+            "关于 Impor (I++)",
+            f"Impor (I++) {__version__} · Code Studio\n\n"
+            "真正的编程语言：缩进 + 大括号双语法 / 120 关键字（含中文）\n"
+            "解释器 · Python 转译 · 原生 C 后端 · 自举编译器（A→B→C→D）\n"
+            "v3.2：自动内存管理（阈值 GC / 驻留池 / 托管释放）+ 高级编辑器")
+
+    # ---------- 快捷键 ----------
+    def _build_shortcuts(self):
+        bind = self.root.bind
+        bind("<Control-n>", lambda e: self.open_new_tab())
+        bind("<Control-o>", lambda e: self.open_file())
+        bind("<Control-s>", lambda e: self.save_file())
+        bind("<Control-Shift-S>", lambda e: self.save_file_as())
+        bind("<Control-w>", lambda e: self.close_current_tab())
+        bind("<Control-Return>", lambda e: self.run_code())
+        bind("<F5>", lambda e: self.run_code())
+        bind("<Control-b>", lambda e: self.build_exe())
+        bind("<Control-Shift-P>", lambda e: self.open_palette())
+        bind("<Control-f>", lambda e: self.toggle_find())
+        bind("<Control-g>", lambda e: self.goto_line())
+        bind("<Control-Shift-E>", lambda e: self.toggle_sidebar())
+        bind("<Control-plus>", lambda e: self._zoom(1))
+        bind("<Control-minus>", lambda e: self._zoom(-1))
+
+    def toggle_sidebar(self):
+        try:
+            if self.paned.pane(self.sidebar_ref).winfo_ismapped():
+                self.paned.forget(self.sidebar_ref)
+            else:
+                self.paned.add(self.sidebar_ref, before=self.center, minsize=150, width=210)
+        except Exception:
+            pass
+
+    def _zoom(self, delta):
+        self.font_size = max(9, min(18, self.font_size + delta))
+        for pane in self.panes:
+            pane.text.configure(font=(self.mono, self.font_size))
+            pane._configure_tags()
+            pane.highlight()
+
+    # ---------- 关闭 ----------
+    def on_close(self):
+        dirty = [p for p in self.panes if p._dirty]
+        if dirty:
+            if not messagebox.askyesno("退出", f"有 {len(dirty)} 个文件未保存，仍要退出吗？"):
+                return
+        self.root.destroy()
+
+
+def main():
+    enable_dpi_awareness()
+    try:
+        root = tk.Tk()
+    except Exception as e:
+        print(f"错误：无法创建窗口（{e}）。请安装 tkinter：conda install tk")
+        return 1
+    App(root)
+    root.mainloop()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,4 @@
+{
+  "interpreter_loop_max_ms": 3400,
+  "note": "v6.1 性能门槛：impor bench --gate 的解释器 100 万次循环墙钟上限。超标即发版失败。"
+}

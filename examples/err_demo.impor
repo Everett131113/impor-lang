@@ -1,0 +1,8 @@
+important<<DAY<<english("English"):
+var x = 10
+if x > 5
+    print("x 大")
+else
+    print("x 小")
+var y = 
+print(y)

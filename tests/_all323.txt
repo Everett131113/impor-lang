@@ -1,0 +1,1961 @@
+test_cases_count (test_conformance.TestConformance.test_cases_count) ... ok
+test_three_backends_byte_identical (test_conformance.TestConformance.test_three_backends_byte_identical) ... FAIL
+test_parse_structured_never_crashes (test_fuzz.TestFuzz.test_parse_structured_never_crashes)
+结构化随机源码：parse_source 只允许 SyntaxError。 ... ok
+test_random_programs_execute_with_timeout (test_fuzz.TestFuzz.test_random_programs_execute_with_timeout)
+随机有界小程序：运行必须结束（超时=死循环挂起=bug）； ... ok
+test_tokenize_chaos_never_crashes (test_fuzz.TestFuzz.test_tokenize_chaos_never_crashes)
+任意字符输入：tokenize 只允许 SyntaxError，不允许其他异常。 ... ok
+test_transpile_never_crashes (test_fuzz.TestFuzz.test_transpile_never_crashes)
+解析成功的随机 AST 必须能转译：AST 合法则 transpile 不允许任何异常。 ... ok
+test_args (test_impor.TestArgs.test_args) ... ok
+test_int_attr_set_error (test_impor.TestAttrBoundary.test_int_attr_set_error) ... ok
+test_list_attr_set_error (test_impor.TestAttrBoundary.test_list_attr_set_error) ... ok
+test_array_tools (test_impor.TestBuiltins.test_array_tools) ... ok
+test_color (test_impor.TestBuiltins.test_color) ... ok
+test_exit (test_impor.TestBuiltins.test_exit) ... ok
+test_game_tools (test_impor.TestBuiltins.test_game_tools) ... ok
+test_hash (test_impor.TestBuiltins.test_hash) ... ok
+test_len_type (test_impor.TestBuiltins.test_len_type) ... ok
+test_print_multi (test_impor.TestBuiltins.test_print_multi) ... ok
+test_randi_range (test_impor.TestBuiltins.test_randi_range) ... ok
+test_shuffle (test_impor.TestBuiltins.test_shuffle) ... ok
+test_string_tools (test_impor.TestBuiltins.test_string_tools) ... ok
+test_to_num_to_str (test_impor.TestBuiltins.test_to_num_to_str) ... ok
+test_class_basic (test_impor.TestClasses.test_class_basic) ... ok
+test_inheritance_super (test_impor.TestClasses.test_inheritance_super) ... ok
+test_instance_fields (test_impor.TestClasses.test_instance_fields) ... ok
+test_method_chain (test_impor.TestClasses.test_method_chain) ... ok
+[Impor 调试器] C:\Users\41482\AppData\Local\Temp\tmpmkp4d86t\dbg.impor  （输入 help 查看命令）
+
+[暂停] 第 2 行
+     2 | var total = 0
+断点已设在第 5 行
+
+[暂停] 第 5 行
+     5 |     return s
+s = 30
+调用栈（自顶向下）:
+ -> add（第5行）
+    <main>（第2行）
+[已退出调试]
+[Impor 调试器] C:\Users\41482\AppData\Local\Temp\tmpfhco5cka\err.impor  （输入 help 查看命令）
+
+[暂停] 第 2 行
+     2 | func a()
+调用栈（自顶向下）:
+  a（第4行）
+test_run_dbg_interactive (test_impor.TestCliRunDbg.test_run_dbg_interactive) ... ok
+test_run_dbg_prints_traceback_on_error (test_impor.TestCliRunDbg.test_run_dbg_prints_traceback_on_error) ... impor: 运行错误: 第3行 列11: ZeroDivisionError: division by zero [E1001]  · C:\Users\41482\AppData\Local\Temp\tmpfhco5cka\err.impor
+  2 │ func a()
+  3 │     var z = 1 / 0
+    │           ^^^^^^^
+  4 │ a()
+  为什么： 除数是 0，数学上没有定义，运行无法继续。
+  修复： 在除法前判断除数（if b != 0 { ... }），或先检查数据来源是否可能为 0。
+ok
+test_attr_compound (test_impor.TestCompoundAssignExt.test_attr_compound) ... ok
+test_dict_compound (test_impor.TestCompoundAssignExt.test_dict_compound) ... ok
+test_index_compound (test_impor.TestCompoundAssignExt.test_index_compound) ... ok
+test_transpile_parity (test_impor.TestCompoundAssignExt.test_transpile_parity) ... ok
+test_dict (test_impor.TestContainers.test_dict) ... ok
+test_list (test_impor.TestContainers.test_list) ... ok
+test_negative_index (test_impor.TestContainers.test_negative_index) ... ok
+test_nested (test_impor.TestContainers.test_nested) ... ok
+test_continue (test_impor.TestControlFlow.test_continue) ... ok
+test_for_list (test_impor.TestControlFlow.test_for_list) ... ok
+test_for_range (test_impor.TestControlFlow.test_for_range) ... ok
+test_if_elseif_else (test_impor.TestControlFlow.test_if_elseif_else) ... ok
+test_if_with_colon (test_impor.TestControlFlow.test_if_with_colon) ... ok
+test_loop_break (test_impor.TestControlFlow.test_loop_break) ... ok
+test_range_step (test_impor.TestControlFlow.test_range_step) ... ok
+test_while (test_impor.TestControlFlow.test_while) ... ok
+test_breakpoint_pause_and_stack (test_impor.TestDebugSystem.test_breakpoint_pause_and_stack) ... ok
+test_call_stack_clean_after_run (test_impor.TestDebugSystem.test_call_stack_clean_after_run) ... ok
+test_step_into_function (test_impor.TestDebugSystem.test_step_into_function) ... ok
+test_step_into_start (test_impor.TestDebugSystem.test_step_into_start) ... ok
+test_step_out_to_caller (test_impor.TestDebugSystem.test_step_out_to_caller) ... ok
+test_step_over_skips_function (test_impor.TestDebugSystem.test_step_over_skips_function) ... ok
+test_exception_stack_frames (test_impor.TestExceptionChain.test_exception_stack_frames) ... ok
+test_no_cause (test_impor.TestExceptionChain.test_no_cause) ... ok
+test_raise_from_after_paren (test_impor.TestExceptionChain.test_raise_from_after_paren) ... ok
+test_raise_from_in_paren (test_impor.TestExceptionChain.test_raise_from_in_paren) ... ok
+test_transpile_parity (test_impor.TestExceptionChain.test_transpile_parity) ... ok
+test_catch_any (test_impor.TestExceptions.test_catch_any) ... ok
+test_catch_typed (test_impor.TestExceptions.test_catch_typed) ... ok
+test_catch_typed_comma (test_impor.TestExceptions.test_catch_typed_comma) ... ok
+test_custom_exception (test_impor.TestExceptions.test_custom_exception) ... ok
+test_finally (test_impor.TestExceptions.test_finally) ... ok
+test_finally_on_error (test_impor.TestExceptions.test_finally_on_error) ... ok
+test_name_error_line (test_impor.TestExceptions.test_name_error_line) ... ok
+test_unmatched_type_reraises (test_impor.TestExceptions.test_unmatched_type_reraises) ... ok
+test_blank_lines_collapsed (test_impor.TestFmt.test_blank_lines_collapsed) ... ok
+test_check_fmt (test_impor.TestFmt.test_check_fmt) ... ok
+test_comments_preserved (test_impor.TestFmt.test_comments_preserved) ... ok
+test_fmt_roundtrip_runs (test_impor.TestFmt.test_fmt_roundtrip_runs) ... ok
+test_indent_normalized (test_impor.TestFmt.test_indent_normalized) ... ok
+test_operator_spacing (test_impor.TestFmt.test_operator_spacing) ... ok
+test_string_content_unchanged (test_impor.TestFmt.test_string_content_unchanged) ... ok
+test_trailing_whitespace_removed (test_impor.TestFmt.test_trailing_whitespace_removed) ... ok
+test_arg_count_error (test_impor.TestFunctions.test_arg_count_error) ... ok
+test_bare_return (test_impor.TestFunctions.test_bare_return) ... ok
+test_closure_nonlocal (test_impor.TestFunctions.test_closure_nonlocal) ... ok
+test_def (test_impor.TestFunctions.test_def) ... ok
+test_func (test_impor.TestFunctions.test_func) ... ok
+test_global (test_impor.TestFunctions.test_global) ... ok
+test_local_shadow (test_impor.TestFunctions.test_local_shadow) ... ok
+test_recursion (test_impor.TestFunctions.test_recursion) ... ok
+test_block_comments (test_impor.TestHeaderAndComments.test_block_comments) ... ok
+test_header_optional (test_impor.TestHeaderAndComments.test_header_optional) ... ok
+test_line_comments (test_impor.TestHeaderAndComments.test_line_comments) ... ok
+test_missing_header_strict (test_impor.TestHeaderAndComments.test_missing_header_strict) ... ok
+test_no_header_runs (test_impor.TestHeaderAndComments.test_no_header_runs) ... ok
+test_unclosed_block_comment (test_impor.TestHeaderAndComments.test_unclosed_block_comment) ... ok
+test_with_header (test_impor.TestHeaderAndComments.test_with_header) ... ok
+test_no_warn_silent (test_impor.TestHeaderOptional.test_no_warn_silent) ... ok
+test_warn_prints_to_stderr (test_impor.TestHeaderOptional.test_warn_prints_to_stderr) ... ok
+test_import_alias (test_impor.TestImport.test_import_alias) ... ok
+test_import_legacy (test_impor.TestImport.test_import_legacy) ... ok
+test_import_math (test_impor.TestImport.test_import_math) ... ok
+test_import_user_module (test_impor.TestImport.test_import_user_module) ... ok
+test_runtime_error_shows_source_line (test_impor.TestLineMap.test_runtime_error_shows_source_line) ... ok
+test_transpile_embeds_line_map (test_impor.TestLineMap.test_transpile_embeds_line_map) ... ok
+test_transpile_no_error_parity (test_impor.TestLineMap.test_transpile_no_error_parity) ... ok
+test_builtins_not_flagged (test_impor.TestLint.test_builtins_not_flagged) ... ok
+test_for_and_catch_vars (test_impor.TestLint.test_for_and_catch_vars) ... ok
+test_module_var_used_in_function (test_impor.TestLint.test_module_var_used_in_function) ... ok
+test_self_and_export_not_flagged (test_impor.TestLint.test_self_and_export_not_flagged) ... ok
+test_undefined_variable (test_impor.TestLint.test_undefined_variable) ... ok
+test_unreachable_after_return (test_impor.TestLint.test_unreachable_after_return) ... ok
+test_unused_import (test_impor.TestLint.test_unused_import) ... ok
+test_unused_param (test_impor.TestLint.test_unused_param) ... ok
+test_used_import_not_flagged (test_impor.TestLint.test_used_import_not_flagged) ... ok
+test_forward_func_call (test_impor.TestLintForwardRef.test_forward_func_call) ... ok
+test_forward_global_var (test_impor.TestLintForwardRef.test_forward_global_var) ... ok
+test_true_undefined_still_reported (test_impor.TestLintForwardRef.test_true_undefined_still_reported) ... ok
+test_disabled_rules (test_impor.TestLintIgnore.test_disabled_rules) ... ok
+test_file_ignore (test_impor.TestLintIgnore.test_file_ignore) ... ok
+test_line_ignore_all (test_impor.TestLintIgnore.test_line_ignore_all) ... ok
+test_line_ignore_specific_rule (test_impor.TestLintIgnore.test_line_ignore_specific_rule) ... ok
+test_definition (test_impor.TestLsp.test_definition) ... ok
+test_diagnostics_syntax_error (test_impor.TestLsp.test_diagnostics_syntax_error) ... ok
+test_document_symbol (test_impor.TestLsp.test_document_symbol) ... ok
+test_hover (test_impor.TestLsp.test_hover) ... ok
+test_initialize_reply (test_impor.TestLsp.test_initialize_reply) ... ok
+test_binding_pattern (test_impor.TestMatchCase.test_binding_pattern) ... ok
+test_literal_wildcard (test_impor.TestMatchCase.test_literal_wildcard) ... ok
+test_match_is_soft_keyword (test_impor.TestMatchCase.test_match_is_soft_keyword) ... ok
+test_negative_literal_pattern (test_impor.TestMatchCase.test_negative_literal_pattern) ... ok
+test_no_match_falls_through (test_impor.TestMatchCase.test_no_match_falls_through) ... ok
+test_string_bool_literal (test_impor.TestMatchCase.test_string_bool_literal) ... ok
+test_transpile_parity (test_impor.TestMatchCase.test_transpile_parity) ... ok
+test_default_alias (test_impor.TestMatchElse.test_default_alias) ... ok
+test_else_fallback (test_impor.TestMatchElse.test_else_fallback) ... ok
+test_else_not_run_when_matched (test_impor.TestMatchElse.test_else_not_run_when_matched) ... ok
+test_else_with_binding (test_impor.TestMatchElse.test_else_with_binding) ... ok
+test_only_else (test_impor.TestMatchElse.test_only_else) ... ok
+test_circular_import_safe (test_impor.TestModuleSystem.test_circular_import_safe) ... ok
+test_compile_from_import_parity (test_impor.TestModuleSystem.test_compile_from_import_parity) ... ok
+test_export_batch (test_impor.TestModuleSystem.test_export_batch) ... ok
+test_export_missing_name (test_impor.TestModuleSystem.test_export_missing_name) ... ok
+test_export_strict_private (test_impor.TestModuleSystem.test_export_strict_private) ... ok
+test_from_import_alias (test_impor.TestModuleSystem.test_from_import_alias) ... ok
+test_from_import_selective (test_impor.TestModuleSystem.test_from_import_selective) ... ok
+test_import_user_alias (test_impor.TestModuleSystem.test_import_user_alias) ... ok
+test_module_meta (test_impor.TestModuleSystem.test_module_meta) ... ok
+test_module_not_found (test_impor.TestModuleSystem.test_module_not_found) ... ok
+test_no_export_full_expose (test_impor.TestModuleSystem.test_no_export_full_expose) ... ok
+test_package_dotted_import (test_impor.TestModuleSystem.test_package_dotted_import) ... ok
+test_package_meta (test_impor.TestModuleSystem.test_package_meta) ... ok
+test_package_pkg_aggregate (test_impor.TestModuleSystem.test_package_pkg_aggregate) ... ok
+test_relative_import_forbidden_at_top (test_impor.TestModuleSystem.test_relative_import_forbidden_at_top) ... ok
+test_relative_import_parent (test_impor.TestModuleSystem.test_relative_import_parent) ... ok
+test_reload_unloaded_module (test_impor.TestModuleSystem.test_reload_unloaded_module) ... ok
+test_reload_updates_in_place (test_impor.TestModuleSystem.test_reload_updates_in_place) ... ok
+test_star_import (test_impor.TestModuleSystem.test_star_import) ... ok
+test_arithmetic (test_impor.TestOperators.test_arithmetic) ... ok
+test_compare (test_impor.TestOperators.test_compare) ... ok
+test_logic (test_impor.TestOperators.test_logic) ... ok
+test_ternary (test_impor.TestOperators.test_ternary) ... ok
+test_install_remove_list_lock (test_impor.TestPkg.test_install_remove_list_lock) ... ok
+test_install_version_constraint_violation (test_impor.TestPkg.test_install_version_constraint_violation) ... ok
+test_version_parse_and_compare (test_impor.TestPkg.test_version_parse_and_compare) ... ok
+test_normal_escape_still_works (test_impor.TestRawString.test_normal_escape_still_works) ... ok
+test_raw_double_quote (test_impor.TestRawString.test_raw_double_quote) ... ok
+test_raw_single_quote (test_impor.TestRawString.test_raw_single_quote) ... ok
+test_raw_uppercase (test_impor.TestRawString.test_raw_uppercase) ... ok
+test_raw_with_quotes_inside (test_impor.TestRawString.test_raw_with_quotes_inside) ... ok
+test_repl_basic (test_impor.TestRepl.test_repl_basic) ... ok
+test_repl_errors (test_impor.TestRepl.test_repl_errors) ... ok
+test_repl_multiline_block (test_impor.TestRepl.test_repl_multiline_block) ... ok
+test_sandbox_blocks_open (test_impor.TestSandbox.test_sandbox_blocks_open) ... ok
+test_escape (test_impor.TestStrings.test_escape) ... ok
+test_quotes (test_impor.TestStrings.test_quotes) ... ok
+test_slice (test_impor.TestStrings.test_slice) ... ok
+test_triple_string (test_impor.TestStrings.test_triple_string) ... ok
+test_builtins (test_impor.TestTranspiler.test_builtins) ... ok
+test_classes (test_impor.TestTranspiler.test_classes) ... ok
+test_control_flow (test_impor.TestTranspiler.test_control_flow) ... ok
+test_exceptions (test_impor.TestTranspiler.test_exceptions) ... ok
+test_functions_closures (test_impor.TestTranspiler.test_functions_closures) ... ok
+test_global_and_compound (test_impor.TestTranspiler.test_global_and_compound) ... ok
+test_hello (test_impor.TestTranspiler.test_hello) ... ok
+test_import_math_compiled (test_impor.TestTranspiler.test_import_math_compiled) ... ok
+test_loop_break_continue (test_impor.TestTranspiler.test_loop_break_continue) ... ok
+test_recursion (test_impor.TestTranspiler.test_recursion) ... ok
+test_strings_containers (test_impor.TestTranspiler.test_strings_containers) ... ok
+test_ternary_and_logic (test_impor.TestTranspiler.test_ternary_and_logic) ... ok
+test_add_unary (test_impor.TestUnaryRhs.test_add_unary) ... ok
+test_chained_unary (test_impor.TestUnaryRhs.test_chained_unary) ... ok
+test_cmp_negative_literal (test_impor.TestUnaryRhs.test_cmp_negative_literal) ... ok
+test_mul_unary (test_impor.TestUnaryRhs.test_mul_unary) ... ok
+test_range_compare (test_impor.TestUnaryRhs.test_range_compare) ... ok
+test_compound_assign (test_impor.TestVariables.test_compound_assign) ... ok
+test_int_float (test_impor.TestVariables.test_int_float) ... ok
+test_negative_literal (test_impor.TestVariables.test_negative_literal) ... ok
+test_reassign (test_impor.TestVariables.test_reassign) ... ok
+test_var_and_set (test_impor.TestVariables.test_var_and_set) ... ok
+test_posix_xdg (test_impor.TestXdgCacheDir.test_posix_xdg) ... ok
+test_windows_default (test_impor.TestXdgCacheDir.test_windows_default) ... ok
+test_check_snake (test_launcher.TestLauncher.test_check_snake) ... ok
+test_direct_script_file_runs (test_launcher.TestLauncher.test_direct_script_file_runs) ... FAIL
+test_editor_import_error_friendly (test_launcher.TestLauncher.test_editor_import_error_friendly) ... ok
+test_launcher_whitelist_matches_cli (test_launcher.TestLauncher.test_launcher_whitelist_matches_cli) ... ok
+test_lint_snake (test_launcher.TestLauncher.test_lint_snake) ... ok
+test_run_smoke (test_launcher.TestLauncher.test_run_smoke) ... FAIL
+test_unknown_command_reports_usage (test_launcher.TestLauncher.test_unknown_command_reports_usage) ... ok
+test_version (test_launcher.TestLauncher.test_version) ... ok
+test_version_constant_and_docstring_sync (test_launcher.TestLauncher.test_version_constant_and_docstring_sync) ... ok
+test_code_action_unused_import (test_lsp.TestLspV25.test_code_action_unused_import) ... ok
+test_code_action_unused_variable (test_lsp.TestLspV25.test_code_action_unused_variable) ... ok
+test_completion_contains_symbols_and_builtins (test_lsp.TestLspV25.test_completion_contains_symbols_and_builtins) ... ERROR
+test_diagnostics_include_unused (test_lsp.TestLspV25.test_diagnostics_include_unused) ... ok
+test_rename_unknown_symbol_rejected (test_lsp.TestLspV25.test_rename_unknown_symbol_rejected) ... ok
+test_rename_updates_definition_and_references (test_lsp.TestLspV25.test_rename_updates_definition_and_references) ... ERROR
+test_help_subcommand (test_v25.TestCliHelp.test_help_subcommand) ... ok
+test_conditional_breakpoint_expr (test_v25.TestEvalExprText.test_conditional_breakpoint_expr) ... ok
+test_check_fmt_with_long_lines (test_v25.TestFmtConfig.test_check_fmt_with_long_lines) ... ok
+test_indent_width_applies (test_v25.TestFmtConfig.test_indent_width_applies) ... ok
+test_toml_fmt_section (test_v25.TestFmtConfig.test_toml_fmt_section) ... ok
+test_user_func_arity (test_v25.TestLintArgCount.test_user_func_arity) ... ok
+已创建: t_script.impor（模板: script）
+test_new_templates (test_v25.TestNewTemplate.test_new_templates) ... C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v25.py:89: ResourceWarning: unclosed file <_io.TextIOWrapper name='t_script.impor' mode='r' encoding='utf-8'>
+  content = open(fname, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+已创建: t_lib.impor（模板: lib）
+C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v25.py:89: ResourceWarning: unclosed file <_io.TextIOWrapper name='t_lib.impor' mode='r' encoding='utf-8'>
+  content = open(fname, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+已创建: t_game.impor（模板: game）
+C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v25.py:89: ResourceWarning: unclosed file <_io.TextIOWrapper name='t_game.impor' mode='r' encoding='utf-8'>
+  content = open(fname, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+impor: 未知模板 nope（可选: script|lib|game|pkg）
+ok
+test_assert_catchable (test_v28.TestAssert.test_assert_catchable) ... ok
+test_assert_fail_raises (test_v28.TestAssert.test_assert_fail_raises) ... ok
+test_assert_pass (test_v28.TestAssert.test_assert_pass) ... ok
+test_assert_transpile_consistency (test_v28.TestAssert.test_assert_transpile_consistency) ... ok
+test_assert_transpile_fail (test_v28.TestAssert.test_assert_transpile_fail) ... ok
+test_test_cmd_no_files (test_v28.TestCliTestCmd.test_test_cmd_no_files) ... impor: 未找到测试文件（目录 C:\Users\41482\AppData\Local\Temp\tmpzo3a27nm 下无含 test 的 .impor 文件；可运行 impor test examples/ 或指定测试文件）
+ok
+ok
+✓ 通过 C:\Users\41482\AppData\Local\Temp\tmpj7ikg296\test_ok.impor（1 断言，0.00s）
+
+测试结果: 1 通过 / 0 失败（共 1 个文件，1 条断言，耗时 0.01s）
+test_test_cmd_pass_and_fail (test_v28.TestCliTestCmd.test_test_cmd_pass_and_fail) ... impor: 测试失败: 第1行 列1: AssertionError: 断言失败 [E1007]  · C:\Users\41482\AppData\Local\Temp\tmpj7ikg296\test_bad.impor
+  1 │ assert 1 == 2
+    │ ^^^^^^^^
+  为什么： assert 后面的条件求值为 false，说明代码假设不成立。
+  修复： 检查断言的前置条件，必要时在断言前打印相关变量，确认哪一步和预期不一致。
+ok
+✓ 通过 C:\Users\41482\AppData\Local\Temp\tmpj7ikg296\test_ok.impor（1 断言，0.00s）
+
+测试结果: 1 通过 / 1 失败（共 2 个文件，2 条断言，耗时 0.01s）
+ok
+test_parse_position (test_v28.TestDiagnostics.test_parse_position) ... ok
+test_parse_position_no_col (test_v28.TestDiagnostics.test_parse_position_no_col) ... ok
+test_parse_position_plain (test_v28.TestDiagnostics.test_parse_position_plain) ... ok
+test_parser_error_message_has_col (test_v28.TestDiagnostics.test_parser_error_message_has_col) ... ok
+test_render_error_caret (test_v28.TestDiagnostics.test_render_error_caret) ... ok
+test_assert_no_false_positive (test_v28.TestLintWithAssert.test_assert_no_false_positive) ... ok
+test_parse_body_col (test_v28.TestLspDiagCol.test_parse_body_col) ... ok
+test_conflict_detected (test_v28.TestPkgConflict.test_conflict_detected) ... ok
+test_col_numbers (test_v28.TestTokenCol.test_col_numbers) ... ok
+test_str_and_op_col (test_v28.TestTokenCol.test_str_and_op_col) ... ok
+test_literal_ops (test_v29.TestBinOpFastPath.test_literal_ops) ... ok
+test_basic_cn (test_v29.TestChineseKeywords.test_basic_cn) ... ERROR
+test_cn_control_flow (test_v29.TestChineseKeywords.test_cn_control_flow) ... ERROR
+test_cn_truthiness (test_v29.TestChineseKeywords.test_cn_truthiness) ... ERROR
+test_bare_expr_stmt (test_v29.TestExprStmt.test_bare_expr_stmt) ... ERROR
+test_explicit_return_still_works (test_v29.TestImplicitReturn.test_explicit_return_still_works) ... ERROR
+test_implicit_call_tail (test_v29.TestImplicitReturn.test_implicit_call_tail) ... ERROR
+test_implicit_compiled_same (test_v29.TestImplicitReturn.test_implicit_compiled_same) ... ERROR
+test_implicit_expr_tail (test_v29.TestImplicitReturn.test_implicit_expr_tail) ... ERROR
+test_implicit_mixed (test_v29.TestImplicitReturn.test_implicit_mixed) ... ERROR
+test_all_together (test_v29.TestMixedFeatures.test_all_together) ... ERROR
+test_pipe_builtin (test_v29.TestPipeOperator.test_pipe_builtin) ... ok
+test_pipe_chain (test_v29.TestPipeOperator.test_pipe_chain) ... ERROR
+test_pipe_compiled_same (test_v29.TestPipeOperator.test_pipe_compiled_same) ... ERROR
+test_pipe_with_args (test_v29.TestPipeOperator.test_pipe_with_args) ... ERROR
+test_interp_basic (test_v29.TestStringInterpolation.test_interp_basic) ... ERROR
+test_interp_compiled_same (test_v29.TestStringInterpolation.test_interp_compiled_same) ... ERROR
+test_interp_escape_brace (test_v29.TestStringInterpolation.test_interp_escape_brace) ... ok
+test_interp_expr (test_v29.TestStringInterpolation.test_interp_expr) ... ERROR
+test_fmt_keeps_fstr (test_v29.TestToolchainNewSyntax.test_fmt_keeps_fstr) ... ok
+test_fmt_keeps_pipe (test_v29.TestToolchainNewSyntax.test_fmt_keeps_pipe) ... ok
+test_lint_understands_exprstmt_pipe_fstr (test_v29.TestToolchainNewSyntax.test_lint_understands_exprstmt_pipe_fstr) ... ERROR
+test_brace_class_methods (test_v30.TestBraceBlocks.test_brace_class_methods) ... ok
+test_brace_elseif_else (test_v30.TestBraceBlocks.test_brace_elseif_else) ... ok
+test_brace_function_implicit_return (test_v30.TestBraceBlocks.test_brace_function_implicit_return) ... ok
+test_brace_if_while (test_v30.TestBraceBlocks.test_brace_if_while) ... ok
+test_brace_match_with_else (test_v30.TestBraceBlocks.test_brace_match_with_else) ... ok
+test_brace_nested_indent_mix (test_v30.TestBraceBlocks.test_brace_nested_indent_mix) ... ok
+test_brace_try_catch_finally (test_v30.TestBraceBlocks.test_brace_try_catch_finally) ... ok
+test_brace_while_multiple_stmts (test_v30.TestBraceBlocks.test_brace_while_multiple_stmts) ... ok
+test_legacy_indent_still_works (test_v30.TestBraceBlocks.test_legacy_indent_still_works) ... ok
+test_quick_single_line (test_v30.TestBraceBlocks.test_quick_single_line) ... ok
+test_unclosed_brace_reports_position (test_v30.TestBraceBlocks.test_unclosed_brace_reports_position) ... ok
+test_caught_in_script_continues (test_v30.TestRuntimeWrapping.test_caught_in_script_continues) ... ok
+test_div_by_zero_wrapped (test_v30.TestRuntimeWrapping.test_div_by_zero_wrapped) ... ok
+test_name_error_position (test_v30.TestRuntimeWrapping.test_name_error_position) ... ok
+test_runtime_error_is_impor_exception (test_v30.TestRuntimeWrapping.test_runtime_error_is_impor_exception) ... ok
+test_instance_fields_isolated (test_v30.TestScopeSemantics.test_instance_fields_isolated) ... ok
+test_nonlocal_set (test_v30.TestScopeSemantics.test_nonlocal_set) ... ok
+test_set_updates_outer_in_closure (test_v30.TestScopeSemantics.test_set_updates_outer_in_closure) ... ok
+test_var_local_does_not_leak (test_v30.TestScopeSemantics.test_var_local_does_not_leak) ... ok
+test_ast_nodes_carry_col (test_v30.TestSourcePositions.test_ast_nodes_carry_col) ... ok
+test_newline_token_has_col (test_v30.TestSourcePositions.test_newline_token_has_col) ... ok
+test_parser_error_has_line_col_hint (test_v30.TestSourcePositions.test_parser_error_has_line_col_hint) ... ok
+test_syntax_error_is_syntaxerror (test_v30.TestSourcePositions.test_syntax_error_is_syntaxerror) ... ok
+test_cli_unknown_command_friendly (test_v31.TestCliTopLevel.test_cli_unknown_command_friendly) ... ok
+test_compiled_debug_env_shows_traceback (test_v31.TestCompiledErrorStyle.test_compiled_debug_env_shows_traceback) ... ok
+test_compiled_div_zero_impor_style (test_v31.TestCompiledErrorStyle.test_compiled_div_zero_impor_style) ... ok
+test_compiled_impor_exception_style (test_v31.TestCompiledErrorStyle.test_compiled_impor_exception_style) ... ok
+test_class_def_base_error_position (test_v31.TestInterpreterPosFill.test_class_def_base_error_position) ... ok
+test_compound_assign_name_error_position (test_v31.TestInterpreterPosFill.test_compound_assign_name_error_position) ... ok
+test_name_error_has_position (test_v31.TestInterpreterPosFill.test_name_error_has_position) ... ok
+test_runtime_impor_exception_has_col (test_v31.TestRuntimeCol.test_runtime_impor_exception_has_col) ... ok
+test_check_std_demo_passes (test_v32.TestCheckAggregate.test_check_std_demo_passes) ... ok
+test_check_unknown_var_fails (test_v32.TestCheckAggregate.test_check_unknown_var_fails) ... ok
+test_b_list_and_del (test_v32.TestDebuggerCmds.test_b_list_and_del) ... ok
+test_export_private_helper_visible_inside (test_v32.TestModuleFixes.test_export_private_helper_visible_inside) ... ok
+test_from_dot_import_submodule (test_v32.TestModuleFixes.test_from_dot_import_submodule) ... ok
+test_new_pkg_and_run (test_v32.TestPkgScaffold.test_new_pkg_and_run) ... ok
+test_import_std_module_form (test_v32.TestUseStd.test_import_std_module_form) ... ok
+test_use_chinese (test_v32.TestUseStd.test_use_chinese) ... ERROR
+test_use_collections_hof (test_v32.TestUseStd.test_use_collections_hof) ... ok
+test_use_mathx (test_v32.TestUseStd.test_use_mathx) ... ok
+test_use_text (test_v32.TestUseStd.test_use_text) ... ok
+test_collect_clean_source (test_v323.TestAsyncDiagnostics.test_collect_clean_source) ... ok
+test_collect_reports_syntax_error (test_v323.TestAsyncDiagnostics.test_collect_reports_syntax_error) ... ok
+test_coverage_exec_lines (test_v323.TestAsyncDiagnostics.test_coverage_exec_lines) ... ok
+test_resolve_build (test_v323.TestConflictParser.test_resolve_build) ... ok
+test_segments_and_hunks (test_v323.TestConflictParser.test_segments_and_hunks) ... ok
+test_install_meta_enable_and_uninstall (test_v323.TestPluginManager.test_install_meta_enable_and_uninstall) ... ok
+test_install_zip (test_v323.TestPluginManager.test_install_zip) ... ok
+test_zip_traversal_rejected (test_v323.TestPluginManager.test_zip_traversal_rejected) ... ok
+test_kinds_and_precedence (test_v323.TestSemanticSymbols.test_kinds_and_precedence) ... ok
+test_unknown_member_not_declared (test_v323.TestSemanticSymbols.test_unknown_member_not_declared) ... ok
+test_repl_cn_func_block (test_v33.TestReplChinese.test_repl_cn_func_block) ... FAIL
+test_repl_cn_if_block (test_v33.TestReplChinese.test_repl_cn_if_block) ... FAIL
+test_repl_exit_paren (test_v33.TestReplChinese.test_repl_exit_paren) ... ok
+test_cli_smoke_guess_not_hang (test_v33.TestSmokeMode.test_cli_smoke_guess_not_hang) ... ok
+test_cli_smoke_snake (test_v33.TestSmokeMode.test_cli_smoke_snake) ... FAIL
+test_interpreter_smoke_input (test_v33.TestSmokeMode.test_interpreter_smoke_input) ... ok
+test_test_scans_examples (test_v33.TestTestCommand.test_test_scans_examples) ... ok
+test_compile_from_dot_import (test_v33.TestTranspileImportSemantics.test_compile_from_dot_import) ... ok
+test_compile_import_pkg_sub_binds_top (test_v33.TestTranspileImportSemantics.test_compile_import_pkg_sub_binds_top) ... ok
+test_compile_std_demo (test_v33.TestTranspileImportSemantics.test_compile_std_demo) ... ok
+test_build_exe_matches_interpreter (test_v34.TestCBuild.test_build_exe_matches_interpreter) ... ok
+test_build_rich_semantics (test_v34.TestCBuild.test_build_rich_semantics) ... ok
+test_build_sleep_and_loop (test_v34.TestCBuild.test_build_sleep_and_loop) ... ok
+test_class_supported_v31 (test_v34.TestCTranspileErrors.test_class_supported_v31) ... ok
+test_cli_build_help_registered (test_v34.TestCTranspileErrors.test_cli_build_help_registered) ... ok
+test_cli_build_missing_file (test_v34.TestCTranspileErrors.test_cli_build_missing_file) ... ok
+test_import_unsupported (test_v34.TestCTranspileErrors.test_import_unsupported) ... ok
+test_list_supported_v217 (test_v34.TestCTranspileErrors.test_list_supported_v217) ... ok
+test_try_catch_unsupported (test_v34.TestCTranspileErrors.test_try_catch_unsupported) ... ERROR
+test_div_exact (test_v35.TestDivBuiltin.test_div_exact) ... ok
+test_div_neg (test_v35.TestDivBuiltin.test_div_neg) ... ok
+test_div_pos (test_v35.TestDivBuiltin.test_div_pos) ... ok
+test_div_zero_raises (test_v35.TestDivBuiltin.test_div_zero_raises) ... ok
+test_demo_list (test_v35.TestNewCommands.test_demo_list) ... ok
+test_demo_unknown (test_v35.TestNewCommands.test_demo_unknown) ... impor: 未知示例 no_such_demo（impor demo 查看列表）
+ok
+test_env (test_v35.TestNewCommands.test_env) ... ok
+test_version_enhanced (test_v35.TestNewCommands.test_version_enhanced) ... ok
+test_builtin_doc (test_v35.TestReplHelp.test_builtin_doc) ... ok
+test_builtin_list (test_v35.TestReplHelp.test_builtin_list) ... ok
+test_help_menu (test_v35.TestReplHelp.test_help_menu) ... ok
+test_quoted_doc (test_v35.TestReplHelp.test_quoted_doc) ... ok
+test_build_arrays (test_v36.TestCBackendArrays.test_build_arrays) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_t36_q13xxxzo\game.exe
+  大小：111.0 KB（113664 字节）
+  耗时：0.71s（转译 0.01s / tcc 0.41s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_interp_arrays (test_v36.TestCBackendArrays.test_interp_arrays) ... ok
+test_list_builtin (test_v36.TestCBackendArrays.test_list_builtin) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_t36_jokqgnp5\game.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.63s（转译 0.00s / tcc 0.33s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_const_c_backend (test_v36.TestConstKeyword.test_const_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_t36_01irt519\game.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.57s（转译 0.00s / tcc 0.30s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_const_dup (test_v36.TestConstKeyword.test_const_dup) ... ok
+test_const_ok (test_v36.TestConstKeyword.test_const_ok) ... ok
+test_const_readonly (test_v36.TestConstKeyword.test_const_readonly) ... ok
+test_build_smoke (test_v36.TestGame2048Smoke.test_build_smoke) ... C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v36.py:192: ResourceWarning: unclosed file <_io.TextIOWrapper name='C:\\Users\\41482\\Doubao\\chats\\2026-11-01\\new-chat\\ImporLang\\examples\\game_2048.impor' mode='r' encoding='utf-8'>
+  rc, exe, rout = build_exe(open(self.GAME, encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_t36_t564e1yz\game.exe
+  大小：136.0 KB（139264 字节）
+  耗时：0.58s（转译 0.03s / tcc 0.27s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_interp_smoke (test_v36.TestGame2048Smoke.test_interp_smoke) ... ok
+test_c_backend (test_v36.TestNumericUnderscore.test_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_t36_ibrisu_u\game.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.51s（转译 0.00s / tcc 0.26s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_interp (test_v36.TestNumericUnderscore.test_interp) ... ok
+test_switch_default (test_v36.TestSwitchKeyword.test_switch_default) ... ok
+test_switch_interp (test_v36.TestSwitchKeyword.test_switch_interp) ... ok
+test_brace_c_backend (test_v37.TestBraceBlocks.test_brace_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_t37_8xct0v8i.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.52s（转译 0.00s / tcc 0.26s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_brace_own_line (test_v37.TestBraceBlocks.test_brace_own_line) ... ok
+test_aliases (test_v37.TestEnglishKeywords.test_aliases) ... ok
+test_aliases_c_backend (test_v37.TestEnglishKeywords.test_aliases_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_t37_cw4wqyr8.exe
+  大小：110.0 KB（112640 字节）
+  耗时：0.57s（转译 0.01s / tcc 0.28s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_chinese_keywords_rejected (test_v37.TestEnglishKeywords.test_chinese_keywords_rejected) ... ok
+test_count (test_v37.TestEnglishKeywords.test_count) ... ok
+test_null_c_backend (test_v37.TestEnglishKeywords.test_null_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_t37_lfe47wrx.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.61s（转译 0.00s / tcc 0.31s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_null_literal (test_v37.TestEnglishKeywords.test_null_literal) ... ok
+test_repeat_each (test_v37.TestEnglishKeywords.test_repeat_each) ... ok
+test_reserved_keywords (test_v37.TestEnglishKeywords.test_reserved_keywords) ... FAIL
+test_this_alias (test_v37.TestEnglishKeywords.test_this_alias) ... ok
+test_class_field_defaults_and_methods (test_v38.TestImporcClass.test_class_field_defaults_and_methods) ... FAIL
+test_inherit_super_attr (test_v38.TestImporcClass.test_inherit_super_attr) ... FAIL
+test_oop_example_build_independent_exe (test_v38.TestImporcClass.test_oop_example_build_independent_exe) ... ERROR
+test_oop_example_run (test_v38.TestImporcClass.test_oop_example_run) ... ok
+test_version_mode (test_v38.TestImporcClass.test_version_mode) ... FAIL
+test_seed_and_compiler_present (test_v38.TestImporcSelfHost.test_seed_and_compiler_present) ... ok
+test_selfhost_closure (test_v38.TestImporcSelfHost.test_selfhost_closure) ... FAIL
+test_array_for_each_build (test_v39.TestCtransV31.test_array_for_each_build) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_v39_14c3jyye.impor.exe
+  大小：109.5 KB（112128 字节）
+  耗时：0.33s（转译 0.00s / tcc 0.12s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_class_build (test_v39.TestCtransV31.test_class_build) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_v39_iamygisx.impor.exe
+  大小：109.5 KB（112128 字节）
+  耗时：0.32s（转译 0.00s / tcc 0.11s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_class (test_v39.TestImporcV31.test_class) ... ok
+test_flow (test_v39.TestImporcV31.test_flow) ... ok
+test_array_for_each (test_v39.TestInterpreterV31.test_array_for_each) ... ok
+test_class_inherit_super (test_v39.TestInterpreterV31.test_class_inherit_super) ... ok
+test_match (test_v39.TestInterpreterV31.test_match) ... ok
+test_try_raise_catch (test_v39.TestInterpreterV31.test_try_raise_catch) ... ok
+test_oop_three_backends (test_v39.TestThreeBackendConsistency.test_oop_three_backends) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_v39_hfa4mt53.impor.exe
+  大小：109.5 KB（112128 字节）
+  耗时：0.30s（转译 0.00s / tcc 0.10s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_mem_and_gc (test_v40.CBackendMemoryTest.test_mem_and_gc) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_v40_1kpu6ebf.impor.exe
+  大小：109.0 KB（111616 字节）
+  耗时：0.40s（转译 0.00s / tcc 0.09s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_overview (test_v40.CliMemTest.test_overview) ... ok
+test_run_script (test_v40.CliMemTest.test_run_script) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+ok
+test_source_has_premium_features (test_v40.EditorTest.test_source_has_premium_features) ... ok
+test_widgets_when_tk_available (test_v40.EditorTest.test_widgets_when_tk_available) ... skipped "当前环境无可用 tkinter/Tcl：Can't find a usable init.tcl in the following directories: \n    {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/python/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/tcl8.6.15/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/tcl8.6.15/library}\n\n\n\nThis probably means that Tcl wasn't installed properly.\n"
+test_autogc_sets_threshold (test_v40.InterpreterMemoryTest.test_autogc_sets_threshold) ... ok
+test_builtins_work (test_v40.InterpreterMemoryTest.test_builtins_work) ... ok
+test_mem_cleanup_hook (test_v40.InterpreterMemoryTest.test_mem_cleanup_hook) ... ok
+test_alloc_and_stats (test_v40.MemoryManagerTest.test_alloc_and_stats) ... ok
+test_cleaner_and_toggle (test_v40.MemoryManagerTest.test_cleaner_and_toggle) ... ok
+test_process_memory_report (test_v40.MemoryManagerTest.test_process_memory_report) ... ok
+test_report_text (test_v40.MemoryManagerTest.test_report_text) ... ok
+test_threshold_triggers_collect (test_v40.MemoryManagerTest.test_threshold_triggers_collect) ... ok
+test_unicode_c_backend (test_v41.TestCBackendParity.test_unicode_c_backend) ... ok
+test_overflow_reported_c_backend (test_v41.TestCDiagnostic.test_overflow_reported_c_backend) ... ok
+test_render_c_error_maps_to_impor_line (test_v41.TestCDiagnostic.test_render_c_error_maps_to_impor_line) ... ok
+test_mem_explains_containers (test_v41.TestMemoryReport.test_mem_explains_containers) ... ok
+test_1000_levels (test_v41.TestRecursionDepth.test_1000_levels) ... ok
+test_too_deep_gives_diagnostic (test_v41.TestRecursionDepth.test_too_deep_gives_diagnostic) ... ok
+test_int_equals_true (test_v41.TestSemanticAlignment.test_int_equals_true) ... ok
+test_str_plus_number_is_error (test_v41.TestSemanticAlignment.test_str_plus_number_is_error) ... ok
+test_str_repeat (test_v41.TestSemanticAlignment.test_str_repeat) ... ok
+test_index_returns_character (test_v41.TestUnicodeSemantics.test_index_returns_character) ... ok
+test_len_counts_characters (test_v41.TestUnicodeSemantics.test_len_counts_characters) ... ok
+test_literal_index (test_v41.TestUnicodeSemantics.test_literal_index) ... ok
+test_strcut_by_char (test_v41.TestUnicodeSemantics.test_strcut_by_char) ... ok
+test_c_do_until (test_v42.TestCBackendTolerance.test_c_do_until) ... ok
+test_c_operators (test_v42.TestCBackendTolerance.test_c_operators) ... ok
+test_c_print_and_semis (test_v42.TestCBackendTolerance.test_c_print_and_semis) ... ok
+test_c_range_for (test_v42.TestCBackendTolerance.test_c_range_for) ... ok
+test_c_style_for (test_v42.TestCBackendTolerance.test_c_style_for) ... ok
+test_catch_parenthesized_var (test_v42.TestCatchTolerance.test_catch_parenthesized_var) ... ok
+test_catch_without_variable (test_v42.TestCatchTolerance.test_catch_without_variable) ... ok
+test_print_alias (test_v42.TestChineseSoftAliases.test_print_alias) ... FAIL
+test_then_keywords (test_v42.TestConditionTolerance.test_then_keywords) ... FAIL
+test_unless (test_v42.TestConditionTolerance.test_unless) ... ok
+test_new_without_parens (test_v42.TestDeclarations.test_new_without_parens) ... ok
+test_no_paren_def (test_v42.TestDeclarations.test_no_paren_def) ... ok
+test_super_without_parens (test_v42.TestDeclarations.test_super_without_parens) ... ok
+test_c_style_for (test_v42.TestLoops.test_c_style_for) ... ok
+test_do_until_runs_once_then_condition (test_v42.TestLoops.test_do_until_runs_once_then_condition) ... ok
+test_do_while_form (test_v42.TestLoops.test_do_while_form) ... ok
+test_for_each_and_of (test_v42.TestLoops.test_for_each_and_of) ... ok
+test_for_range_inclusive (test_v42.TestLoops.test_for_range_inclusive) ... ok
+test_array_split_over_lines (test_v42.TestMultilineDelimiters.test_array_split_over_lines) ... ok
+test_call_split_over_lines (test_v42.TestMultilineDelimiters.test_call_split_over_lines) ... ok
+test_multiline_call_inside_indented_block (test_v42.TestMultilineDelimiters.test_multiline_call_inside_indented_block) ... ok
+test_c_style_boolean_and_not_equal (test_v42.TestOperators.test_c_style_boolean_and_not_equal) ... ok
+test_colon_eq (test_v42.TestOperators.test_colon_eq) ... ok
+test_incdec (test_v42.TestOperators.test_incdec) ... ok
+test_prefix_incdec (test_v42.TestOperators.test_prefix_incdec) ... ok
+test_print_variants_same_output (test_v42.TestPrintTolerance.test_print_variants_same_output) ... ok
+test_print_without_parens (test_v42.TestPrintTolerance.test_print_without_parens) ... ok
+test_semicolon_in_quick_block (test_v42.TestStatementSeparators.test_semicolon_in_quick_block) ... ok
+test_semicolon_inside_brace_block (test_v42.TestStatementSeparators.test_semicolon_inside_brace_block) ... ok
+test_semicolon_separates (test_v42.TestStatementSeparators.test_semicolon_separates) ... ok
+test_stray_semicolons_ignored (test_v42.TestStatementSeparators.test_stray_semicolons_ignored) ... ok
+test_const_without_initializer (test_v42.TestTypeAnnotations.test_const_without_initializer) ... ok
+test_var_and_param_and_return (test_v42.TestTypeAnnotations.test_var_and_param_and_return) ... ok
+test_var_without_initializer (test_v42.TestTypeAnnotations.test_var_without_initializer) ... ok
+test_c_backend (test_v42_closure.TestClosureCrossBackend.test_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v42cc_hh424pav\case.exe
+  大小：111.0 KB（113664 字节）
+  耗时：0.28s（转译 0.00s / tcc 0.11s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_imporc_backend (test_v42_closure.TestClosureCrossBackend.test_imporc_backend) ... ok
+test_interpreter (test_v42_closure.TestClosureCrossBackend.test_interpreter) ... ok
+test_python_transpile (test_v42_closure.TestClosureCrossBackend.test_python_transpile) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+已编译: C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v42cp_mqucnk0d\case.py
+FAIL
+test_c_backend_code_and_stack (test_v42_diag.TestDiagnosticConsistency.test_c_backend_code_and_stack) ... ok
+test_interpreter_catch_keeps_exit_zero (test_v42_diag.TestDiagnosticConsistency.test_interpreter_catch_keeps_exit_zero) ... ok
+test_interpreter_code_and_stack (test_v42_diag.TestDiagnosticConsistency.test_interpreter_code_and_stack) ... FAIL
+test_render_keeps_old_text_and_adds_code (test_v42_diag.TestErrorCodes.test_render_keeps_old_text_and_adds_code) ... ok
+test_table (test_v42_diag.TestErrorCodes.test_table) ... ok
+test_c_backend (test_v42_dict.TestDictSliceCrossBackend.test_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v42c_jyknr9pr\case.exe
+  大小：112.0 KB（114688 字节）
+  耗时：0.28s（转译 0.01s / tcc 0.10s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_imporc_backend (test_v42_dict.TestDictSliceCrossBackend.test_imporc_backend) ... ok
+test_interpreter (test_v42_dict.TestDictSliceCrossBackend.test_interpreter) ... ok
+test_python_transpile (test_v42_dict.TestDictSliceCrossBackend.test_python_transpile) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+已编译: C:\Users\41482\AppData\Local\Temp\impor_v42p_rtqeb89t.impor.py
+FAIL
+test_failure_message (test_v42_dict.TestExpectBuiltin.test_failure_message) ... ok
+test_python_transpile (test_v42_dict.TestExpectBuiltin.test_python_transpile) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+已编译: C:\Users\41482\AppData\Local\Temp\impor_v42p_94m9c1yh.impor.py
+FAIL
+test_table_driven (test_v42_dict.TestExpectBuiltin.test_table_driven) ... ok
+✓ 通过 C:\Users\41482\AppData\Local\Temp\impor_v42t_8po6mjtw\iso_test.impor（1 断言，0.00s）
+
+测试结果: 1 通过 / 0 失败（共 1 个文件，1 条断言，耗时 0.01s）
+test_file_isolation (test_v42_dict.TestImporTestIsolation.test_file_isolation) ... ok
+test_c_backend_module_value (test_v42_module.TestModuleValue.test_c_backend_module_value) ... ok
+test_imporc_module_value (test_v42_module.TestModuleValue.test_imporc_module_value) ... ok
+test_interpreter_module_value (test_v42_module.TestModuleValue.test_interpreter_module_value) ... ok
+test_missing_attribute_reports (test_v42_module.TestModuleValue.test_missing_attribute_reports) ... ok
+test_doc_markdown (test_v43.TestDocCommand.test_doc_markdown) ... ok
+test_doc_without_comments (test_v43.TestDocCommand.test_doc_without_comments) ... ok
+test_doc_keeps_code_parsable (test_v43.TestDocLexer.test_doc_keeps_code_parsable) ... ok
+test_doc_token_emitted (test_v43.TestDocLexer.test_doc_token_emitted) ... ok
+test_plain_comment_not_doc (test_v43.TestDocLexer.test_plain_comment_not_doc) ... ok
+test_c_backend_with_docs (test_v43.TestDocRuntime.test_c_backend_with_docs) ... ok
+test_doc_inside_brace_block (test_v43.TestDocRuntime.test_doc_inside_brace_block) ... ok
+test_run_with_docs (test_v43.TestDocRuntime.test_run_with_docs) ... ok
+test_hover_contains_doc (test_v43.TestDocSymbolsAndHover.test_hover_contains_doc) ... ok
+test_no_doc_symbol_untouched (test_v43.TestDocSymbolsAndHover.test_no_doc_symbol_untouched) ... ok
+test_symbol_doc (test_v43.TestDocSymbolsAndHover.test_symbol_doc) ... ok
+test_fmt_preserves_doc_lines (test_v43.TestFmtKeepsDocs.test_fmt_preserves_doc_lines) ... ok
+test_keyword_total_v52 (test_v43.TestKeywordCountUnchanged.test_keyword_total_v52) ... ok
+test_c_for_reported_once_without_semicolon_noise (test_v43.TestStyleLint.test_c_for_reported_once_without_semicolon_noise) ... ok
+test_canonical_code_is_clean (test_v43.TestStyleLint.test_canonical_code_is_clean) ... ok
+test_cli_style_only_does_not_fail_build (test_v43.TestStyleLint.test_cli_style_only_does_not_fail_build) ... FAIL
+test_cli_without_style_is_unchanged (test_v43.TestStyleLint.test_cli_without_style_is_unchanged) ... FAIL
+test_detects_cn_alias_and_extends_params_catch (test_v43.TestStyleLint.test_detects_cn_alias_and_extends_params_catch) ... FAIL
+test_detects_main_sugars (test_v43.TestStyleLint.test_detects_main_sugars) ... ok
+test_build_reports_and_runs (test_v43_unify.TestBuildAndError.test_build_reports_and_runs) ... ok
+test_c_error_has_code_snippet_why (test_v43_unify.TestBuildAndError.test_c_error_has_code_snippet_why) ... ok
+test_exception_name (test_v43_unify.TestExplain.test_exception_name) ... ok
+test_list_and_unknown (test_v43_unify.TestExplain.test_list_and_unknown) ... ok
+test_single_code (test_v43_unify.TestExplain.test_single_code) ... ok
+test_from_package_nested (test_v43_unify.TestImporcImports.test_from_package_nested) ... ok
+test_check_reports_why_and_fix (test_v44.TestCliDiagnostics.test_check_reports_why_and_fix) ... ok
+test_color_forced_by_env (test_v44.TestCliDiagnostics.test_color_forced_by_env) ... ok
+test_runtime_error_name_fix (test_v44.TestCliDiagnostics.test_runtime_error_name_fix) ... ok
+test_syntax_error_four_sections (test_v44.TestCliDiagnostics.test_syntax_error_four_sections) ... ok
+test_test_cmd_failure_shows_name (test_v44.TestCliDiagnostics.test_test_cmd_failure_shows_name) ... ok
+test_const_assign (test_v44.TestExplainKnowledge.test_const_assign) ... ok
+test_fix_for_matches_explain (test_v44.TestExplainKnowledge.test_fix_for_matches_explain) ... ok
+test_syntax_expect_has_why_and_fix (test_v44.TestExplainKnowledge.test_syntax_expect_has_why_and_fix) ... ok
+test_undefined_name (test_v44.TestExplainKnowledge.test_undefined_name) ... ok
+test_unknown_gets_generic_fallback (test_v44.TestExplainKnowledge.test_unknown_gets_generic_fallback) ... ok
+test_zero_division (test_v44.TestExplainKnowledge.test_zero_division) ... ok
+test_syntax_diagnostic_has_why_and_fix (test_v44.TestLspDiagnostics.test_syntax_diagnostic_has_why_and_fix) ... ok
+test_unused_issue_has_targeted_fix (test_v44.TestLspDiagnostics.test_unused_issue_has_targeted_fix) ... ok
+test_caret_aligned_under_column (test_v44.TestRenderDiagnostic.test_caret_aligned_under_column) ... ok
+test_color_enabled_env_switch (test_v44.TestRenderDiagnostic.test_color_enabled_env_switch) ... ok
+test_colored_when_color_true (test_v44.TestRenderDiagnostic.test_colored_when_color_true) ... ok
+test_context_snippet_and_gutter (test_v44.TestRenderDiagnostic.test_context_snippet_and_gutter) ... ok
+test_four_sections (test_v44.TestRenderDiagnostic.test_four_sections) ... ok
+test_hint_overrides_generic_fix (test_v44.TestRenderDiagnostic.test_hint_overrides_generic_fix) ... ok
+test_no_line_still_renders (test_v44.TestRenderDiagnostic.test_no_line_still_renders) ... ok
+test_plain_when_color_false (test_v44.TestRenderDiagnostic.test_plain_when_color_false) ... ok
+test_repl_runtime_error_has_fix (test_v44.TestReplDiagnostics.test_repl_runtime_error_has_fix) ... ok
+test_default (test_v45.TestSplashEnabled.test_default) ... ok
+test_disabled_values (test_v45.TestSplashEnabled.test_disabled_values) ... ok
+test_other_values (test_v45.TestSplashEnabled.test_other_values) ... ok
+test_destroy_idempotent (test_v45.TestSplashScreen.test_destroy_idempotent) ... skipped "Tk 不可用：Can't find a usable init.tcl in the following directories: \n    {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/python/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/tcl8.6.15/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/tcl8.6.15/library}\n\n\n\nThis probably means that Tcl wasn't installed properly.\n"
+test_finish_callback (test_v45.TestSplashScreen.test_finish_callback) ... skipped "Tk 不可用：Can't find a usable init.tcl in the following directories: \n    {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/python/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/tcl8.6.15/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/tcl8.6.15/library}\n\n\n\nThis probably means that Tcl wasn't installed properly.\n"
+test_skip_before_animation (test_v45.TestSplashScreen.test_skip_before_animation) ... skipped "Tk 不可用：Can't find a usable init.tcl in the following directories: \n    {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/python/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/tcl8.6.15/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/tcl8.6.15/library}\n\n\n\nThis probably means that Tcl wasn't installed properly.\n"
+test_two_constructor_args (test_v46.TestClassMultiArgCBackend.test_two_constructor_args) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_v46_db4iiu17.impor.exe
+  大小：109.0 KB（111616 字节）
+  耗时：0.29s（转译 0.00s / tcc 0.10s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_same_output (test_v46.TestStructCBackend.test_same_output) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_v46_7su5y6ws.impor.exe
+  大小：110.0 KB（112640 字节）
+  耗时：0.28s（转译 0.00s / tcc 0.09s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_same_output (test_v46.TestStructImporc.test_same_output) ... ok
+test_body_must_be_field_only (test_v46.TestStructInterpreter.test_body_must_be_field_only) ... ok
+test_fields_and_constructor (test_v46.TestStructInterpreter.test_fields_and_constructor) ... ok
+test_same_output (test_v46.TestStructPythonTranspile.test_same_output) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+已编译: C:\Users\41482\AppData\Local\Temp\impor_v46p_2kzc95hc.impor.py
+FAIL
+test_apply_icon_replaces_on_copy (test_v47.TestExeIcon.test_apply_icon_replaces_on_copy) ... ok
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_icon_d3xfm9db\hello.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.27s（转译 0.00s / tcc 0.09s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+test_build_embeds_icon (test_v47.TestExeIcon.test_build_embeds_icon) ... ok
+test_ico_has_all_sizes (test_v47.TestExeIcon.test_ico_has_all_sizes) ... ok
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_input_5igjqhi4\input_demo.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.29s（转译 0.00s / tcc 0.10s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+test_input_prompt_and_number (test_v48.TestCBackendInput.test_input_prompt_and_number) ... ok
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_input_qpjs97pl\input_demo.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.28s（转译 0.00s / tcc 0.11s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+test_inputstr_prompt (test_v48.TestCBackendInput.test_inputstr_prompt) ... ok
+构建成功：C:\Users\41482\AppData\Local\Temp\impor_input_r0robxwc\input_demo.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.30s（转译 0.00s / tcc 0.10s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+test_inputstr_without_args (test_v48.TestCBackendInput.test_inputstr_without_args) ... ok
+test_same_output (test_v49.TestEnumCBackend.test_same_output) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v49c_v0l4x2ka\case.exe
+  大小：109.5 KB（112128 字节）
+  耗时：0.26s（转译 0.00s / tcc 0.09s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_same_output (test_v49.TestEnumImporc.test_same_output) ... ok
+test_interpreter (test_v49.TestEnumInSwitch.test_interpreter) ... ok
+test_python_transpile (test_v49.TestEnumInSwitch.test_python_transpile) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+已编译: C:\Users\41482\AppData\Local\Temp\impor_v49p_nt29vbj2.impor.py
+FAIL
+test_braces_with_colon (test_v49.TestEnumInterpreter.test_braces_with_colon) ... ok
+test_members_and_explicit_values (test_v49.TestEnumInterpreter.test_members_and_explicit_values) ... ok
+test_same_output (test_v49.TestEnumPythonTranspile.test_same_output) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+已编译: C:\Users\41482\AppData\Local\Temp\impor_v49p_pnzqfc61.impor.py
+FAIL
+test_duplicate_member (test_v49.TestEnumSyntax.test_duplicate_member) ... ok
+test_empty_enum (test_v49.TestEnumSyntax.test_empty_enum) ... ok
+test_non_integer_value (test_v49.TestEnumSyntax.test_non_integer_value) ... ok
+test_unknown_member (test_v49.TestEnumSyntax.test_unknown_member) ... ok
+test_brace_block_indent_and_comments (test_v49.TestFmt.test_brace_block_indent_and_comments) ... ok
+test_check_fmt_detects_unformatted (test_v49.TestFmt.test_check_fmt_detects_unformatted) ... ok
+test_dict_key_colon_tight (test_v49.TestFmt.test_dict_key_colon_tight) ... ok
+test_idempotent (test_v49.TestFmt.test_idempotent) ... ok
+test_multiline_string_preserved (test_v49.TestFmt.test_multiline_string_preserved) ... ok
+test_semantics_preserved (test_v49.TestFmt.test_semantics_preserved) ... ok
+test_default_lint_does_not_add_style_noise (test_v49.TestReadabilityLint.test_default_lint_does_not_add_style_noise) ... ok
+test_long_function (test_v49.TestReadabilityLint.test_long_function) ... ok
+test_magic_number_repeated (test_v49.TestReadabilityLint.test_magic_number_repeated) ... ok
+test_short_name (test_v49.TestReadabilityLint.test_short_name) ... ok
+test_wrap_idempotent_and_semantics (test_v50.TestFmtWrap.test_wrap_idempotent_and_semantics) ... ok
+test_wrap_skips_comments_and_block_headers (test_v50.TestFmtWrap.test_wrap_skips_comments_and_block_headers) ... ok
+test_enum_exhaustive (test_v50.TestLintV39.test_enum_exhaustive) ... ok
+test_lint_config_threshold (test_v50.TestLintV39.test_lint_config_threshold) ... ok
+C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_v39_bvmmo6_2\fix.impor: 已自动修复 2 处
+test_lint_fix (test_v50.TestLintV39.test_lint_fix) ... ok
+test_capabilities_include_formatting (test_v50.TestLspFormatting.test_capabilities_include_formatting) ... ok
+test_document_formatting_provider (test_v50.TestLspFormatting.test_document_formatting_provider) ... ok
+test_std_demo_interpreter_and_transpile (test_v50.TestStdV39.test_std_demo_interpreter_and_transpile) ... ok
+test_use_std_injects_four_modules (test_v50.TestStdV39.test_use_std_injects_four_modules) ... ok
+test_check_detects_tampered_cache_and_frozen_restores (test_v51.TestLockFrozen.test_check_detects_tampered_cache_and_frozen_restores) ... ok
+test_cli_frozen_and_check (test_v51.TestLockFrozen.test_cli_frozen_and_check) ...   ✗ mylib: 未安装（缓存缺少 C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor_v51_xicm5y5o\cache\mylib）
+impor.lock 校验失败：1 处不一致
+已按 impor.lock 还原 1 个包: mylib
+impor.lock 校验通过：版本与内容哈希全部一致
+ok
+test_lock_records_source_and_hash (test_v51.TestLockFrozen.test_lock_records_source_and_hash) ... ok
+test_transitive_requires_in_lock (test_v51.TestLockFrozen.test_transitive_requires_in_lock) ... ok
+test_frozen_restore_from_registry (test_v51.TestPrivateRegistry.test_frozen_restore_from_registry) ... ok
+test_registry_install_records_registry_source (test_v51.TestPrivateRegistry.test_registry_install_records_registry_source) ... ok
+test_registry_installs_transitive_dependencies (test_v51.TestPrivateRegistry.test_registry_installs_transitive_dependencies) ... ok
+test_registry_picks_highest_matching (test_v51.TestPrivateRegistry.test_registry_picks_highest_matching) ... ok
+test_registry_rejects_bad_sha (test_v51.TestPrivateRegistry.test_registry_rejects_bad_sha) ... ok
+test_missing_token_fails (test_v51.TestRegistryAuth.test_missing_token_fails) ... ok
+test_token_header_required (test_v51.TestRegistryAuth.test_token_header_required) ... ok
+test_pack_is_deterministic_and_has_root_toml (test_v52.TestPublish.test_pack_is_deterministic_and_has_root_toml) ... ok
+test_prune_removes_unreferenced_cache (test_v52.TestPublish.test_prune_removes_unreferenced_cache) ... ok
+test_publish_duplicate_requires_force (test_v52.TestPublish.test_publish_duplicate_requires_force) ... ok
+test_publish_http_put_and_outdated (test_v52.TestPublish.test_publish_http_put_and_outdated) ... C:\Users\41482\AppData\Local\Doubao\User Data\sandbox_runtime\bases\fa694f517e5995233c80a9a8db5212c2\python\Lib\unittest\case.py:606: ResourceWarning: unclosed <socket.socket fd=1164, family=2, type=1, proto=0, laddr=('127.0.0.1', 54233)>
+  if method() is not None:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_publish_local_registry_then_install (test_v52.TestPublish.test_publish_local_registry_then_install) ... ok
+test_c_import_class_display_name (test_v53.V53LanguageCore.test_c_import_class_display_name) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v53c_r33cam4w\main.exe
+  大小：108.5 KB（111104 字节）
+  耗时：0.27s（转译 0.00s / tcc 0.09s）
+  模块：1 个（pt）
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_c_import_module_and_from (test_v53.V53LanguageCore.test_c_import_module_and_from) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v53c_l98yje0_\main.exe
+  大小：109.0 KB（111616 字节）
+  耗时：0.31s（转译 0.01s / tcc 0.09s）
+  模块：1 个（m）
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_c_import_prunes_unreferenced_broken_code (test_v53.V53LanguageCore.test_c_import_prunes_unreferenced_broken_code) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v53c_x35lbc4v\main.exe
+  大小：109.0 KB（111616 字节）
+  耗时：0.30s（转译 0.00s / tcc 0.09s）
+  模块：1 个（m）
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_c_import_std_name_collision (test_v53.V53LanguageCore.test_c_import_std_name_collision) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v53c__9yswfph\main.exe
+  大小：111.5 KB（114176 字节）
+  耗时：0.29s（转译 0.02s / tcc 0.09s）
+  模块：2 个（std.algo, std.text）
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_flatten_std_collections (test_v53.V53LanguageCore.test_flatten_std_collections) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v53c_0hlyn43p\main.exe
+  大小：111.0 KB（113664 字节）
+  耗时：0.29s（转译 0.01s / tcc 0.09s）
+  模块：1 个（std.collections）
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_imporc_nested_switch (test_v53.V53LanguageCore.test_imporc_nested_switch) ... ok
+test_type_of_c_backend (test_v53.V53LanguageCore.test_type_of_c_backend) ... Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+构建成功：C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\impor_v53c_6euvkvdo\main.exe
+  大小：109.0 KB（111616 字节）
+  耗时：0.27s（转译 0.00s / tcc 0.09s）
+  模块：0 个
+  运行：不依赖 Python，可直接分发 exe。
+ok
+test_type_of_interpreter (test_v53.V53LanguageCore.test_type_of_interpreter) ... ok
+
+======================================================================
+ERROR: test_completion_contains_symbols_and_builtins (test_lsp.TestLspV25.test_completion_contains_symbols_and_builtins)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_lsp.py", line 58, in test_completion_contains_symbols_and_builtins
+    self.srv._on_completion(1, {"textDocument": {"uri": URI}})
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\lsp.py", line 394, in _on_completion
+    f"{os.path.relpath(path, self.index.root)}:{line}"})
+       ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen ntpath>", line 760, in relpath
+ValueError: no path specified
+
+======================================================================
+ERROR: test_rename_updates_definition_and_references (test_lsp.TestLspV25.test_rename_updates_definition_and_references)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_lsp.py", line 76, in test_rename_updates_definition_and_references
+    changes = result["changes"][URI]
+              ~~~~~~~~~~~~~~~~~^^^^^
+KeyError: 'file:///demo.impor'
+
+======================================================================
+ERROR: test_basic_cn (test_v29.TestChineseKeywords.test_basic_cn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 47, in test_basic_cn
+    self.assertEqual(run(src), [])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_cn_control_flow (test_v29.TestChineseKeywords.test_cn_control_flow)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 58, in test_cn_control_flow
+    self.assertEqual(run(src), ["6"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 'in'
+
+======================================================================
+ERROR: test_cn_truthiness (test_v29.TestChineseKeywords.test_cn_truthiness)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 66, in test_cn_truthiness
+    self.assertEqual(run(src), ["ok"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 4
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_bare_expr_stmt (test_v29.TestExprStmt.test_bare_expr_stmt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 179, in test_bare_expr_stmt
+    self.assertEqual(run(src), ["done"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 505, in run
+    self._exec_stmt(node)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1602, in visit_Block
+    lv = self._exec_stmt(s)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 984, in visit_ExprStmt
+    return self.visit(n.expr)
+           ~~~~~~~~~~^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 594, in visit
+    res = func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 666, in visit_Var
+    return self.cur_env.get(name)
+           ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 300, in get
+    raise ImporException("NameError", f"变量 {name} 未定义")
+impor.interpreter.ImporException: NameError: 变量 变量 未定义
+
+======================================================================
+ERROR: test_explicit_return_still_works (test_v29.TestImplicitReturn.test_explicit_return_still_works)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 169, in test_explicit_return_still_works
+    self.assertEqual(run(src), ["0", "8"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_implicit_call_tail (test_v29.TestImplicitReturn.test_implicit_call_tail)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 134, in test_implicit_call_tail
+    self.assertEqual(run(src), ["11"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_implicit_compiled_same (test_v29.TestImplicitReturn.test_implicit_compiled_same)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 159, in test_implicit_compiled_same
+    self.assertEqual(run(src), run_compiled(src))
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_implicit_expr_tail (test_v29.TestImplicitReturn.test_implicit_expr_tail)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 141, in test_implicit_expr_tail
+    self.assertEqual(run(src), ["36"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_implicit_mixed (test_v29.TestImplicitReturn.test_implicit_mixed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 149, in test_implicit_mixed
+    self.assertEqual(run(src), ["计算中", "15"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_all_together (test_v29.TestMixedFeatures.test_all_together)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 199, in test_all_together
+    self.assertEqual(run(src), ["总和位数: 2"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_pipe_chain (test_v29.TestPipeOperator.test_pipe_chain)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 104, in test_pipe_chain
+    self.assertEqual(run(src), ["21"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_pipe_compiled_same (test_v29.TestPipeOperator.test_pipe_compiled_same)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 123, in test_pipe_compiled_same
+    self.assertEqual(run(src), run_compiled(src))
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_pipe_with_args (test_v29.TestPipeOperator.test_pipe_with_args)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 111, in test_pipe_with_args
+    self.assertEqual(run(src), ["13"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+                                       ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_interp_basic (test_v29.TestStringInterpolation.test_interp_basic)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 75, in test_interp_basic
+    self.assertEqual(run(src), ["欢迎 Impor，数字是 42"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 505, in run
+    self._exec_stmt(node)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1602, in visit_Block
+    lv = self._exec_stmt(s)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 984, in visit_ExprStmt
+    return self.visit(n.expr)
+           ~~~~~~~~~~^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 594, in visit
+    res = func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 666, in visit_Var
+    return self.cur_env.get(name)
+           ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 300, in get
+    raise ImporException("NameError", f"变量 {name} 未定义")
+impor.interpreter.ImporException: NameError: 变量 变量 未定义
+
+======================================================================
+ERROR: test_interp_compiled_same (test_v29.TestStringInterpolation.test_interp_compiled_same)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 93, in test_interp_compiled_same
+    self.assertEqual(run(src), run_compiled(src))
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 505, in run
+    self._exec_stmt(node)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1602, in visit_Block
+    lv = self._exec_stmt(s)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 984, in visit_ExprStmt
+    return self.visit(n.expr)
+           ~~~~~~~~~~^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 594, in visit
+    res = func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 666, in visit_Var
+    return self.cur_env.get(name)
+           ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 300, in get
+    raise ImporException("NameError", f"变量 {name} 未定义")
+impor.interpreter.ImporException: NameError: 变量 变量 未定义
+
+======================================================================
+ERROR: test_interp_expr (test_v29.TestStringInterpolation.test_interp_expr)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 81, in test_interp_expr
+    self.assertEqual(run(src), ["n+5 = 15"])
+                     ~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 24, in run
+    Interpreter(log_cb=out.append).run(parse_source(src))
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 505, in run
+    self._exec_stmt(node)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1602, in visit_Block
+    lv = self._exec_stmt(s)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 984, in visit_ExprStmt
+    return self.visit(n.expr)
+           ~~~~~~~~~~^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 594, in visit
+    res = func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 666, in visit_Var
+    return self.cur_env.get(name)
+           ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 300, in get
+    raise ImporException("NameError", f"变量 {name} 未定义")
+impor.interpreter.ImporException: NameError: 变量 变量 未定义
+
+======================================================================
+ERROR: test_lint_understands_exprstmt_pipe_fstr (test_v29.TestToolchainNewSyntax.test_lint_understands_exprstmt_pipe_fstr)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v29.py", line 231, in test_lint_understands_exprstmt_pipe_fstr
+    issues = analyze(parse_source(src), src.splitlines()).issues
+                     ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_use_chinese (test_v32.TestUseStd.test_use_chinese)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v32.py", line 79, in test_use_chinese
+            out = run_impor("""用 std.text
+                  ~~~~~~~~~^^^^^^^^^^^^^^^
+    print(upper("ok"))
+    ^^^^^^^^^^^^^^^^^^
+    """)
+    ^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v32.py", line 23, in run_impor
+    interp.run(parse_source(src, filename=fname))
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 505, in run
+    self._exec_stmt(node)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1602, in visit_Block
+    lv = self._exec_stmt(s)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 579, in _exec_stmt
+    return func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 984, in visit_ExprStmt
+    return self.visit(n.expr)
+           ~~~~~~~~~~^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 594, in visit
+    res = func(node)
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 666, in visit_Var
+    return self.cur_env.get(name)
+           ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 300, in get
+    raise ImporException("NameError", f"变量 {name} 未定义")
+impor.interpreter.ImporException: NameError: 变量 用 未定义
+
+======================================================================
+ERROR: test_try_catch_unsupported (test_v34.TestCTranspileErrors.test_try_catch_unsupported)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v34.py", line 146, in test_try_catch_unsupported
+    self._raises('尝试\n    print(1)\n捕获 e\n    print(2)\n')
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v34.py", line 131, in _raises
+    c_transpile(parse_source(src), "x.impor")
+                ~~~~~~~~~~~~^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\interpreter.py", line 1778, in parse_source
+    return Parser(tokens, filename).program()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1567, in program
+    st.append(self._stmt_with_doc())
+              ~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 407, in _stmt_with_doc
+    node = self.stmt()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 1308, in stmt
+    expr_node = self.expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 123, in expr
+    return self.ternary()
+           ~~~~~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 126, in ternary
+    n = self.pipe_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 138, in pipe_expr
+    n = self.or_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 146, in or_expr
+    n = self.and_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 154, in and_expr
+    n = self.not_expr()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 174, in not_expr
+    return self.neg()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 185, in neg
+    return self.cmp()
+           ~~~~~~~~^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 196, in cmp
+    n = self.add()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 203, in add
+    n = self.mul()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 210, in mul
+    n = self.primary()
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\impor\parser.py", line 392, in primary
+    raise ImporSyntaxError(f"无法解析的记号 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
+  File "<string>", line 2
+impor.errors.ImporSyntaxError: 无法解析的记号 ''
+
+======================================================================
+ERROR: test_oop_example_build_independent_exe (test_v38.TestImporcClass.test_oop_example_build_independent_exe)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v38.py", line 61, in test_oop_example_build_independent_exe
+    r = subprocess.run([exe], capture_output=True, text=True, timeout=60)
+  File "C:\Users\41482\AppData\Local\Doubao\User Data\sandbox_runtime\bases\fa694f517e5995233c80a9a8db5212c2\python\Lib\subprocess.py", line 555, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\AppData\Local\Doubao\User Data\sandbox_runtime\bases\fa694f517e5995233c80a9a8db5212c2\python\Lib\subprocess.py", line 1040, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\AppData\Local\Doubao\User Data\sandbox_runtime\bases\fa694f517e5995233c80a9a8db5212c2\python\Lib\subprocess.py", line 1555, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+                       ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+                             # no special security
+                             ^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+                             cwd,
+                             ^^^^
+                             startupinfo)
+                             ^^^^^^^^^^^^
+PermissionError: [WinError 5] 拒绝访问。
+
+======================================================================
+FAIL: test_three_backends_byte_identical (test_conformance.TestConformance.test_three_backends_byte_identical)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_conformance.py", line 26, in test_three_backends_byte_identical
+    self.assertEqual(r.returncode, 0, "conformance 存在差异：\n" + (r.stdout or "")[-3000:])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : conformance 存在差异：
+Impor conformance —— 三后端逐字节比对（23 个用例）
+------------------------------------------------------------------------
+
+
+======================================================================
+FAIL: test_direct_script_file_runs (test_launcher.TestLauncher.test_direct_script_file_runs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_launcher.py", line 49, in test_direct_script_file_runs
+    self.assertEqual(r.returncode, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_run_smoke (test_launcher.TestLauncher.test_run_smoke)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_launcher.py", line 37, in test_run_smoke
+    self.assertEqual(r.returncode, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_repl_cn_func_block (test_v33.TestReplChinese.test_repl_cn_func_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v33.py", line 153, in test_repl_cn_func_block
+    self.assertIn("5", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^
+AssertionError: '5' not found in "Impor (I++) 3.2.3 REPL — 输入 help 查看帮助，exit 退出\n运行错误: 第1行 列1: NameError: 变量 函数 未定义 [E1008]  · <repl>\n  为什么： Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。\n  修复： 先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。\n语法错误: 第1行: 无法解析的记号 ''  · <repl>\n  为什么： 这个记号不允许出现在语句的这个位置，解析器无法把它接进当前语法结构。\n  修复： 检查前一行是否已经写完整（是否漏了逗号、括号或运算符），必要时先把这一行注释掉再定位。\n运行错误: 第1行 列1: NameError: 变量 变量 未定义 [E1008]  · <repl>\n  为什么： Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。\n  修复： 先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。\n运行错误: 第1行 列7: NameError: 变量 x 未定义 [E1008]  · <repl>\n  为什么： Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。\n  修复： 先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。\n"
+
+======================================================================
+FAIL: test_repl_cn_if_block (test_v33.TestReplChinese.test_repl_cn_if_block)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v33.py", line 159, in test_repl_cn_if_block
+    self.assertIn("ok", out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^
+AssertionError: 'ok' not found in "Impor (I++) 3.2.3 REPL — 输入 help 查看帮助，exit 退出\n运行错误: 第1行 列1: NameError: 变量 如果 未定义 [E1008]  · <repl>\n  为什么： Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。\n  修复： 先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。\n语法错误: 第1行: 无法解析的记号 ''  · <repl>\n  为什么： 这个记号不允许出现在语句的这个位置，解析器无法把它接进当前语法结构。\n  修复： 检查前一行是否已经写完整（是否漏了逗号、括号或运算符），必要时先把这一行注释掉再定位。\n"
+
+======================================================================
+FAIL: test_cli_smoke_snake (test_v33.TestSmokeMode.test_cli_smoke_snake)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v33.py", line 54, in test_cli_smoke_snake
+    self.assertEqual(r.returncode, 0, r.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : impor: 运行错误: 第159行 列12: TclError: Can't find a usable init.tcl in the following directories:  [E1099]  · C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\examples\snake.impor
+        {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/python/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/lib/tcl8.6} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/fa694f517e5995233c80a9a8db5212c2/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/bases/tcl8.6.15/library} {C:/Users/41482/AppData/Local/Doubao/User Data/sandbox_runtime/tcl8.6.15/library}
+    This probably means that Tcl wasn't installed properly.
+    （设 IMPOR_DEBUG=1 可查看完整调试栈）
+  158 │ // ---------------- 启动 ----------------
+  159 │ var root = tkinter.Tk()
+      │            ^^^^^^^^
+  160 │ root.title("Impor 贪吃蛇  —  方向键移动 · R 重开")
+  为什么： Impor 执行到这一步时遇到了未预期的情况。
+  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。
+调用栈（自顶向下）:
+ -> <main>（第0行）
+
+
+======================================================================
+FAIL: test_reserved_keywords (test_v37.TestEnglishKeywords.test_reserved_keywords)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v37.py", line 165, in test_reserved_keywords
+    self.assertIn("已保留", str(ctx.exception))
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '已保留' not found in '第1行 列1: async 只能修饰函数声明（async func 名称(...)）'
+
+======================================================================
+FAIL: test_class_field_defaults_and_methods (test_v38.TestImporcClass.test_class_field_defaults_and_methods)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v38.py", line 128, in test_class_field_defaults_and_methods
+    self.assertEqual(rc, 0, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 4294967295 != 0 : imporc.impor: 已生成  C:\Users\41482\AppData\Local\Temp\impor_t38c_t761u_6o.exe
+
+
+======================================================================
+FAIL: test_inherit_super_attr (test_v38.TestImporcClass.test_inherit_super_attr)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v38.py", line 96, in test_inherit_super_attr
+    self.assertEqual(rc, 0, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: 4294967295 != 0 : imporc.impor: 已生成  C:\Users\41482\AppData\Local\Temp\impor_t38b_vaw7a8gu.exe
+
+
+======================================================================
+FAIL: test_version_mode (test_v38.TestImporcClass.test_version_mode)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v38.py", line 142, in test_version_mode
+    self.assertIn("v" + ver, out)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: 'v3.2.3' not found in 'imporc (Impor 自举编译器) v3.2.2 · 子集模式\n'
+
+======================================================================
+FAIL: test_selfhost_closure (test_v38.TestImporcSelfHost.test_selfhost_closure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v38.py", line 157, in test_selfhost_closure
+    self.assertEqual(r.returncode, 0, (r.stdout or "")[-500:])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_print_alias (test_v42.TestChineseSoftAliases.test_print_alias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42.py", line 193, in test_print_alias
+    ok_run(self, '打印 "hi"\n输出 1, 2\n', ["hi", "1 2"])
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42.py", line 46, in ok_run
+    testcase.assertEqual(rc, 0, f"rc={rc}\n{err}\n{out}")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : rc=2
+Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+impor: 语法错误: 第2行 列5: 无法解析的记号 ','  · C:\Users\41482\AppData\Local\Temp\v34_5pubmnkh\t.impor
+  1 │ 打印 "hi"
+  2 │ 输出 1, 2
+    │       ^^^
+  为什么： 这个记号不允许出现在语句的这个位置，解析器无法把它接进当前语法结构。
+  修复： 检查前一行是否已经写完整（是否漏了逗号、括号或运算符），必要时先把这一行注释掉再定位。
+
+
+
+======================================================================
+FAIL: test_then_keywords (test_v42.TestConditionTolerance.test_then_keywords)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42.py", line 183, in test_then_keywords
+            ok_run(self, '''
+            ~~~~~~^^^^^^^^^^
+    if 1 > 0 then { print("then-ok") }
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    print("done")
+    ^^^^^^^^^^^^^
+    ''', ["then-ok", "ze-ok", "done"])
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42.py", line 46, in ok_run
+    testcase.assertEqual(rc, 0, f"rc={rc}\n{err}\n{out}")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : rc=1
+Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）
+impor: 运行错误: 第3行 列10: NameError: 变量 则 未定义 [E1008]  · C:\Users\41482\AppData\Local\Temp\v34_0xk0lhrb\t.impor
+    （设 IMPOR_DEBUG=1 可查看完整调试栈）
+  2 │ if 1 > 0 then { print("then-ok") }
+  3 │ if 1 > 0 则 { print("ze-ok") }
+    │          ^^^^^^^^
+  4 │ while 0 > 1 then { print("never") }
+  为什么： Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。
+  修复： 先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。
+调用栈（自顶向下）:
+ -> <main>（第1行）
+
+then-ok
+
+
+======================================================================
+FAIL: test_python_transpile (test_v42_closure.TestClosureCrossBackend.test_python_transpile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42_closure.py", line 116, in test_python_transpile
+    self.assertEqual(rc, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_interpreter_code_and_stack (test_v42_diag.TestDiagnosticConsistency.test_interpreter_code_and_stack)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42_diag.py", line 79, in test_interpreter_code_and_stack
+    self.assertIn("-> b（第", r.stderr)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '-> b（第' not found in 'Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):（不影响运行；建议首行添加以便标记版本）\nimpor: 运行错误: ZeroDivisionError: division by zero [E1001]  · C:\\Users\\41482\\Doubao\\chats\\2026-11-01\\new-chat\\ImporLang\\tests\\impor_diag_evfanv8s\\e.impor\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  为什么： 除数是 0，数学上没有定义，运行无法继续。\n  修复： 在除法前判断除数（if b != 0 { ... }），或先检查数据来源是否可能为 0。\n调用栈（自顶向下）:\n -> <main>（第0行）\n'
+
+======================================================================
+FAIL: test_python_transpile (test_v42_dict.TestDictSliceCrossBackend.test_python_transpile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42_dict.py", line 128, in test_python_transpile
+    self.assertEqual(rc, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_python_transpile (test_v42_dict.TestExpectBuiltin.test_python_transpile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v42_dict.py", line 164, in test_python_transpile
+    self.assertEqual(rc, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_cli_style_only_does_not_fail_build (test_v43.TestStyleLint.test_cli_style_only_does_not_fail_build)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v43.py", line 226, in test_cli_style_only_does_not_fail_build
+    self.assertEqual(r.returncode, 0, r.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_cli_without_style_is_unchanged (test_v43.TestStyleLint.test_cli_without_style_is_unchanged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v43.py", line 237, in test_cli_without_style_is_unchanged
+    self.assertEqual(r.returncode, 0, r.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_detects_cn_alias_and_extends_params_catch (test_v43.TestStyleLint.test_detects_cn_alias_and_extends_params_catch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v43.py", line 211, in test_detects_cn_alias_and_extends_params_catch
+    self.assertIn(code, codes, f"{code} 未报告；实际 {codes}")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'style-cn-alias' not found in ['style-extends', 'style-params', 'style-catch'] : style-cn-alias 未报告；实际 ['style-extends', 'style-params', 'style-catch']
+
+======================================================================
+FAIL: test_same_output (test_v46.TestStructPythonTranspile.test_same_output)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v46.py", line 130, in test_same_output
+    self.assertEqual(rc, cli.EXIT_OK, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_python_transpile (test_v49.TestEnumInSwitch.test_python_transpile)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v49.py", line 172, in test_python_transpile
+    self.assertEqual(rc, cli.EXIT_OK, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+======================================================================
+FAIL: test_same_output (test_v49.TestEnumPythonTranspile.test_same_output)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\41482\Doubao\chats\2026-11-01\new-chat\ImporLang\tests\test_v49.py", line 148, in test_same_output
+    self.assertEqual(rc, cli.EXIT_OK, out)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : 
+
+----------------------------------------------------------------------
+Ran 573 tests in 544.362s
+
+FAILED (failures=23, errors=22, skipped=4)

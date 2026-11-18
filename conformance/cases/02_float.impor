@@ -1,0 +1,5 @@
+var x = 1.5
+var y = 2
+print(x + y)
+print(7.0 / 2)
+print(x * y)

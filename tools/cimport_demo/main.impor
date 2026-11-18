@@ -1,0 +1,5 @@
+import m
+from m import add as plus
+print(m.add(2, 3))
+print(plus(4, 5))
+print(m.G)

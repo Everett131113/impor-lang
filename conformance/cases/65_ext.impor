@@ -1,0 +1,8 @@
+important<<DAY<<english("English"):
+struct Point
+    var x = 0
+    var y = 0
+var p = new Point(13, 14)
+print(p.x, p.y, p.x + p.y)
+set p.x = 23
+print(p.x, p.y)

@@ -1,0 +1,147 @@
+// std/text.impor — Impor (I++) 内置标准库：文本工具
+// 使用：use std.text 或 import std.text
+// 提供统一、对用户友好的文本 API（隐藏宿主细节，返回类型稳定）。
+
+func split(s, sep) {
+    return s.split(sep)
+}
+
+func join(parts, sep) {
+    var out = ""
+    var first = true
+    for p in parts {
+        if not first {
+            out += sep
+        }
+        out += p
+        first = false
+    }
+    return out
+}
+
+func trim(s) {
+    return s.strip()
+}
+
+func upper(s) {
+    return s.upper()
+}
+
+func lower(s) {
+    return s.lower()
+}
+
+func replace(s, old, replacement) {
+    return s.replace(old, replacement)
+}
+
+func contains(s, sub) {
+    return s.find(sub) >= 0
+}
+
+func starts_with(s, pre) {
+    return s.startswith(pre)
+}
+
+func ends_with(s, suf) {
+    return s.endswith(suf)
+}
+
+func char_at(s, i) {
+    return s[i]
+}
+
+func substring(s, start, end) {
+    return s[start:end]
+}
+
+func repeat(s, n) {
+    var out = ""
+    var i = 0
+    while i < n {
+        out += s
+        i += 1
+    }
+    return out
+}
+
+// v3.9 文本扩展：填充 / 子串定位 / 行切分（不依赖宿主方法，除 trim 外均为纯内建实现）
+func pad_left(s, width, ch) {
+    return strpad(s, width, ch)
+}
+
+func pad_right(s, width, ch) {
+    if len(s) >= width {
+        return s
+    }
+    return s + repeat(ch, width - len(s))
+}
+
+func index_of(s, sub) {
+    if len(sub) == 0 {
+        return 0
+    }
+    var i = 0
+    while i + len(sub) <= len(s) {
+        if strcut(s, i, i + len(sub)) == sub {
+            return i
+        }
+        i += 1
+    }
+    return -1
+}
+
+func count_sub(s, sub) {
+    if len(sub) == 0 {
+        return 0
+    }
+    var c = 0
+    var i = 0
+    while i + len(sub) <= len(s) {
+        if strcut(s, i, i + len(sub)) == sub {
+            c += 1
+            i += len(sub)
+        } else {
+            i += 1
+        }
+    }
+    return c
+}
+
+func split_lines(s) {
+    var out = []
+    var start = 0
+    var i = 0
+    while i < len(s) {
+        if s[i] == "\n" {
+            arrappend(out, strcut(s, start, i))
+            start = i + 1
+        }
+        i += 1
+    }
+    arrappend(out, strcut(s, start, len(s)))
+    return out
+}
+
+func is_blank(s) {
+    return trim(s) == ""
+}
+
+export split
+export join
+export trim
+export upper
+export lower
+export replace
+export contains
+export starts_with
+export ends_with
+export char_at
+export substring
+export repeat
+export pad_left
+export pad_right
+export index_of
+export count_sub
+export split_lines
+export is_blank

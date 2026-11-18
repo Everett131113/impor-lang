@@ -1,0 +1,8 @@
+important<<DAY<<english("English"):
+// 单利计算
+func simple_interest(principal, rate, years)
+    return principal * rate * years
+
+var interest = simple_interest(10000, 0.05, 3)
+print("本金 10000，年利率 5%，3 年利息:", interest)
+print("本息合计:", 10000 + interest)

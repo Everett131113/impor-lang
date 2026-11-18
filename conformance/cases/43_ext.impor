@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+var total = 0
+for i in range(8)
+    total = total + i * i
+print(total)
+var j = 8
+while j > 0
+    j = j - 1
+print(j)

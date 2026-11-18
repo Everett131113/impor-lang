@@ -1,0 +1,10 @@
+important<<DAY<<english("English"):
+// 字典：库存读写
+var stock = {"apple": 3, "pear": 5}
+print("苹果初始:", stock.get("apple", 0))
+print("有香蕉吗:", stock.has("banana"))
+stock["apple"] = stock["apple"] + 7
+stock["banana"] = 2
+print("苹果现在:", stock["apple"])
+print("香蕉现在:", stock["banana"])
+print("物品种类:", len(stock.keys()))

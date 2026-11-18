@@ -1,0 +1,42 @@
+# Demo 2：把 15 个分数变成一张成绩报告
+# 运行：impor run demos\demo_成绩报告.impor
+
+var scores = [92, 88, 76, 95, 61, 83, 70, 99, 55, 87, 78, 91, 66, 84, 73]
+var names = ["小林", "小周", "小陈", "小吴", "小郑", "小冯", "小蒋", "小沈", "小韩", "小杨", "小朱", "小秦", "小许", "小何", "小吕"]
+
+var total = 0
+var mx = scores[0]
+var mn = scores[0]
+var pass = 0
+var excellent = 0
+
+for i in range(0, len(scores))
+    set total = total + scores[i]
+    if scores[i] > mx
+        set mx = scores[i]
+    if scores[i] < mn
+        set mn = scores[i]
+    if scores[i] >= 60
+        set pass = pass + 1
+    if scores[i] >= 90
+        set excellent = excellent + 1
+
+print("班级成绩报告")
+print("====================")
+print("人数：" + str(len(scores)))
+print("平均分：" + str(total / len(scores)))
+print("最高分：" + str(mx) + "（" + names[7] + "）")
+print("最低分：" + str(mn) + "（" + names[8] + "）")
+print("及格率：" + str(pass * 100 / len(scores)) + "%")
+print("优秀率：" + str(excellent * 100 / len(scores)) + "%")
+print("")
+print("90 分以上：" + str(excellent) + " 人")
+print("60-89 分：" + str(pass - excellent) + " 人")
+print("60 分以下：" + str(len(scores) - pass) + " 人")
+print("")
+print("分数条形图（每人一格）")
+for i in range(0, len(scores))
+    var bar = ""
+    for j in range(0, scores[i] / 4)
+        set bar = bar + "#"
+    print(names[i] + " " + bar + " " + str(scores[i]))

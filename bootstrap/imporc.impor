@@ -1,0 +1,2388 @@
+# imporc.impor —— Impor (I++) 自举种子编译器（v2.14 阶段二）
+# 用 Impor 语言写的编译器：词法扫描 + 递归下降表达式解析 + C 转译。
+# 由 imporc（C 编译器）编译本文件，得到第一个"Impor 编译器编译出的 Impor 编译器"，
+# 完成自举闭环验证。本文件自身只用 C 后端子集语法（可被 imporc 编译）。
+# 用法：把要编译的程序写成 arg_script.impor，运行本程序：
+#   读取 arg_script.impor → 转译为 out2.c → 调 tcc 编译为 out2.exe
+
+# ---------- 全局状态 ----------
+var gsrc = ""
+var gpos = 0
+var gtok = ""
+var gtype = 0     # 1=标识符 2=数字 3=字符串 4=操作符 5=EOF 6=缩进增 7=缩进减
+var gvars = ""      # 收集到的全局变量名（| 分隔）
+var gout = ""       # 转译输出缓冲（main 段）
+var gfuncs = ""     # 转译输出缓冲（函数段）
+var gfuncs2 = ""    # 函数表：name;nparams;name;nparams;
+var ginfunc = false # 当前是否在函数体内（决定输出段与局部/全局）
+var glocals = ""    # 当前函数的局部变量表（| 分隔）
+var gindstack = "0|"  # 缩进栈（| 分隔的数字）
+var g_swinds = ""    # switch 缩进栈（支持嵌套 switch）
+var gprev_nl = true   # 上次扫描后是否跨行（行首缩进判定）
+var gfail = false   # 编译失败标志
+var gded_pending = false  # 多级缩进减少时，待补发的 DED
+var gded_target = 0       # DED 补发到哪一层缩进为止
+var gcur_cls = ""         # 当前正在编译的类名（super 调用需要）
+var gsuper_pending = false  # super() 后等待 .方法( 调用
+var gassign_kind = ""     # 最近表达式主干：""=不可赋值 var=变量 prop=属性
+var gassign_name = ""     # 变量名（gassign_kind=var）
+var gassign_base = ""     # 属性目标 C 文本（gassign_kind=prop）
+var gargseq = 0           # 实参数组临时名序号（避开 tcc 复合字面量限制）
+var gassign_prop = ""     # 属性名（gassign_kind=prop）
+var gassign_idx = ""      # 下标表达式 C 文本（gassign_kind=idx）
+var gparams = ""          # 当前方法的参数名序列（"name;age;" 顺序，序号即索引）
+var gmethod = false       # 当前是否在方法体内（参数经 args[] 访问）
+var gassign_raw = ""      # 变量原始名（gassign_kind=var，用于全局登记）
+var genum_types = ""      # enum 类型名表（"Color|" 形式，用于 Color.MEMBER 改写）
+var gclosure = ""         # 闭包函数定义段（v4.2）
+var gdecls = ""           # 前置声明段（闭包原型 / 函数值对象，v4.2）
+var gcaps = ""            # 当前嵌套函数可捕获的外层局部名（"a|b|"）
+var gclos_seq = 0         # 闭包序号
+var gclosure_depth = 0    # 嵌套函数层数（只支持一层）
+
+# ---------- 工具 ----------
+func strfind(hay, needle)
+    var hl = len(hay)
+    var nl = len(needle)
+    var i = 0
+    while i < hl
+        if strcut(hay, i, i + nl) == needle
+            return i
+        set i = i + 1
+    return -1
+
+func is_digit(c)
+    if c >= "0" and c <= "9"
+        return true
+    return false
+
+func is_alpha(c)
+    if c >= "a" and c <= "z"
+        return true
+    if c >= "A" and c <= "Z"
+        return true
+    if c == "_"
+        return true
+    return false
+
+func top_ind()
+    # 缩进栈顶（最后一个 | 之前的数字）
+    var s = gindstack
+    var last = -1
+    var prev = -1
+    var i = 0
+    while i < len(s)
+        if strcut(s, i, i + 1) == "|"
+            set prev = last
+            set last = i
+        set i = i + 1
+    if prev < 0
+        return 0
+    return to_num(strcut(s, prev + 1, last))
+
+func pop_ind()
+    # 弹出缩进栈顶一层
+    var s = gindstack
+    var last = -1
+    var prev = -1
+    var i = 0
+    while i < len(s)
+        if strcut(s, i, i + 1) == "|"
+            set prev = last
+            set last = i
+        set i = i + 1
+    if last < 0
+        set gindstack = ""
+    else
+        if prev < 0
+            set gindstack = ""
+        else
+            set gindstack = strcut(s, 0, prev + 1)
+    return true
+
+func push_ind(ind)
+    set gindstack = gindstack + to_str(ind) + "|"
+    return true
+
+func top_sw()
+    # 当前 switch 的基准缩进（支持嵌套 switch）
+    var s = g_swinds
+    var last = -1
+    var prev = -1
+    var i = 0
+    while i < len(s)
+        if strcut(s, i, i + 1) == "|"
+            set prev = last
+            set last = i
+        set i = i + 1
+    if last < 0
+        return 0
+    if prev < 0
+        return to_num(strcut(s, 0, last))
+    return to_num(strcut(s, prev + 1, last))
+
+func push_sw(ind)
+    set g_swinds = g_swinds + to_str(ind) + "|"
+    return true
+
+func pop_sw()
+    var v = top_sw()
+    var s = g_swinds
+    var last = -1
+    var prev = -1
+    var i = 0
+    while i < len(s)
+        if strcut(s, i, i + 1) == "|"
+            set prev = last
+            set last = i
+        set i = i + 1
+    if prev < 0
+        set g_swinds = ""
+    else
+        set g_swinds = strcut(s, 0, prev + 1)
+    return v
+
+func add_func(name, np)
+    # 登记函数（名字 + 参数个数），不重复
+    if strfind(";" + gfuncs2, ";" + name + ";") < 0
+        set gfuncs2 = gfuncs2 + name + ";" + to_str(np) + ";"
+    return true
+
+func is_func(name)
+    # 精确判断 name 是否为函数（避免 total 命中 add_to_total）
+    if strfind(";" + gfuncs2, ";" + name + ";") >= 0
+        return true
+    return false
+
+func param_idx(t)
+    # 在 gparams 中找参数 t 的序号（0 起），找不到返回 -1
+    var s = gparams
+    var k = 0
+    var cur = ""
+    var i = 0
+    while i < len(s)
+        if strcut(s, i, i + 1) == ";"
+            if cur == t
+                return k
+            set k = k + 1
+            set cur = ""
+        else
+            set cur = cur + strcut(s, i, i + 1)
+        set i = i + 1
+    return -1
+
+func out(s)
+    # 输出到当前段：函数体内 → gfuncs，否则 → gout
+    if ginfunc
+        set gfuncs = gfuncs + s
+    else
+        set gout = gout + s
+    return true
+
+func cap_index(name)
+    # 在 gcaps（"a|b|"）里找 name 的序号，找不到 -1
+    var idx = 0
+    var cur = ""
+    var i = 0
+    while i < len(gcaps)
+        if strcut(gcaps, i, i + 1) == "|"
+            if cur == name
+                return idx
+            set idx = idx + 1
+            set cur = ""
+        else
+            set cur = cur + strcut(gcaps, i, i + 1)
+        set i = i + 1
+    return -1
+
+func env_ptrs(gl)
+    # 把外层局部名表转成 C 初始化列表：&l_a, &l_b,
+    var s = ""
+    var cur = ""
+    var i = 0
+    while i < len(gl)
+        if strcut(gl, i, i + 1) == "|"
+            if len(cur) > 0
+                set s = s + "l_" + cur + ", "
+            set cur = ""
+        else
+            set cur = cur + strcut(gl, i, i + 1)
+        set i = i + 1
+    return s
+
+func env_count(gl)
+    # 外层局部名数量
+    var n = 0
+    var cur = ""
+    var i = 0
+    while i < len(gl)
+        if strcut(gl, i, i + 1) == "|"
+            if len(cur) > 0
+                set n = n + 1
+            set cur = ""
+        else
+            set cur = cur + strcut(gl, i, i + 1)
+        set i = i + 1
+    return n
+
+func call_expr(target, args, narg)
+    # 通过函数值调用：rt_call(target, 参数数组, 个数)
+    if narg > 0
+        set gargseq = gargseq + 1
+        var an = "_ia" + to_str(gargseq)
+        return "({ Val " + an + "[" + to_str(narg) + "] = {" + args + "}; rt_call(" + target + ", " + an + ", " + to_str(narg) + "); })"
+    return "rt_call(" + target + ", 0, 0)"
+
+func var_ref(name)
+    # 函数内局部统一装箱（Val*），读取时解引用；全局变量保持值
+    if ginfunc and strfind("|" + glocals, "|" + name + "|") >= 0
+        return "(*l_" + name + ")"
+    return "g_" + name
+
+
+func list_at(s, idx)
+    # 取 "a|b|c|" 中第 idx 个名字
+    var k = 0
+    var cur = ""
+    var i = 0
+    while i < len(s)
+        if strcut(s, i, i + 1) == "|"
+            if k == idx
+                return cur
+            set k = k + 1
+            set cur = ""
+        else
+            set cur = cur + strcut(s, i, i + 1)
+        set i = i + 1
+    return ""
+
+
+
+
+# ---------- 词法 ----------
+func scan()
+    # ---- 多级缩进减少：逐层补发 DED ----
+    if gded_pending
+        pop_ind()
+        set gtype = 7
+        set gtok = ""
+        set gprev_nl = false
+        if gded_target < top_ind()
+            return
+        set gded_pending = false
+        return
+    # ---- 行首缩进处理（跨行后第一次调用） ----
+    if gprev_nl
+        var n0 = len(gsrc)
+        # 跳过空行
+        var more = true
+        while gpos < n0 and more
+            var c0 = strcut(gsrc, gpos, gpos + 1)
+            if c0 == "\n" or c0 == "\r"
+                set gpos = gpos + 1
+            else
+                set more = false
+        # 统计缩进
+        var ind = 0
+        while gpos < n0
+            var c1 = strcut(gsrc, gpos, gpos + 1)
+            if c1 == " "
+                set ind = ind + 1
+                set gpos = gpos + 1
+            else
+                if c1 == "\t"
+                    set ind = ind + 4
+                    set gpos = gpos + 1
+                else
+                    break
+        if gpos >= n0
+            set gtype = 5
+            set gtok = ""
+            return
+        var c2 = strcut(gsrc, gpos, gpos + 1)
+        if c2 == "#"
+            # 注释行：跳过整行再递归（不参与缩进比较）
+            while gpos < n0 and strcut(gsrc, gpos, gpos + 1) != "\n"
+                set gpos = gpos + 1
+            scan()
+            return
+        if c2 == "/" and gpos + 1 < n0 and strcut(gsrc, gpos + 1, gpos + 2) == "/"
+            # // 注释行
+            while gpos < n0 and strcut(gsrc, gpos, gpos + 1) != "\n"
+                set gpos = gpos + 1
+            scan()
+            return
+        # 与缩进栈比较：增 → IND(6)，减 → DED(7)
+        if ind > top_ind()
+            push_ind(ind)
+            set gtype = 6
+            set gtok = ""
+            set gprev_nl = false
+            return
+        if ind < top_ind()
+            pop_ind()
+            set gtype = 7
+            set gtok = ""
+            set gprev_nl = false
+            if ind < top_ind()
+                set gded_pending = true
+                set gded_target = ind
+            return
+        # 缩进相等：继续常规扫描
+    # ---- 常规扫描 ----
+    var n = len(gsrc)
+    while gpos < n
+        var c = strcut(gsrc, gpos, gpos + 1)
+        if c == " " or c == "\t"
+            set gpos = gpos + 1
+        else
+            if c == "\n" or c == "\r"
+                set gpos = gpos + 1
+                set gprev_nl = true
+                scan()
+                return
+            else
+                break
+    if gpos >= n
+        set gtype = 5
+        set gtok = ""
+        return
+    set gprev_nl = false
+    var c = strcut(gsrc, gpos, gpos + 1)
+    if c == "#"
+        while gpos < n and strcut(gsrc, gpos, gpos + 1) != "\n"
+            set gpos = gpos + 1
+        scan()
+        return
+    if c == "/" and gpos + 1 < n and strcut(gsrc, gpos + 1, gpos + 2) == "/"
+        while gpos < n and strcut(gsrc, gpos, gpos + 1) != "\n"
+            set gpos = gpos + 1
+        scan()
+        return
+    if is_digit(c)
+        var st = gpos
+        while gpos < n
+            var d = strcut(gsrc, gpos, gpos + 1)
+            if is_digit(d) or d == "."
+                set gpos = gpos + 1
+            else
+                break
+        set gtok = strcut(gsrc, st, gpos)
+        set gtype = 2
+        return
+    if is_alpha(c)
+        var st = gpos
+        while gpos < n
+            var d = strcut(gsrc, gpos, gpos + 1)
+            if is_alpha(d) or is_digit(d)
+                set gpos = gpos + 1
+            else
+                break
+        set gtok = strcut(gsrc, st, gpos)
+        set gtype = 1
+        return
+    if c == "\"" or c == "'"
+        var q = c
+        var st = gpos
+        set gpos = gpos + 1
+        while gpos < n
+            var d = strcut(gsrc, gpos, gpos + 1)
+            if d == "\\"
+                set gpos = gpos + 2
+            else
+                if d == q
+                    set gpos = gpos + 1
+                    break
+                set gpos = gpos + 1
+        set gtok = strcut(gsrc, st, gpos)
+        set gtype = 3
+        return
+    # 多字符操作符
+    var nx = gpos + 1
+    if c == "=" and nx < n and strcut(gsrc, nx, nx + 1) == "="
+        set gtok = "=="
+        set gtype = 4
+        set gpos = gpos + 2
+        return
+    if c == "!" and nx < n and strcut(gsrc, nx, nx + 1) == "="
+        set gtok = "!="
+        set gtype = 4
+        set gpos = gpos + 2
+        return
+    if c == "<" and nx < n and strcut(gsrc, nx, nx + 1) == "="
+        set gtok = "<="
+        set gtype = 4
+        set gpos = gpos + 2
+        return
+    if c == ">" and nx < n and strcut(gsrc, nx, nx + 1) == "="
+        set gtok = ">="
+        set gtype = 4
+        set gpos = gpos + 2
+        return
+    set gtok = c
+    set gtype = 4
+    set gpos = gpos + 1
+    return
+
+func expect_op(op)
+    if gtok != op
+        print("imporc.impor: 第", mi_line_at(gpos), "行: 期望 ", op, " 实际 ", gtok)
+        set gfail = true
+    scan()
+
+# ---------- C 字符串转义 ----------
+func esc_str(s)
+    # s 含引号，剥离首尾引号并转义为 C 字符串字面量
+    # 转义序列（\n \\ \" \t 等）原样保留为 C 的转义形式
+    var n = len(s)
+    var inner = strcut(s, 1, n - 1)
+    var out = ""
+    var i = 0
+    while i < len(inner)
+        var c = strcut(inner, i, i + 1)
+        if c == "\\"
+            if i + 1 < len(inner)
+                var nxt = strcut(inner, i + 1, i + 2)
+                set out = out + "\\" + nxt
+                set i = i + 2
+            else
+                set out = out + "\\\\"
+                set i = i + 1
+        else
+            if c == "\""
+                set out = out + "\\\""
+            else
+                set out = out + c
+            set i = i + 1
+    return out
+
+# ---------- 表达式（递归下降，返回 C 文本） ----------
+func parse_primary()
+    var t = gtok
+    if t == "str"
+        set t = "to_str"
+    if t == "int"
+        set t = "to_int"
+    if gtok == "{"
+        # 字典字面量 {k: v, ...} → rt_dict_of(n, k, v, ...)；{} 为空字典
+        scan()
+        var ditems = ""
+        var dcnt = 0
+        if gtok != "}"
+            while 1
+                if dcnt > 0
+                    set ditems = ditems + ", "
+                set ditems = ditems + parse_expr()
+                expect_op(":")
+                set ditems = ditems + ", " + parse_expr()
+                set dcnt = dcnt + 1
+                if gtok == ","
+                    scan()
+                else
+                    break
+        expect_op("}")
+        if dcnt > 0
+            return "rt_dict_of(" + to_str(dcnt) + ", " + ditems + ")"
+        return "rt_dict_of(0)"
+    if gtok == "["
+        # 数组字面量 [a, b, c] → rt_arr_of(n, ...)
+        scan()
+        var items = ""
+        var cnt = 0
+        if gtok != "]"
+            set items = parse_expr()
+            set cnt = 1
+            while gtok == ","
+                scan()
+                set items = items + ", " + parse_expr()
+                set cnt = cnt + 1
+        if gtok != "]"
+            print("imporc.impor: 第", mi_line_at(gpos), "行: 数组字面量需要 ]")
+            set gfail = true
+            return "0"
+        scan()
+        if cnt > 0
+            return "rt_arr_of(" + to_str(cnt) + ", " + items + ")"
+        return "rt_arr_of(0)"
+    if gtype == 2
+        scan()
+        if strfind(t, ".") >= 0
+            return "v_float(" + t + ")"
+        return "v_int(" + t + ")"
+    if gtype == 3
+        scan()
+        return "v_str_lit(\"" + esc_str(t) + "\")"
+    if gtype == 1
+        if t == "range"
+            scan()
+            expect_op("(")
+            var rn = parse_expr()
+            expect_op(")")
+            return "rt_range(" + rn + ")"
+        if t == "true"
+            scan()
+            return "v_bool(1)"
+        if t == "false"
+            scan()
+            return "v_bool(0)"
+        if t == "not"
+            scan()
+            return "rt_not(" + parse_unary() + ")"
+        # 变量 / new / super / self / 调用 / 属性链
+        scan()
+        var base = ""
+        set gassign_kind = ""
+        # enum 成员：Color.RED 在解析期改写为 __enum_Color_RED（普通全局变量）
+        if gtok == "." and strfind("|" + genum_types, "|" + t + "|") >= 0
+            scan()
+            var emem = gtok
+            scan()
+            set t = "__enum_" + t + "_" + emem
+        if t == "new"
+            # new 类名(args)：运行时 rt_new（先字段初始化，再沿链找 __init__）
+            var clsname = gtok
+            scan()
+            expect_op("(")
+            var cargs = ""
+            var cn = 0
+            if gtok != ")"
+                while 1
+                    if cn > 0
+                        set cargs = cargs + ", "
+                    set cargs = cargs + parse_expr()
+                    set cn = cn + 1
+                    if gtok == ","
+                        scan()
+                    else
+                        break
+            expect_op(")")
+            if cn > 0
+                set gargseq = gargseq + 1
+                set base = "({ Val _ia" + to_str(gargseq) + "[" + to_str(cn) + "] = {" + cargs + "}; rt_new(\"" + clsname + "\", _ia" + to_str(gargseq) + ", " + to_str(cn) + "); })"
+            else
+                set base = "rt_new(\"" + clsname + "\", 0, 0)"
+        else
+            if t == "self" or t == "this"
+                set base = "v_obj(self)"
+            else
+                if t == "super"
+                    expect_op("(")
+                    expect_op(")")
+                    set gsuper_pending = true
+                    set base = "self"
+                else
+                    if gtok == "("
+                        scan()
+                        var args = ""
+                        var narg = 0
+                        if gtok != ")"
+                            while 1
+                                if narg > 0
+                                    set args = args + ", "
+                                set args = args + parse_expr()
+                                set narg = narg + 1
+                                if gtok == ","
+                                    scan()
+                                else
+                                    break
+                        expect_op(")")
+                        if t == "len"
+                            set base = "rt_len(" + args + ")"
+                        else
+                            if t == "strcut"
+                                set base = "rt_strcut(" + args + ")"
+                            else
+                                if t == "strpad"
+                                    set base = "rt_strpad(" + args + ")"
+                                else
+                                    if t == "to_num"
+                                        set base = "rt_to_num(" + args + ")"
+                                    else
+                                        if t == "to_str" or t == "str" or t == "to_int"
+                                            if t == "to_int"
+                                                set base = "rt_to_int(rt_to_num(" + args + "))"
+                                            else
+                                                set base = "rt_tostr(" + args + ")"
+                                        else
+                                            if t == "upper"
+                                                set base = "rt_upper(" + args + ")"
+                                            else
+                                                if t == "lower"
+                                                    set base = "rt_lower(" + args + ")"
+                                                else
+                                                    if t == "trim"
+                                                        set base = "rtmi_trim(" + args + ")"
+                                                    else
+                                                        if t == "abs"
+                                                            set base = "rt_abs(" + args + ")"
+                                                        else
+                                                            if t == "min"
+                                                                set base = "rt_min2(" + args + ")"
+                                                            else
+                                                                if t == "max"
+                                                                    set base = "rt_max2(" + args + ")"
+                                                                else
+                                                                    if t == "sign"
+                                                                        set base = "rt_sign(" + args + ")"
+                                                                    else
+                                                                        if t == "clamp"
+                                                                            set base = "rt_clamp(" + args + ")"
+                                                                        else
+                                                                            if t == "fileread"
+                                                                                set base = "rt_fileread(" + args + ")"
+                                                                            else
+                                                                                if t == "filewrite"
+                                                                                    set base = "rt_filewrite(" + args + ")"
+                                                                                else
+                                                                                    if t == "filemv"
+                                                                                        set base = "rt_filemv(" + args + ")"
+                                                                                    else
+                                                                                        if t == "system"
+                                                                                            set base = "rt_system(" + args + ")"
+                                                                                        else
+                                                                                            if t == "exit"
+                                                                                                set base = "rt_exit(" + args + ")"
+                                                                                            else
+                                                                                                if t == "mem"
+                                                                                                    set base = "rt_mem()"
+                                                                                                else
+                                                                                                    if t == "gc"
+                                                                                                        set base = "rt_gc()"
+                                                                                                    else
+                                                                                                        if t == "sleep"
+                                                                                                            set base = "rt_sleep(" + args + ")"
+                                                                                                        else
+                                                                                                            if t == "div"
+                                                                                                                set base = "rt_idiv(" + args + ")"
+                                                                                                            else
+                                                                                                                if t == "type" or t == "type_of"
+                                                                                                                    set base = "rt_type(" + args + ")"
+                                                                                                                else
+                                                                                                                    if t == "args"
+                                                                                                                        set base = "rt_args()"
+                                                                                                                    else
+                                                                                                                        if t == "exedir"
+                                                                                                                            set base = "rt_exedir()"
+                                                                                                                        else
+                                                                                                                            if ginfunc and strfind("|" + glocals, "|" + t + "|") >= 0
+                                                                                                                                set base = call_expr(var_ref(t), args, narg)
+                                                                                                                            else
+                                                                                                                                if ginfunc and cap_index(t) >= 0
+                                                                                                                                    set base = call_expr("(*c_" + t + ")", args, narg)
+                                                                                                                                else
+                                                                                                                                    if is_func(t)
+                                                                                                                                        set base = "({ rt_trace_push(\"" + t + "\", " + to_str(mi_line_at(gpos)) + "); Val _tr = c_" + t + "(" + args + "); rt_trace_pop(); _tr; })"
+                                                                                                                                    else
+                                                                                                                                        if t == "expect"
+                                                                                                                                            if narg == 2
+                                                                                                                                                set base = "rt_expect(" + args + ", v_str(\"\"))"
+                                                                                                                                            else
+                                                                                                                                                set base = "rt_expect(" + args + ")"
+                                                                                                                                        else
+                                                                                                                                            if t == "imporc_module"
+                                                                                                                                                set base = "rt_module_new(" + args + ")"
+                                                                                                                                            else
+                                                                                                                                                set base = call_expr("g_" + t, args, narg)
+                        # 调用后也可能带属性/下标后缀，落到底部循环统一处理
+                    else
+                        if gmethod
+                            var pidx = param_idx(t)
+                            if pidx >= 0
+                                set base = "args[" + to_str(pidx) + "]"
+                            else
+                                if ginfunc and strfind("|" + glocals, "|" + t + "|") >= 0
+                                    set base = var_ref(t)
+                                else
+                                    if ginfunc and cap_index(t) >= 0
+                                        set base = "(*c_" + t + ")"
+                                    else
+                                        set base = "g_" + t
+                        else
+                            if ginfunc and strfind("|" + glocals, "|" + t + "|") >= 0
+                                set base = var_ref(t)
+                            else
+                                if ginfunc and cap_index(t) >= 0
+                                    set base = "(*c_" + t + ")"
+                                else
+                                    if ginfunc == false and is_func(t)
+                                        set base = "v_fn(&fob_c_" + t + ")"
+                                    else
+                                        set base = "g_" + t
+                        set gassign_kind = "var"
+                        set gassign_name = base
+                        set gassign_raw = t
+        # 后缀链：.属性 / .方法(args) / [下标]
+        while gtok == "." or gtok == "["
+            if gtok == "."
+                scan()
+                var mname = gtok
+                scan()
+                if gtok == "("
+                    scan()
+                    var margs = ""
+                    var mn = 0
+                    if gtok != ")"
+                        while 1
+                            if mn > 0
+                                set margs = margs + ", "
+                            set margs = margs + parse_expr()
+                            set mn = mn + 1
+                            if gtok == ","
+                                scan()
+                            else
+                                break
+                    expect_op(")")
+                    set gassign_kind = ""
+                    if gsuper_pending
+                        if mn > 0
+                            set gargseq = gargseq + 1
+                            set base = "({ Val _ia" + to_str(gargseq) + "[" + to_str(mn) + "] = {" + margs + "}; rt_supercall(" + base + ", \"" + gcur_cls + "\", \"" + mname + "\", _ia" + to_str(gargseq) + ", " + to_str(mn) + "); })"
+                        else
+                            set base = "rt_supercall(" + base + ", \"" + gcur_cls + "\", \"" + mname + "\", 0, 0)"
+                        set gsuper_pending = false
+                    else
+                        if mn > 0
+                            set gargseq = gargseq + 1
+                            set base = "({ Val _ia" + to_str(gargseq) + "[" + to_str(mn) + "] = {" + margs + "}; rt_method(" + base + ", \"" + mname + "\", _ia" + to_str(gargseq) + ", " + to_str(mn) + "); })"
+                        else
+                            set base = "rt_method(" + base + ", \"" + mname + "\", 0, 0)"
+                else
+                    if gsuper_pending
+                        print("imporc.impor: 第", mi_line_at(gpos), "行: super 后必须是方法调用")
+                        set gfail = true
+                        return ""
+                    set gassign_kind = "prop"
+                    set gassign_base = base
+                    set gassign_prop = mname
+                    set base = "rt_getattr(" + base + ", \"" + mname + "\")"
+            else
+                scan()
+                # v4.2：支持切片 c[a:b]、c[a:b:step]、省略任一端
+                var iold = base
+                var start = "v_null()"
+                if gtok != ":" and gtok != "]"
+                    set start = parse_expr()
+                if gtok == ":"
+                    scan()
+                    var send = "v_null()"
+                    if gtok != ":" and gtok != "]"
+                        set send = parse_expr()
+                    var sstep = "v_null()"
+                    if gtok == ":"
+                        scan()
+                        if gtok != "]"
+                            set sstep = parse_expr()
+                    expect_op("]")
+                    set base = "rt_slice(" + iold + ", " + start + ", " + send + ", " + sstep + ")"
+                    set gassign_kind = ""
+                else
+                    expect_op("]")
+                    set base = "rt_index(" + iold + ", " + start + ")"
+                    set gassign_kind = "idx"
+                    set gassign_base = iold
+                    set gassign_idx = start
+        return base
+    if gtok == "("
+        scan()
+        var e = parse_expr()
+        expect_op(")")
+        return e
+    print("imporc.impor: 第", mi_line_at(gpos), "行: 表达式错误 token=", t)
+    set gfail = true
+    return ""
+
+func parse_unary()
+    if gtok == "-"
+        scan()
+        return "rt_neg(" + parse_unary() + ")"
+    return parse_primary()
+
+func parse_mul()
+    var a = parse_unary()
+    while 1
+        if gtok == "*"
+            scan()
+            set a = "rt_mul(" + a + ", " + parse_unary() + ")"
+        else
+            if gtok == "/"
+                scan()
+                set a = "rt_div(" + a + ", " + parse_unary() + ")"
+            else
+                if gtok == "%"
+                    scan()
+                    set a = "rt_mod(" + a + ", " + parse_unary() + ")"
+                else
+                    break
+    return a
+
+func parse_add()
+    var a = parse_mul()
+    while 1
+        if gtok == "+"
+            scan()
+            set a = "rt_add(" + a + ", " + parse_mul() + ")"
+        else
+            if gtok == "-"
+                scan()
+                set a = "rt_sub(" + a + ", " + parse_mul() + ")"
+            else
+                break
+    return a
+
+func parse_cmp()
+    var a = parse_add()
+    while 1
+        if gtok == "==" or gtok == "!=" or gtok == "<" or gtok == ">" or gtok == "<=" or gtok == ">="
+            var op = gtok
+            scan()
+            set a = "rt_cmp(" + a + ", " + parse_add() + ", \"" + op + "\")"
+        else
+            break
+    return a
+
+func parse_and()
+    var a = parse_cmp()
+    while gtok == "and"
+        scan()
+        set a = "rt_and(" + a + ", " + parse_cmp() + ")"
+    return a
+
+func parse_or()
+    var a = parse_and()
+    while gtok == "or"
+        scan()
+        set a = "rt_or(" + a + ", " + parse_and() + ")"
+    return a
+
+func parse_expr()
+    return parse_or()
+
+# ---------- 语句转译 ----------
+func add_var(name)
+    # 收集全局变量（不重复）
+    if strfind("|" + gvars, "|" + name + "|") < 0
+        set gvars = gvars + name + "|"
+    return true
+
+func gen_block()
+    # 进入块：消费可选 IND，循环转译语句直到 DED / EOF
+    # v3.8.3：同时接受单行/多行大括号块 { ... }，不再把 `{` 当成无法识别的语句。
+    if gtok == "{" and gtype == 4
+        scan()
+        while gtype != 5 and not gfail and not (gtok == "}" and gtype == 4)
+            if gtype == 6 or gtype == 7
+                scan()
+            gen_stmt()
+        if gtok == "}" and gtype == 4
+            scan()
+        return true
+    if gtype == 6
+        scan()
+    while gtype != 5 and not gfail
+        if gtype == 7
+            scan()
+            return true
+        gen_stmt()
+    return true
+
+func gen_block2()
+    # 块消费：{ ... } 大括号（type 4）或缩进块
+    if gtok == "{" and gtype == 4
+        scan()
+        while gtype != 5 and not gfail and not (gtok == "}" and gtype == 4)
+            if gtype == 6 or gtype == 7
+                scan()
+            gen_stmt()
+        if gtok == "}" and gtype == 4
+            scan()
+    else
+        gen_block()
+    return true
+
+func gen_stmt()
+    # 期望当前 token 是一条语句关键字
+    var t = gtok
+    if gtype == 6
+        print("imporc.impor: 第", mi_line_at(gpos), "行: 意外的缩进开始 pos=", gpos, " tok=[", gtok, "] type=", gtype, " ind=", gindstack)
+        set gfail = true
+        return false
+    if gtype == 7
+        print("imporc.impor: 第", mi_line_at(gpos), "行: 意外的缩进结束 pos=", gpos, " tok=[", gtok, "] type=", gtype)
+        set gfail = true
+        return false
+    if t == "var"
+        scan()
+        var name = gtok
+        scan()
+        var val = "v_null()"
+        if gtok == "="
+            scan()
+            set val = parse_expr()
+        if ginfunc
+            set glocals = glocals + name + "|"
+            out("Val *l_" + name + " = rt_box_new(" + val + ");\n")
+        else
+            add_var(name)
+            out("g_" + name + " = " + val + ";\n")
+        return true
+    if t == "set"
+        scan()
+        var name = gtok
+        scan()
+        if gtok == "["
+            # v3.3：下标赋值 set 数组[下标] = 值 → rt_arr_set(数组, 下标, 值)
+            scan()
+            var sidx = parse_expr()
+            expect_op("]")
+            expect_op("=")
+            var sval = parse_expr()
+            var sexpr = ""
+            if name == "self" or name == "this"
+                set sexpr = "self"
+            else
+                if ginfunc and strfind("|" + glocals, "|" + name + "|") >= 0
+                    set sexpr = var_ref(name)
+                else
+                    if not ginfunc
+                        add_var(name)
+                    set sexpr = "g_" + name
+            out("rt_arr_set(" + sexpr + ", " + sidx + ", " + sval + ");\n")
+        else
+            if gtok == "."
+                # 属性赋值：变量.属性 = 值 → rt_objset(对象, "属性", 值)
+                scan()
+                var prop = gtok
+                scan()
+                expect_op("=")
+                var pval = parse_expr()
+                var oexpr = ""
+                if name == "self" or name == "this"
+                    set oexpr = "self"
+                else
+                    if ginfunc and strfind("|" + glocals, "|" + name + "|") >= 0
+                        set oexpr = var_ref(name) + ".o"
+                    else
+                        if not ginfunc
+                            add_var(name)
+                        set oexpr = "g_" + name + ".o"
+                out("rt_objset(" + oexpr + ", \"" + prop + "\", " + pval + ");\n")
+            else
+                if gtok != "="
+                    print("imporc.impor: 第", mi_line_at(gpos), "行: set 缺 =")
+                    exit(1)
+                scan()
+                var val = parse_expr()
+                if ginfunc and strfind("|" + glocals, "|" + name + "|") >= 0
+                    out(var_ref(name) + " = " + val + ";\n")
+                else
+                    if not ginfunc
+                        add_var(name)
+                    out("g_" + name + " = " + val + ";\n")
+        return true
+    if t == "print"
+        scan()
+        expect_op("(")
+        var narg = 0
+        if gtok != ")"
+            while 1
+                var e = parse_expr()
+                if narg > 0
+                    out("rt_print_sep(); ")
+                out("rt_print_val(" + e + "); ")
+                set narg = narg + 1
+                if gtok == ","
+                    scan()
+                else
+                    break
+        expect_op(")")
+        out("rt_print_nl();\n")
+        return true
+    if t == "enum"
+        # enum 类型：成员脱糖为 __enum_类型_成员 整型常量（v3.8）。
+        # 支持大括号块与缩进块；成员可用逗号/分号/换行分隔。
+        scan()
+        var ename = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 后需要类型名")
+            set gfail = true
+            return false
+        scan()
+        if gtok == ":"
+            scan()
+        var ebrace = false
+        if gtok == "{"
+            set ebrace = true
+            scan()
+        elif gtype == 6
+            scan()
+        else
+            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 需要缩进块或大括号块")
+            set gfail = true
+            return false
+        var edefault = 0
+        var ecount = 0
+        while not gfail
+            if ebrace and gtok == "}"
+                break
+            if not ebrace and (gtype == 7 or gtype == 5)
+                break
+            if gtype == 6
+                scan()
+            else
+                if gtok == "," or gtok == ";"
+                    scan()
+                else
+                    if gtype != 1
+                        print("imporc.impor: 第", mi_line_at(gpos), "行: enum 成员名应为标识符")
+                        set gfail = true
+                        return false
+                    var emem = gtok
+                    scan()
+                    var ev = edefault
+                    if gtok == "="
+                        scan()
+                        var eneg = false
+                        if gtok == "-"
+                            set eneg = true
+                            scan()
+                        if gtype != 2
+                            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 成员值必须是整数字面量")
+                            set gfail = true
+                            return false
+                        set ev = to_num(gtok)
+                        if eneg
+                            set ev = 0 - ev
+                        scan()
+                    var evname = "__enum_" + ename + "_" + emem
+                    if ginfunc
+                        set glocals = glocals + evname + "|"
+                        out("Val *l_" + evname + " = rt_box_new(v_int(" + to_str(ev) + "));\n")
+                    else
+                        add_var(evname)
+                        out("g_" + evname + " = v_int(" + to_str(ev) + ");\n")
+                    set edefault = ev + 1
+                    set ecount = ecount + 1
+        if ecount == 0
+            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 至少需要一个成员")
+            set gfail = true
+            return false
+        set genum_types = genum_types + ename + "|"
+        if ebrace
+            if gtok != "}"
+                print("imporc.impor: 第", mi_line_at(gpos), "行: enum 缺少 } 闭合")
+                set gfail = true
+                return false
+            scan()
+        return true
+    if t == "struct"
+        # struct 类名：缩进块内只放字段 var 字段名 = 默认值；
+        # 自动生成 __init__，参数按字段声明顺序排列（v3.7）
+        scan()
+        var stname = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: struct 后需要结构体名")
+            set gfail = true
+            return false
+        scan()
+        var sbrace = false
+        if gtok == "{"
+            set sbrace = true
+            scan()
+        elif gtype == 6
+            scan()
+        else
+            print("imporc.impor: 第", mi_line_at(gpos), "行: struct 需要缩进块或大括号块")
+            set gfail = true
+            return false
+        var sfiedefs = ""
+        var sinit = ""
+        var snf = 0
+        while not gfail
+            if sbrace and gtok == "}"
+                break
+            if not sbrace and (gtype == 7 or gtype == 5)
+                break
+            if gtok == ";"
+                scan()
+            else
+                if gtok == "var"
+                    scan()
+                    var sfname = gtok
+                    if gtype != 1
+                        print("imporc.impor: 第", mi_line_at(gpos), "行: struct 字段名应为标识符")
+                        set gfail = true
+                        return false
+                    scan()
+                    var sfval = "v_null()"
+                    if gtok == "="
+                        scan()
+                        set sfval = parse_expr()
+                    set sfiedefs = sfiedefs + "rt_objset(o, \"" + sfname + "\", " + sfval + ");\n"
+                    set sinit = sinit + "rt_objset(self, \"" + sfname + "\", args[" + to_str(snf) + "]);\n"
+                    set snf = snf + 1
+                else
+                    print("imporc.impor: 第", mi_line_at(gpos), "行: struct 体内只支持 var 字段 [", gtok, "]")
+                    set gfail = true
+                    return false
+        if sbrace
+            expect_op("}")
+        else
+            if gtype == 7
+                scan()
+        if snf == 0
+            print("imporc.impor: 第", mi_line_at(gpos), "行: struct 至少需要一个字段")
+            set gfail = true
+            return false
+        set gfuncs = gfuncs + "static Val m_" + stname + "___init__(Obj *self, Val *args) {\n" + sinit + "return v_null();\n}\n"
+        var sfip = "0"
+        if len(sfiedefs) > 0
+            set gfuncs = gfuncs + "static void fi_" + stname + "(Obj *o) {\n" + sfiedefs + "}\n"
+            set sfip = "fi_" + stname
+        set gfuncs = gfuncs + "static const Method mt_" + stname + "[] = {{\"__init__\", m_" + stname + "___init__}, {0, 0}};\n"
+        set gfuncs = gfuncs + "static ClassInfo ci_" + stname + " = {\"" + stname + "\", \"" + stname + "\", \"\", mt_" + stname + ", " + sfip + "};\n"
+        out("reg_class(&ci_" + stname + ");\n")
+        return true
+    if t == "class"
+        # class 类名[(基类)]:  缩进块内为方法(func/def)与字段(var)
+        scan()
+        var clsname = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: class 后需要类名")
+            set gfail = true
+            return false
+        scan()
+        var basename = ""
+        if gtok == "("
+            scan()
+            set basename = gtok
+            scan()
+            expect_op(")")
+        if gtype != 6
+            print("imporc.impor: 第", mi_line_at(gpos), "行: class 需要缩进块")
+            set gfail = true
+            return false
+        scan()
+        var mtlist = ""
+        var fiedefs = ""
+        set gcur_cls = clsname
+        while gtype != 7 and gtype != 5 and not gfail
+            if gtok == "func" or gtok == "def"
+                scan()
+                var mname = gtok
+                if gtype != 1
+                    print("imporc.impor: 第", mi_line_at(gpos), "行: 方法名应为标识符")
+                    set gfail = true
+                    return false
+                scan()
+                expect_op("(")
+                var mplocals = "self|"
+                set gparams = ""
+                var nparam = 0
+                if gtok != ")"
+                    while 1
+                        var pname = gtok
+                        if gtype != 1
+                            print("imporc.impor: 第", mi_line_at(gpos), "行: 参数名应为标识符")
+                            set gfail = true
+                            return false
+                        set gparams = gparams + pname + ";"
+                        set mplocals = mplocals + pname + "|"
+                        set nparam = nparam + 1
+                        scan()
+                        if gtok == ","
+                            scan()
+                        else
+                            break
+                expect_op(")")
+                set glocals = mplocals
+                set gfuncs = gfuncs + "static Val m_" + clsname + "_" + mname + "(Obj *self, Val *args) {\n"
+                set gmethod = true
+                set ginfunc = true
+                gen_block()
+                set ginfunc = false
+                set gmethod = false
+                set gfuncs = gfuncs + "return v_null();\n}\n"
+                set mtlist = mtlist + "{\"" + mname + "\", m_" + clsname + "_" + mname + "}, "
+            else
+                if gtok == "var"
+                    scan()
+                    var fname2 = gtok
+                    scan()
+                    var fval = "v_null()"
+                    if gtok == "="
+                        scan()
+                        set fval = parse_expr()
+                    set fiedefs = fiedefs + "rt_objset(o, \"" + fname2 + "\", " + fval + ");\n"
+                else
+                    print("imporc.impor: 第", mi_line_at(gpos), "行: class 体内未知语句 [", gtok, "]")
+                    set gfail = true
+                    return false
+        if gtype == 7
+            scan()
+        var fip = "0"
+        if len(fiedefs) > 0
+            set gfuncs = gfuncs + "static void fi_" + clsname + "(Obj *o) {\n" + fiedefs + "}\n"
+            set fip = "fi_" + clsname
+        set gfuncs = gfuncs + "static const Method mt_" + clsname + "[] = {" + mtlist + "{0, 0}};\n"
+        set gfuncs = gfuncs + "static ClassInfo ci_" + clsname + " = {\"" + clsname + "\", \"" + clsname + "\", \"" + basename + "\", mt_" + clsname + ", " + fip + "};\n"
+        out("reg_class(&ci_" + clsname + ");\n")
+        return true
+    # ---------- v4.2：嵌套函数 / 闭包 ----------
+    if (t == "func" or t == "def") and ginfunc
+        if gmethod
+            print("imporc.impor: 第", mi_line_at(gpos), "行: 方法内暂不支持嵌套函数")
+            set gfail = true
+            return false
+        if gclosure_depth > 0
+            print("imporc.impor: 第", mi_line_at(gpos), "行: 暂不支持两层以上嵌套函数")
+            set gfail = true
+            return false
+        scan()
+        var cfn = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: def 后需要函数名")
+            set gfail = true
+            return false
+        scan()
+        expect_op("(")
+        var cparams = ""
+        var cplist = ""
+        var cnp = 0
+        var outer_locals = glocals
+        set glocals = ""
+        if gtok != ")"
+            while 1
+                var cp = gtok
+                if gtype != 1
+                    print("imporc.impor: 第", mi_line_at(gpos), "行: 参数名应为标识符")
+                    set gfail = true
+                    return false
+                if cnp > 0
+                    set cparams = cparams + ", "
+                set cparams = cparams + "Val l_" + cp
+                set cplist = cplist + cp + "|"
+                set glocals = glocals + cp + "|"
+                set cnp = cnp + 1
+                scan()
+                if gtok == ","
+                    scan()
+                else
+                    break
+        expect_op(")")
+        # 捕获外层当前全部局部（快照）；深层嵌套不支持
+        var caps = outer_locals
+        var capn = env_count(caps)
+        set gclos_seq = gclos_seq + 1
+        var cname = "clo" + to_str(gclos_seq)
+        set gdecls = gdecls + "static Val " + cname + "(void *_env, Val *_args);\n"
+        var saved_funcs = gfuncs
+        var saved_caps = gcaps
+        var saved_method = gmethod
+        set gfuncs = ""
+        set gcaps = caps
+        set gmethod = false
+        set gclosure_depth = gclosure_depth + 1
+        set gfuncs = gfuncs + "/* Impor 闭包：" + cfn + " */\n"
+        set gfuncs = gfuncs + "static Val " + cname + "(void *_env, Val *_args) {\n"
+        var ci = 0
+        var ccur = ""
+        var k = 0
+        while k < len(caps)
+            if strcut(caps, k, k + 1) == "|"
+                if len(ccur) > 0
+                    set gfuncs = gfuncs + "Val *c_" + ccur + " = ((Val **)_env)[" + to_str(ci) + "];\n"
+                    set ci = ci + 1
+                set ccur = ""
+            else
+                set ccur = ccur + strcut(caps, k, k + 1)
+            set k = k + 1
+        var pi = 0
+        while pi < cnp
+            set gfuncs = gfuncs + "Val *l_" + list_at(cplist, pi) + " = rt_box_new(_args[" + to_str(pi) + "]);\n"
+            set pi = pi + 1
+        gen_block()
+        set gfuncs = gfuncs + "return v_null();\n}\n"
+        set gclosure = gclosure + gfuncs
+        set gfuncs = saved_funcs
+        set gcaps = saved_caps
+        set gmethod = saved_method
+        set gclosure_depth = gclosure_depth - 1
+        set glocals = outer_locals + cfn + "|"
+        if capn > 0
+            set gfuncs = gfuncs + "Val *_env" + to_str(gclos_seq) + "[" + to_str(capn) + "] = {" + env_ptrs(caps) + "};\n"
+            set gfuncs = gfuncs + "Val l_" + cfn + "_v = rt_fn_new(" + cname + ", _env" + to_str(gclos_seq) + ", " + to_str(capn) + ", \"" + cfn + "\", " + to_str(cnp) + ");\n"
+        else
+            set gfuncs = gfuncs + "Val l_" + cfn + "_v = rt_fn_new(" + cname + ", 0, 0, \"" + cfn + "\", " + to_str(cnp) + ");\n"
+        set gfuncs = gfuncs + "Val *l_" + cfn + " = rt_box_new(l_" + cfn + "_v);\n"
+        return true
+    if t == "nonlocal"
+        scan()
+        if gtok == "set"
+            scan()
+        var nlname = gtok
+        scan()
+        if gtok == "="
+            scan()
+            var nlval = parse_expr()
+            if cap_index(nlname) >= 0
+                out("(*c_" + nlname + ") = " + nlval + ";\n")
+            else
+                print("imporc.impor: 第", mi_line_at(gpos), "行: nonlocal 只能指向外层局部：", nlname)
+                set gfail = true
+                return false
+        return true
+    if t == "global"
+        scan()
+        if gtok == "set"
+            scan()
+        var glname = gtok
+        scan()
+        if gtok == "="
+            scan()
+            var glval = parse_expr()
+            add_var(glname)
+            out("g_" + glname + " = " + glval + ";\n")
+        return true
+    if t == "func" or t == "def"
+        scan()
+        var fname = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: func 后需要函数名")
+            set gfail = true
+            return false
+        scan()
+        expect_op("(")
+        var params = ""
+        var fplist = ""
+        var nparam = 0
+        set glocals = ""
+        if gtok != ")"
+            while 1
+                var pname = gtok
+                if gtype != 1
+                    print("imporc.impor: 第", mi_line_at(gpos), "行: 参数名应为标识符")
+                    set gfail = true
+                    return false
+                if nparam > 0
+                    set params = params + ", "
+                set params = params + "Val p" + to_str(nparam)
+                set fplist = fplist + pname + "|"
+                set glocals = glocals + pname + "|"
+                set nparam = nparam + 1
+                scan()
+                if gtok == ","
+                    scan()
+                else
+                    break
+        expect_op(")")
+        set gfuncs = gfuncs + "static Val c_" + fname + "(" + params + ") {\n"
+        var fbi = 0
+        while fbi < nparam
+            set gfuncs = gfuncs + "Val *l_" + list_at(fplist, fbi) + " = rt_box_new(p" + to_str(fbi) + ");\n"
+            set fbi = fbi + 1
+        set ginfunc = true
+        gen_block()
+        set ginfunc = false
+        set gfuncs = gfuncs + "return v_null();\n}\n"
+        # v4.2：顶层函数作为一等值
+        set gdecls = gdecls + "static Fn fob_c_" + fname + ";\n"
+        var argrefs = ""
+        var ai = 0
+        while ai < nparam
+            if ai > 0
+                set argrefs = argrefs + ", "
+            set argrefs = argrefs + "args[" + to_str(ai) + "]"
+            set ai = ai + 1
+        set gfuncs = gfuncs + "static Val wrap_c_" + fname + "(void *env, Val *args) { (void)env; (void)args; return c_" + fname + "(" + argrefs + "); }\n"
+        set gfuncs = gfuncs + "static Fn fob_c_" + fname + " = {wrap_c_" + fname + ", 0, 0, " + to_str(nparam) + ", \"" + fname + "\"};\n"
+        return true
+    if t == "if"
+        scan()
+        var cond = parse_expr()
+        out("if (rt_truth(" + cond + ")) {\n")
+        gen_block()
+        out("}\n")
+        while 1
+            if gtok == "elif" or gtok == "elseif"
+                scan()
+                var c2 = parse_expr()
+                out("else if (rt_truth(" + c2 + ")) {\n")
+                gen_block()
+                out("}\n")
+            else
+                if gtok == "else"
+                    scan()
+                    out("else {\n")
+                    gen_block()
+                    out("}\n")
+                else
+                    break
+        return true
+    if t == "while"
+        scan()
+        var cond = parse_expr()
+        out("while (rt_truth(" + cond + ")) {\n")
+        gen_block()
+        out("}\n")
+        return true
+    if t == "return"
+        scan()
+        if gtype == 5 or gtype == 6 or gtype == 7
+            out("return v_null();\n")
+        else
+            out("return " + parse_expr() + ";\n")
+        return true
+    if t == "elif" or t == "elseif" or t == "else"
+        print("imporc.impor: 第", mi_line_at(gpos), "行: ", t, " 需要紧跟在 if 块后")
+        set gfail = true
+        return false
+    if t == "break"
+        scan()
+        out("break;\n")
+        return true
+    if t == "continue"
+        scan()
+        out("continue;\n")
+        return true
+    if t == "for" or t == "each"
+        # for/each 变量 in 集合 / for 变量 in range(N)
+        scan()
+        var iv = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: for/each 后需要迭代变量")
+            set gfail = true
+            return false
+        scan()
+        if gtok != "in"
+            print("imporc.impor: 第", mi_line_at(gpos), "行: for/each 需要 in")
+            set gfail = true
+            return false
+        scan()
+        var ite = ""
+        var is_range = false
+        if gtok == "range"
+            scan()
+            if gtok != "("
+                print("imporc.impor: 第", mi_line_at(gpos), "行: range 需要 (")
+                set gfail = true
+                return false
+            scan()
+            set ite = parse_expr()
+            if gtok != ")"
+                print("imporc.impor: 第", mi_line_at(gpos), "行: range 需要 )")
+                set gfail = true
+                return false
+            scan()
+            set is_range = true
+        else
+            set ite = parse_expr()
+        set gtmp = gtmp + 1
+        var tag = gtmp
+        if ginfunc
+            set glocals = glocals + iv + "|"
+            out("Val *l_" + iv + " = rt_box_new(v_null());\n")
+        else
+            add_var(iv)
+        if is_range
+            out("Val _t" + to_str(tag) + "_n = " + ite + ";\n")
+            out("for (long long _t" + to_str(tag) + "_i = 0; _t" + to_str(tag) + "_i < _t" + to_str(tag) + "_n.i; _t" + to_str(tag) + "_i++) {\n")
+            if ginfunc
+                out(var_ref(iv) + " = v_int(_t" + to_str(tag) + "_i);\n")
+            else
+                out("g_" + iv + " = v_int(_t" + to_str(tag) + "_i);\n")
+        else
+            out("Val _t" + to_str(tag) + "_a = " + ite + ";\n")
+            out("Val _t" + to_str(tag) + "_k = (_t" + to_str(tag) + "_a.t == V_DICT) ? rt_dict_keys(_t" + to_str(tag) + "_a) : _t" + to_str(tag) + "_a;\n")
+            out("for (long long _t" + to_str(tag) + "_i = 0; _t" + to_str(tag) + "_i < (_t" + to_str(tag) + "_k.t == V_ARR && _t" + to_str(tag) + "_k.a ? _t" + to_str(tag) + "_k.a->n : 0); _t" + to_str(tag) + "_i++) {\n")
+            if ginfunc
+                out(var_ref(iv) + " = rt_arr_get(_t" + to_str(tag) + "_k, v_int(_t" + to_str(tag) + "_i));\n")
+            else
+                out("g_" + iv + " = rt_arr_get(_t" + to_str(tag) + "_k, v_int(_t" + to_str(tag) + "_i));\n")
+        gen_block2()
+        out("}\n")
+        return true
+    if t == "repeat"
+        # repeat N 等价 for __r in range(N)
+        scan()
+        var rn = parse_expr()
+        set gtmp = gtmp + 1
+        var tag = gtmp
+        out("Val _t" + to_str(tag) + "_n = " + rn + ";\n")
+        out("for (long long _t" + to_str(tag) + "_i = 0; _t" + to_str(tag) + "_i < _t" + to_str(tag) + "_n.i; _t" + to_str(tag) + "_i++) {\n")
+        gen_block2()
+        out("}\n")
+        return true
+
+    if t == "match" or t == "switch"
+        # match|switch 表达式 { case 值: 块 … default|else: 块 }
+        var sw_ind = top_ind()
+        push_sw(sw_ind)
+        scan()
+        var msub = parse_expr()
+        set gtmp = gtmp + 1
+        var tag = gtmp
+        var mbrace = false
+        if gtok == "{" and gtype == 4
+            scan()
+            set mbrace = true
+        out("Val _m" + to_str(tag) + " = " + msub + ";\n")
+        out("int _m" + to_str(tag) + "_done = 0;\n")
+        while gtype != 5 and not gfail and not (mbrace and gtok == "}" and gtype == 4)
+            if gtype == 6
+                scan()
+            if gtok == "case"
+                scan()
+                # v3.9：case v / case _ 是绑定模式（任何值都命中），不是常量比较。
+                # case Color.MEMBER 仍按枚举常量比较（成员在解析期已脱糖为 __enum_*）。
+                var cbind = ""
+                var cval = "v_null()"
+                if gtype == 1
+                    set cbind = gtok
+                    scan()
+                    if gtok == "." and gtype == 4
+                        var ctype = cbind
+                        scan()
+                        var cmem = gtok
+                        scan()
+                        set cval = "g___enum_" + ctype + "_" + cmem
+                        set cbind = ""
+                    else
+                        if cbind == "_"
+                            set cbind = ""
+                else
+                    set cval = parse_expr()
+                if gtok == ":"
+                    scan()
+                if cbind != ""
+                    out("if (_m" + to_str(tag) + "_done == 0) {\n")
+                    if ginfunc
+                        set glocals = glocals + cbind + "|"
+                        out("Val *l_" + cbind + " = rt_box_new(_m" + to_str(tag) + ");\n")
+                    else
+                        add_var(cbind)
+                        out("g_" + cbind + " = _m" + to_str(tag) + ";\n")
+                    out("_m" + to_str(tag) + "_done = 1;\n")
+                    gen_block2()
+                    set sw_ind = top_sw()
+                    out("}\n")
+                else
+                    out("if (_m" + to_str(tag) + "_done == 0 && rt_truth(rt_cmp(_m" + to_str(tag) + ", " + cval + ", \"==\"))) {\n")
+                    out("_m" + to_str(tag) + "_done = 1;\n")
+                    gen_block2()
+                    set sw_ind = top_sw()
+                    out("}\n")
+            else
+                if gtok == "default" or gtok == "else"
+                    scan()
+                    if gtok == ":"
+                        scan()
+                    out("if (_m" + to_str(tag) + "_done == 0) {\n")
+                    gen_block2()
+                    set sw_ind = top_sw()
+                    out("}\n")
+                    break
+                else
+                    # v4.1：把缩进退回到 switch 所在层；若退回后仍是 case/default，
+                    # 说明只是内层 switch 结束（嵌套场景），继续处理外层分支。
+                    if gtype == 7
+                        while gtype == 7 and top_ind() > sw_ind
+                            scan()
+                        if gtype == 7
+                            break
+                        if gtok != "case" and gtok != "default" and gtok != "else"
+                            break
+                    else
+                        break
+        # 收尾：把缩进退回到 switch 所在层，避免残留 DED 被外层块误当成块结束
+        if gtype == 7
+            while gtype == 7 and top_ind() >= sw_ind
+                scan()
+        if mbrace
+            if gtok == "}" and gtype == 4
+                scan()
+        pop_sw()
+        return true
+    if t == "try"
+        # try 块 catch [类型] 变量 块 … finally 块
+        scan()
+        set gtmp = gtmp + 1
+        var tag = gtmp
+        out("if (setjmp(g_jmp_stack[g_jmp_n]) == 0) {\n")
+        out("g_jmp_n++;\n")
+        gen_block2()
+        out("g_jmp_n--;\n")
+        out("} else {\n")
+        out("g_jmp_n--;\n")
+        var hadc = false
+        while gtok == "catch"
+            scan()
+            var ctype = ""
+            var cvar = ""
+            if gtype == 1
+                set cvar = gtok
+                scan()
+                if gtype == 1
+                    set ctype = cvar
+                    set cvar = gtok
+                    scan()
+                    if gtok == ","
+                        scan()
+                else
+                    if gtok == ","
+                        scan()
+            if gtok == ":"
+                scan()
+            if ctype == ""
+                if hadc
+                    out("else {\n")
+                else
+                    out("{\n")
+            else
+                if hadc
+                    out("else if (strcmp(g_err_type, \"" + ctype + "\") == 0) {\n")
+                else
+                    out("if (strcmp(g_err_type, \"" + ctype + "\") == 0) {\n")
+            set hadc = true
+            if ginfunc
+                set glocals = glocals + cvar + "|"
+                out("Val *l_" + cvar + " = rt_box_new(rt_err_obj());\n")
+            else
+                add_var(cvar)
+                out("g_" + cvar + " = rt_err_obj();\n")
+            gen_block2()
+            out("}\n")
+        if hadc
+            out("else { rt_throw_again(); }\n")
+        else
+            out("rt_throw_again();\n")
+        out("}\n")
+        if gtok == "finally"
+            scan()
+            gen_block2()
+        return true
+
+    if t == "exception"
+        # exception 类型名：主语言声明异常类型（C 后端无类型系统，忽略声明）
+        scan()
+        if gtype == 1
+            scan()
+        return true
+    if t == "raise"
+        scan()
+        var ename = gtok
+        if gtype != 1
+            print("imporc.impor: 第", mi_line_at(gpos), "行: raise 后需要异常类型名")
+            set gfail = true
+            return false
+        scan()
+        expect_op("(")
+        var emsg = parse_expr()
+        if gtok == ","
+            scan()
+            if gtok == "from"
+                scan()
+            var cdummy = parse_expr()
+        expect_op(")")
+        out("rt_throw(\"" + ename + "\", rt_tostr(" + emsg + ").s);\n")
+        return true
+    # 兜底：表达式语句（函数调用 / 赋值语句 x = v / x.y = v）
+    if gtype == 1
+        var e0 = parse_expr()
+        if gtok == "="
+            # 赋值语句：快照左侧赋值目标（此刻 gassign 属于左侧表达式）
+            var ak = gassign_kind
+            var an = gassign_name
+            var ar = gassign_raw
+            var ab = gassign_base
+            var ap = gassign_prop
+            var ai = gassign_idx
+            scan()
+            var ev = parse_expr()
+            if ak == "prop"
+                out("rt_objset(" + ab + ".o, \"" + ap + "\", " + ev + ");\n")
+            else
+                if ak == "var"
+                    if not ginfunc
+                        add_var(ar)
+                    out(an + " = " + ev + ";\n")
+                else
+                    if ak == "idx"
+                        out("rt_arr_set(" + ab + ", " + ai + ", " + ev + ");\n")
+                    else
+                        print("imporc.impor: 第", mi_line_at(gpos), "行: 不能赋值的表达式")
+                        set gfail = true
+            return true
+        out(e0 + ";\n")
+        return true
+    print("imporc.impor: 第", mi_line_at(gpos), "行: 无法识别的语句 [", t, "] type=", gtype, " pos=", gpos)
+    set gfail = true
+    return false
+
+# ---------- 主流程 ----------
+# 命令行参数（imporc_args.txt）：<mode> <script> [-o <out>]
+var gargs = ""
+var gt2 = ""
+var gp2 = 0
+func next_arg()
+    var n = len(gargs)
+    while gp2 < n
+        var c3 = strcut(gargs, gp2, gp2 + 1)
+        if c3 == " " or c3 == "\t" or c3 == "\r" or c3 == "\n"
+            set gp2 = gp2 + 1
+        else
+            break
+    if gp2 >= n
+        set gt2 = ""
+        return true
+    # v3.3：支持用双引号包裹含空格的路径（"C:\My Dir\a.impor"）
+    if strcut(gargs, gp2, gp2 + 1) == "\""
+        set gp2 = gp2 + 1
+        var stq = gp2
+        while gp2 < n
+            if strcut(gargs, gp2, gp2 + 1) == "\""
+                break
+            set gp2 = gp2 + 1
+        set gt2 = strcut(gargs, stq, gp2)
+        if gp2 < n
+            set gp2 = gp2 + 1
+        return true
+    var st = gp2
+    while gp2 < n
+        var c3 = strcut(gargs, gp2, gp2 + 1)
+        if c3 == " " or c3 == "\t" or c3 == "\r" or c3 == "\n"
+            break
+        set gp2 = gp2 + 1
+    set gt2 = strcut(gargs, st, gp2)
+    return true
+
+# ---- v4.2：编译期 import（单层模块）----
+# 口径：import mod / import mod as m；模块顶层 func/var 加前缀内联，
+# 再用 imporc_module 构造运行期模块值，属性/方法走 rt_getattr / rt_method。
+func mi_is_word(c)
+    if c == ""
+        return false
+    if c >= "a" and c <= "z"
+        return true
+    if c >= "A" and c <= "Z"
+        return true
+    if c >= "0" and c <= "9"
+        return true
+    if c == "_"
+        return true
+    return false
+
+func mi_replace_word(s, old, rep)
+    var n = len(s)
+    var m = len(old)
+    if m == 0
+        return s
+    var i = 0
+    var out = ""
+    while i < n
+        if i + m <= n and strcut(s, i, i + m) == old
+            var prev = ""
+            if i > 0
+                set prev = strcut(s, i - 1, i)
+            var nxt = ""
+            if i + m < n
+                set nxt = strcut(s, i + m, i + m + 1)
+            if not mi_is_word(prev) and not mi_is_word(nxt)
+                set out = out + rep
+                set i = i + m
+            else
+                set out = out + strcut(s, i, i + 1)
+                set i = i + 1
+        else
+            set out = out + strcut(s, i, i + 1)
+            set i = i + 1
+    return out
+
+func mi_trim(s)
+    var n = len(s)
+    var a = 0
+    while a < n
+        var c = strcut(s, a, a + 1)
+        if c == " " or c == "\t" or c == "\r" or c == "\n"
+            set a = a + 1
+        else
+            break
+    var b = n
+    while b > a
+        var c2 = strcut(s, b - 1, b)
+        if c2 == " " or c2 == "\t" or c2 == "\r" or c2 == "\n"
+            set b = b - 1
+        else
+            break
+    return strcut(s, a, b)
+
+func mi_dir_of(p)
+    var n = len(p)
+    var i = n - 1
+    while i >= 0
+        var c = strcut(p, i, i + 1)
+        if c == "/" or c == "\\"
+            return strcut(p, 0, i + 1)
+        set i = i - 1
+    return ""
+
+func mi_sanitize(s)
+    var n = len(s)
+    var i = 0
+    var out = ""
+    while i < n
+        var c = strcut(s, i, i + 1)
+        if mi_is_word(c)
+            set out = out + c
+        else
+            set out = out + "_"
+        set i = i + 1
+    return out
+
+func mi_replace_dots(s)
+    var n = len(s)
+    var i = 0
+    var out = ""
+    while i < n
+        var c = strcut(s, i, i + 1)
+        if c == "."
+            set out = out + "/"
+        else
+            set out = out + c
+        set i = i + 1
+    return out
+
+func mi_strip_header(src)
+    if strfind(src, "important") == 0
+        var nl = strfind(src, "\n")
+        if nl >= 0
+            return strcut(src, nl + 1, len(src))
+        return ""
+    return src
+
+func mi_strip_export(src)
+    var n = len(src)
+    var i = 0
+    var out = ""
+    while i <= n
+        var nl = strfind(strcut(src, i, n), "\n")
+        var end = n
+        var line = strcut(src, i, n)
+        if nl >= 0
+            set end = i + nl
+            set line = strcut(src, i, end)
+        if strfind(mi_trim(line), "export ") != 0
+            set out = out + line
+            if end < n
+                set out = out + "\n"
+        set i = end + 1
+        if end >= n
+            break
+    return out
+
+func mi_export_symbols(src)
+    var n = len(src)
+    var i = 0
+    var out = "|"
+    while i <= n
+        var nl = strfind(strcut(src, i, n), "\n")
+        var end = n
+        var line = strcut(src, i, n)
+        if nl >= 0
+            set end = i + nl
+            set line = strcut(src, i, end)
+        var t = mi_trim(line)
+        if strfind(t, "export ") == 0
+            var rest = mi_trim(strcut(t, 7, len(t)))
+            var j = 0
+            var cur = ""
+            while j <= len(rest)
+                var ch = ""
+                if j < len(rest)
+                    set ch = strcut(rest, j, j + 1)
+                if ch == "," or j >= len(rest)
+                    var name2 = mi_trim(cur)
+                    if len(name2) > 0
+                        set out = out + name2 + "|"
+                    set cur = ""
+                else
+                    set cur = cur + ch
+                set j = j + 1
+        set i = end + 1
+        if end >= n
+            break
+    return out
+
+func mi_decl_symbols(src)
+    var n = len(src)
+    var i = 0
+    var out = "|"
+    while i <= n
+        var nl = strfind(strcut(src, i, n), "\n")
+        var end = n
+        var line = strcut(src, i, n)
+        if nl >= 0
+            set end = i + nl
+            set line = strcut(src, i, end)
+        var t = mi_trim(line)
+        var head = ""
+        if strfind(t, "func ") == 0
+            set head = strcut(t, 5, len(t))
+        else
+            if strfind(t, "var ") == 0
+                set head = strcut(t, 4, len(t))
+        if len(head) > 0
+            var name2 = ""
+            var j = 0
+            while j < len(head)
+                var ch = strcut(head, j, j + 1)
+                if mi_is_word(ch)
+                    set name2 = name2 + ch
+                    set j = j + 1
+                else
+                    break
+            if len(name2) > 0 and strfind(out, "|" + name2 + "|") < 0
+                set out = out + name2 + "|"
+        set i = end + 1
+        if end >= n
+            break
+    return out
+
+func mi_mangle_symbols(src, syms, prefix)
+    var out = src
+    var list = strcut(syms, 1, len(syms))
+    var j = 0
+    while j < len(list)
+        var bar = strfind(strcut(list, j, len(list)), "|")
+        if bar < 0
+            break
+        var name2 = strcut(list, j, j + bar)
+        set out = mi_replace_word(out, name2, prefix + name2)
+        set j = j + bar + 1
+    return out
+
+func mi_attrs_of(syms, prefix)
+    var out = "{"
+    var list = strcut(syms, 1, len(syms))
+    var j = 0
+    var first = true
+    while j < len(list)
+        var bar = strfind(strcut(list, j, len(list)), "|")
+        if bar < 0
+            break
+        var name2 = strcut(list, j, j + bar)
+        if not first
+            set out = out + ", "
+        set first = false
+        set out = out + "\"" + name2 + "\": " + prefix + name2
+        set j = j + bar + 1
+    return out + "}"
+
+func mi_indent_of(s)
+    var i = 0
+    while i < len(s)
+        var c = strcut(s, i, i + 1)
+        if c == " " or c == "\t"
+            set i = i + 1
+        else
+            break
+    return strcut(s, 0, i)
+
+func mi_split_import(rest)
+    # 返回 "mod|alias"：支持 mod as alias，否则 alias 取最后一段
+    var pos = strfind(rest, " as ")
+    if pos >= 0
+        var mod1 = mi_trim(strcut(rest, 0, pos))
+        var alias1 = mi_trim(strcut(rest, pos + 4, len(rest)))
+        return mod1 + "|" + alias1
+    var mod2 = mi_trim(rest)
+    var alias2 = mod2
+    var i = len(mod2) - 1
+    while i >= 0
+        var c = strcut(mod2, i, i + 1)
+        if c == "." or c == "/" or c == "\\"
+            set alias2 = strcut(mod2, i + 1, len(mod2))
+            break
+        set i = i - 1
+    return mod2 + "|" + alias2
+
+func mi_line_at(pos)
+    var i = 0
+    var line = 1
+    var n = len(gsrc)
+    while i < pos and i < n
+        if strcut(gsrc, i, i + 1) == "\n"
+            set line = line + 1
+        set i = i + 1
+    return line
+
+func mi_split_from(rest)
+    # from mod import a, b as c → "mod|a, b as c"；缺少 import 返回 ""
+    var pos = strfind(rest, " import ")
+    if pos < 0
+        return ""
+    var mod1 = mi_trim(strcut(rest, 0, pos))
+    var names1 = mi_trim(strcut(rest, pos + 8, len(rest)))
+    return mod1 + "|" + names1
+
+func mi_prefix_of(modname)
+    return "mi_" + mi_sanitize(modname) + "_"
+
+func mi_read_module(modname, script)
+    var rel = mi_replace_dots(modname) + ".impor"
+    var mpath = mi_dir_of(script) + rel
+    var msrc = fileread(mpath)
+    if len(msrc) == 0
+        set mpath = rel
+        set msrc = fileread(mpath)
+    return msrc
+
+func mi_bind_from(names, syms, prefix)
+    # 生成 var a = prefixa；支持 a as b 与 *（全部导出）
+    var out = ""
+    if names == "*"
+        var list0 = strcut(syms, 1, len(syms))
+        var j0 = 0
+        while j0 < len(list0)
+            var bar0 = strfind(strcut(list0, j0, len(list0)), "|")
+            if bar0 < 0
+                break
+            var n0 = strcut(list0, j0, j0 + bar0)
+            if len(n0) > 0
+                set out = out + "var " + n0 + " = " + prefix + n0 + "\n"
+            set j0 = j0 + bar0 + 1
+        return out
+    var n = len(names)
+    var i = 0
+    var cur = ""
+    while i <= n
+        var ch = ""
+        if i < n
+            set ch = strcut(names, i, i + 1)
+        if ch == "," or i >= n
+            var item = mi_trim(cur)
+            if len(item) > 0
+                var apos = strfind(item, " as ")
+                if apos >= 0
+                    var orig = mi_trim(strcut(item, 0, apos))
+                    var localname = mi_trim(strcut(item, apos + 4, len(item)))
+                    set out = out + "var " + localname + " = " + prefix + orig + "\n"
+                else
+                    set out = out + "var " + item + " = " + prefix + item + "\n"
+            set cur = ""
+        else
+            set cur = cur + ch
+        set i = i + 1
+    return out
+
+func mi_expand_imports(src, script)
+    var n = len(src)
+    var i = 0
+    var out = ""
+    var head = ""
+    var seen = "|"
+    while i <= n
+        var nl = strfind(strcut(src, i, n), "\n")
+        var end = n
+        var line = strcut(src, i, n)
+        if nl >= 0
+            set end = i + nl
+            set line = strcut(src, i, end)
+        var t = mi_trim(line)
+        var is_imp = false
+        # v4.3：from mod import a / a as b / *
+        if strfind(t, "from ") == 0
+            set is_imp = true
+            var frest = mi_trim(strcut(t, 5, len(t)))
+            var fparts = mi_split_from(frest)
+            if fparts == ""
+                set out = out + line
+                if end < n
+                    set out = out + "\n"
+            else
+                var fbar = strfind(fparts, "|")
+                var fmod = strcut(fparts, 0, fbar)
+                var fnames = strcut(fparts, fbar + 1, len(fparts))
+                var fsyms = "|"
+                var fprefix = mi_prefix_of(fmod)
+                if strfind(seen, "|" + fmod + "|") < 0
+                    var fsrc = mi_read_module(fmod, script)
+                    if len(fsrc) == 0
+                        print("imporc: 找不到模块 ", fmod, "（from 导入）")
+                        set out = out + line
+                        if end < n
+                            set out = out + "\n"
+                    else
+                        set seen = seen + fmod + "|"
+                        var fbody = mi_strip_header(fsrc)
+                        set fsyms = mi_export_symbols(fbody)
+                        if fsyms == "|"
+                            set fsyms = mi_decl_symbols(fbody)
+                        set fbody = mi_strip_export(fbody)
+                        set fbody = mi_mangle_symbols(fbody, fsyms, fprefix)
+                        set head = head + fbody
+                        if strfind(fbody, "\n") != len(fbody) - 1
+                            set head = head + "\n"
+                        set head = head + mi_bind_from(fnames, fsyms, fprefix)
+                else
+                    # 已内联：仍按同一前缀生成局部绑定
+                    var fsrc2 = mi_read_module(fmod, script)
+                    var fbody2 = mi_strip_header(fsrc2)
+                    set fsyms = mi_export_symbols(fbody2)
+                    if fsyms == "|"
+                        set fsyms = mi_decl_symbols(fbody2)
+                    set head = head + mi_bind_from(fnames, fsyms, fprefix)
+        else
+            if strfind(t, "import ") == 0
+                set is_imp = true
+                var rest = mi_trim(strcut(t, 7, len(t)))
+                var pair = mi_split_import(rest)
+                var bar = strfind(pair, "|")
+                var modname = strcut(pair, 0, bar)
+                var alias = strcut(pair, bar + 1, len(pair))
+                var prefix = mi_prefix_of(modname)
+                var syms = "|"
+                if strfind(seen, "|" + modname + "|") < 0
+                    var msrc = mi_read_module(modname, script)
+                    if len(msrc) == 0
+                        print("imporc: 找不到模块 ", modname, "（import）")
+                        set out = out + line
+                        if end < n
+                            set out = out + "\n"
+                    else
+                        set seen = seen + modname + "|"
+                        var body = mi_strip_header(msrc)
+                        set syms = mi_export_symbols(body)
+                        if syms == "|"
+                            set syms = mi_decl_symbols(body)
+                        set body = mi_strip_export(body)
+                        set body = mi_mangle_symbols(body, syms, prefix)
+                        set head = head + body
+                        if strfind(body, "\n") != len(body) - 1
+                            set head = head + "\n"
+                        set head = head + "var " + alias + " = imporc_module(\"" + modname + "\", " + mi_attrs_of(syms, prefix) + ")\n"
+                else
+                    var msrc2 = mi_read_module(modname, script)
+                    var body2 = mi_strip_header(msrc2)
+                    set syms = mi_export_symbols(body2)
+                    if syms == "|"
+                        set syms = mi_decl_symbols(body2)
+                    set head = head + "var " + alias + " = imporc_module(\"" + modname + "\", " + mi_attrs_of(syms, prefix) + ")\n"
+            else
+                set out = out + line
+                if end < n
+                    set out = out + "\n"
+        if is_imp
+            var ind = mi_indent_of(line)
+            if len(ind) > 0
+                set out = out + ind + "var mi_import_dummy = 0\n"
+        set i = end + 1
+        if end >= n
+            break
+    return head + out
+
+var gm = ""
+# v3.8.1：优先读真实进程参数；直接运行 imporc.exe 时不再依赖 imporc_args.txt。
+# 无参数时才回退到 wrapper 写入的文件（imporc.cmd / 自举脚本）。
+var cargs = args()
+if len(cargs) > 0
+    for ca in cargs
+        if strfind(ca, " ") >= 0
+            set gm = gm + "\"" + ca + "\" "
+        else
+            set gm = gm + ca + " "
+else
+    set gm = fileread("imporc_args.txt")
+set gargs = gm
+set gp2 = 0
+var gtmp = 0
+next_arg()
+var gmode = "build"
+var gscript = "arg_script.impor"
+var goutname = "out2.exe"
+# 参数来源：args() 或 imporc_args.txt（imporc.cmd 封装写入；自举验证也写此文件）
+if len(gt2) > 0
+    set gmode = gt2
+    if gmode == "version" or gmode == "--version"
+        print("imporc (Impor 自举编译器) v3.9.0 · 子集模式")
+        exit(0)
+    if gmode == "" or gmode == "help" or gmode == "--help"
+        print("用法：imporc [run|build] <脚本> [-o 输出]  或  imporc version")
+        exit(0)
+
+    # 兼容两种入口：imporc build x.impor -o y.exe / imporc x.impor -o y.exe
+    if gmode == "run" or gmode == "build"
+        next_arg()
+        if len(gt2) == 0
+            print("imporc: 缺少脚本文件")
+            exit(2)
+        set gscript = gt2
+    else
+        set gscript = gmode
+        set gmode = "build"
+    next_arg()
+    if gt2 == "-o"
+        next_arg()
+        if len(gt2) == 0
+            print("imporc: -o 缺少输出文件名")
+            exit(2)
+        set goutname = gt2
+        next_arg()
+    if len(gt2) > 0
+        print("imporc: 未知参数 " + gt2)
+        print("用法：imporc [run|build] <脚本> [-o 输出]  或  imporc version")
+        exit(2)
+
+# v3.8.1：随包运行时和 tcc 按可执行文件所在目录定位，不再要求当前目录是仓库。
+var gexedir = exedir()
+var gk = len(gexedir) - 1
+while gk > 0
+    var gc = strcut(gexedir, gk, gk + 1)
+    if gc == "\\" or gc == "/"
+        break
+    set gk = gk - 1
+var glast = strcut(gexedir, gk + 1, len(gexedir))
+var ghome = "."
+if glast == "impor"
+    set ghome = strcut(gexedir, 0, gk)
+if len(ghome) == 0
+    set ghome = "."
+
+var src = fileread(gscript)
+set src = mi_expand_imports(src, gscript)
+# 剥离重要头部行：important<<...: （第一行）
+if strfind(src, "important") == 0
+    var nlpos = strfind(src, "\n")
+    if nlpos >= 0
+        set src = strcut(src, nlpos + 1, len(src))
+    else
+        set src = ""
+set gsrc = src
+set gpos = 0
+set gprev_nl = true
+scan()
+
+# 预扫描：登记全部顶层函数（名字 + 参数个数），支持前向调用与签名生成
+while gtype != 5
+    if gtok == "class"
+        # 跳过整个类体（方法不作为全局函数登记，运行时经类表分派）
+        scan()
+        if gtype == 1
+            scan()
+        if gtok == "("
+            scan()
+            scan()
+            expect_op(")")
+        var cldepth = 1
+        while cldepth > 0 and gtype != 5
+            if gtype == 6
+                set cldepth = cldepth + 1
+            else
+                if gtype == 7
+                    set cldepth = cldepth - 1
+            scan()
+    else
+        if gtok == "func" or gtok == "def"
+            scan()
+            if gtype == 1
+                var fname = gtok
+                scan()
+                var np = 0
+                if gtok == "("
+                    scan()
+                    if gtok != ")"
+                        while 1
+                            set np = np + 1
+                            scan()
+                            if gtok == ","
+                                scan()
+                            else
+                                break
+                add_func(fname, np)
+        scan()
+
+# 重置并正式转译
+set gpos = 0
+set gprev_nl = true
+set gindstack = "0|"
+set gvars = ""
+set gout = ""
+set gfuncs = ""
+set gclosure = ""
+set gdecls = ""
+set gcaps = ""
+set gclos_seq = 0
+set gclosure_depth = 0
+scan()
+
+while gtype != 5 and not gfail
+    gen_block()
+
+if gfail
+    print("imporc.impor: 第", mi_line_at(gpos), "行: 编译失败，不生成产物")
+    exit(1)
+else
+    # 组装 C 源码
+    var rt = fileread(ghome + "\\impor\\c_runtime.c")
+    var ccode = "/* by imporc.impor (self-hosted) */\n" + rt
+    # 函数前向声明（支持前向调用）
+    var proto = ""
+    var i2 = 0
+    var f1 = ""
+    var fcnt = 0
+    var curname = ""
+    var curnp = 0
+    while i2 < len(gfuncs2)
+        var c2 = strcut(gfuncs2, i2, i2 + 1)
+        if c2 == ";"
+            if fcnt == 0
+                set curname = f1
+                set fcnt = 1
+            else
+                set curnp = to_num(f1)
+                var ps = ""
+                var j2 = 0
+                while j2 < curnp
+                    if j2 > 0
+                        set ps = ps + ", "
+                    set ps = ps + "Val"
+                    set j2 = j2 + 1
+                set proto = proto + "static Val c_" + curname + "(" + ps + ");\n"
+                set fcnt = 0
+            set f1 = ""
+        else
+            set f1 = f1 + c2
+        set i2 = i2 + 1
+    set ccode = ccode + proto
+    set ccode = ccode + gdecls
+    # 全局变量声明
+    var i = 0
+    var vn = ""
+    while i < len(gvars)
+        var c = strcut(gvars, i, i + 1)
+        if c == "|"
+            if len(vn) > 0
+                set ccode = ccode + "Val g_" + vn + ";\n"
+                set vn = ""
+        else
+            set vn = vn + c
+        set i = i + 1
+    # 函数定义（文件作用域）
+    set ccode = ccode + gfuncs
+    set ccode = ccode + gclosure
+    set ccode = ccode + "int main(int argc, char **argv) {\n    rt_args_init(argc, argv);\n" + gout + "    return 0;\n}\n"
+
+    filewrite("out2.c", ccode)
+    # v3.8.3 中文路径修复：tcc 是 ANSI 程序，直接接收中文绝对输出路径会写成 ??。
+    # 先让 tcc 输出到当前目录的 ASCII 相对文件名，再用 Unicode 文件 API 重命名到目标。
+    var gtccout = "out2_tcc.exe"
+    var rc = system("\"" + ghome + "\\impor\\tcc\\win32\\tcc.exe\" out2.c -o \"" + gtccout + "\"")
+    if rc != 0
+        print("imporc.impor: 第", mi_line_at(gpos), "行: tcc 失败 rc=", rc)
+        exit(1)
+    else
+        if goutname != gtccout
+            filemv(gtccout, goutname)
+        print("imporc.impor: 已生成 ", goutname)
+        if gmode == "run"
+            var rc2 = system("\"" + goutname + "\"")
+            exit(rc2)

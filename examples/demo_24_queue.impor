@@ -1,0 +1,22 @@
+important<<DAY<<english("English"):
+// 用类实现队列
+class Queue
+    def __init__()
+        set self.items = []
+        set self.head = 0
+    def enqueue(x)
+        arrappend(self.items, x)
+    def dequeue()
+        var v = self.items[self.head]
+        set self.head = self.head + 1
+        return v
+    def size()
+        return len(self.items) - self.head
+
+var q = new Queue()
+q.enqueue("A")
+q.enqueue("B")
+q.enqueue("C")
+print("队列大小:", q.size())
+print("出队:", q.dequeue())
+print("出队:", q.dequeue())

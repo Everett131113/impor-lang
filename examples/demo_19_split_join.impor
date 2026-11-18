@@ -1,0 +1,9 @@
+important<<DAY<<english("English"):
+// 字符串切分与重新拼接
+use std.text
+var sentence = "Impor makes programming simple"
+var words = split(sentence, " ")
+print("单词数:", len(words))
+for w in words
+    print(" -", w)
+print("用 / 拼接:", join(words, "/"))

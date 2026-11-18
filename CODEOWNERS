@@ -1,0 +1,12 @@
+# Impor 代码所有权
+# 语法：路径 glob  负责人
+*                       @impor-lang/core
+/impor/interpreter.py   @impor-lang/core
+/impor/parser.py        @impor-lang/core
+/impor/ctrans.py        @impor-lang/native
+/impor/lsp.py           @impor-lang/tooling
+/impor/editor.py        @impor-lang/editor
+/vscode-impor/          @impor-lang/vscode
+/conformance/           @impor-lang/quality
+/docs/生产化/           @impor-lang/core
+/SECURITY.md            @impor-lang/security

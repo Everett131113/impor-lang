@@ -1,0 +1,28 @@
+important<<DAY<<english("English"):
+// oop.impor — 类、继承、super
+// 运行：impor run oop.impor
+
+class Animal
+    def __init__(name)
+        set self.name = name
+    def speak()
+        print(self.name, "发出声音")
+
+class Dog(Animal)
+    def speak()
+        super().speak()
+        print(self.name, "汪汪叫！")
+
+class Cat(Animal)
+    def speak()
+        print(self.name, "喵喵叫！")
+
+var dog = new Dog("旺财")
+var cat = new Cat("咪咪")
+
+dog.speak()
+cat.speak()
+
+// 属性读写
+dog.age = 3
+print(dog.name, "今年", dog.age, "岁")

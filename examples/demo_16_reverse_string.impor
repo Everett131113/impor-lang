@@ -1,0 +1,14 @@
+important<<DAY<<english("English"):
+// 倒序字符串
+func reverse_text(s)
+    var out = ""
+    var i = len(s) - 1
+    loop
+        if i < 0
+            break
+        set out = out + strcut(s, i, i + 1)
+        set i = i - 1
+    return out
+
+print("原串: Impor")
+print("倒序:", reverse_text("Impor"))

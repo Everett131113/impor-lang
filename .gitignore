@@ -1,0 +1,74 @@
+# Impor (I++) —— Git 忽略规则
+# 注意：impor/imporc.exe 与 impor/tcc/win32/tcc.exe 是随包分发的发版产物，不能忽略。
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# 打包与缓存
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
+
+# Impor 运行时与构建中间产物
+.impor/
+imporc_args.txt
+imporc_self_raw.exe
+imporc_self.exe
+out.c
+out.exe
+out2.c
+out2.exe
+*.obj
+*.o
+
+# 日志与临时文件
+*.log
+*.tmp
+~$*
+
+# 本地基准报告
+bench.json
+conformance/report.json
+
+# 历史归档与构建中间产物（不进入版本库）
+_backup/
+/.impor_recovery/
+/imporc_new.exe
+/imporc_final.exe
+/impor-fast.exe
+/fib_0_20.exe
+/lib.c
+/lib.h
+/lib.def
+/lib.dll
+/full_*.err
+/selfhost_*.err
+/ui_*_v376.json
+/arg_script.impor
+/lesson01_answer.impor
+node_modules/
+_extract*/
+_test_*/
+_tiiny_test/
+_compat_*
+_rel.*
+_ver.*
+*.vsix
+*.zip
+Impor(I++) 3.6.*/
+
