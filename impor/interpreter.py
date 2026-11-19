@@ -566,6 +566,10 @@ class Interpreter:
                 stack.extend(cur)
                 continue
             t = type(cur)
+            if t.__name__ == "Assign" and getattr(cur, "scope", "") == "const":
+                # const / readonly / static 的只读语义由树遍历解释器兑现；
+                # 转译快速路径不认识 const，必须回退，否则 x = 6 会静默改写常量。
+                return False
             if t.__name__ not in self._FAST_OK_NODES:
                 if t.__name__ in ("ImportNode", "FromImportNode", "ExportNode",
                                   "ClassDef", "ExceptionDef", "TryCatch", "Raise",

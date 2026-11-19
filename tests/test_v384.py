@@ -76,7 +76,7 @@ class TestUnimplementedRejected(unittest.TestCase):
             f.write(text)
         return path
 
-    def _assert_rejected(self, name, text, needle, plan="v3.12 计划"):
+    def _assert_rejected(self, name, text, needle, plan="v3.x 计划"):
         path = self._write(name, text)
         proc = _run([sys.executable, IMPOR_PY, "run", path])
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)

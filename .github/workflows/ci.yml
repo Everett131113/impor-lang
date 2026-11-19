@@ -59,6 +59,9 @@ jobs:
           python Impor.py run examples/demo_21_word_frequency.impor
           python Impor.py run examples/demo_30_closures.impor
 
+      - name: 保留字兑现表（静默接受必须为 0）
+        run: python tools/keyword_audit.py
+
       - name: 单元测试
         if: matrix.suite == 'full'
         run: python run_tests.py

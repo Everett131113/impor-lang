@@ -8,6 +8,20 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 
 ## [3.11.0] - 2026-11-18
 
+### 修复：未实现关键字不再静默执行
+
+- `async def` / `await expr` 在语句或表达式位置出现时语法错误 exit 2；
+  `defer expr` 这类非代码块写法同样拒绝，`defer { ... }` 的 LIFO 延迟语义保持不变。
+  文案统一为「xxx 尚未实现（v3.x 计划）；不再静默接受或执行」。
+- `interface / namespace / abstract / override / implements / sealed / final` 等无运行时
+  语义的保留字同样明确拒绝，避免“写了像支持”。
+- `static / readonly` 仅在变量声明位置保留为 `const` 别名；方法/类修饰位置明确拒绝。
+- 修复快速转译路径绕过 `const` 检查的问题：含 `const` 的脚本回退树遍历，
+  `const x = 5; x = 6` 现在抛 `ConstError`（rc=1）。
+- 新增 `tools/keyword_audit.py`：遍历全部关键字，输出
+  「已实现 / 明确拒绝 / 静默接受」三张表；静默接受非空即 exit 1，已接入 CI。
+- 新增 `tests/test_semantic_honesty.py`，用真实 CLI 断言上述退出码与文案。
+
 ### 新增：C ABI 矩阵（4 格 push 门禁 + macOS 2 格手动）
 
 - `.github/workflows/c-abi-x64.yml` 每次 push 跑四格：win32（内置 tcc）、win64（MSVC）、

@@ -86,6 +86,16 @@ CANONICAL_KEYWORDS = frozenset((KEYWORDS - DEPRECATED_KEYWORDS)
                                | set(DEPRECATED_ALIASES.values()))
 # v3.7.2：软关键字——保留语法语义，但不在词法层封锁，可作普通标识符。
 SOFT_KEYWORDS = frozenset({"static", "readonly", "async", "await", "this", "defer"})
+# 其中只有 static / readonly / this 有可用语义（const 别名 / self 别名）；
+# async / await / defer 尚未实现，必须在语法阶段拒绝，不能静默当标识符。
+IMPLEMENTED_SOFT_KEYWORDS = frozenset({"static", "readonly", "this"})
+UNIMPLEMENTED_SOFT_KEYWORDS = frozenset({"async", "await", "defer"})
+# 预留但无运行时语义的保留字：出现即拒绝，避免“写了像支持”的静默接受。
+UNIMPLEMENTED_RESERVED_KEYWORDS = frozenset({
+    "interface", "namespace", "abstract", "override", "implements", "sealed",
+    "final", "yield", "with",
+})
+UNIMPLEMENTED_KEYWORDS = UNIMPLEMENTED_SOFT_KEYWORDS | UNIMPLEMENTED_RESERVED_KEYWORDS
 from .builtin_manifest import ALL_BUILTINS
 
 BUILTIN_NAMES = frozenset(ALL_BUILTINS)

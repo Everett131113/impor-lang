@@ -21,7 +21,7 @@ from .ast_nodes import (
     ClassDef, ExceptionDef, Raise, MatchNode, BindingPattern, AdtPattern, Lambda, Await,
 )
 from .errors import ImporSyntaxError, hint_for
-from .lexer import TOK_OP, TOK_NUM, TOK_STR, TOK_FSTR, TOK_ID, TOK_KEY, TOK_EOF, TOK_INDENT, TOK_DEDENT, TOK_NEWLINE, TOK_DOC, unescape_impor
+from .lexer import TOK_OP, TOK_NUM, TOK_STR, TOK_FSTR, TOK_ID, TOK_KEY, TOK_EOF, TOK_INDENT, TOK_DEDENT, TOK_NEWLINE, TOK_DOC, unescape_impor, UNIMPLEMENTED_KEYWORDS
 
 
 def _normalize_type_text(text):
@@ -168,11 +168,10 @@ class Parser:
         return False
 
     def not_expr(self):
-        # v3.7.2：await 是软关键字；后面能接表达式才按 await 解析，否则按普通标识符。
+        # v3.11：await 尚未实现；只在不接操作数时保留为普通标识符，接表达式必须拒绝。
         if self.peek().value == "await" and self._await_has_operand():
-            ln, cl = self._peek_ln_col()
-            self.consume()
-            return Await(self.neg(), ln, cl)
+            t = self.peek()
+            self._unimplemented(t, "await")
         if self._is_key("not"):
             ln, cl = self._peek_ln_col()
             self.consume()
@@ -885,7 +884,7 @@ class Parser:
             name = {"=": "默认参数", "...": "变参", "?": "可选参数",
                     "*": "变参", "**": "关键字变参"}[t.value]
             raise ImporSyntaxError(
-                f"{name}尚未实现（v3.12 计划）", t.line, t.col,
+                f"{name}尚未实现（v3.x 计划）", t.line, t.col,
                 self.filename, hint_for("stmt_start"))
 
     def _param_name(self):
@@ -899,14 +898,21 @@ class Parser:
 
     def _unimplemented(self, t, name):
         raise ImporSyntaxError(
-            f"{name} 尚未实现（v3.12 计划）；v3.8.4 不再把它当成 null 静默执行",
+            f"{name} 尚未实现（v3.x 计划）；不再静默接受或执行",
             t.line, t.col, self.filename, hint_for("stmt_start"))
 
     def stmt(self):
         t = self.peek()
 
-        # v3.8.4：语义诚实——保留关键字未实现时必须在语法阶段拒绝。
-        if t.type == TOK_KEY and t.value in ("yield", "with"):
+        # v3.8.4 / v3.11：语义诚实——保留关键字未实现时必须在语法阶段拒绝。
+        # defer { ... } 已在 v3.7.8 实现（LIFO 作用域退出执行），必须保留；
+        # 但 `defer print("d")` 这类非代码块写法会退化成一次普通调用，必须拒绝。
+        # yield 与 with 同样在 UNIMPLEMENTED_KEYWORDS 内，语句位置直接拒绝。
+        if t.type in (TOK_KEY, TOK_ID) and t.value == "defer":
+            nxt = self.peek(1)
+            if not (nxt.type == TOK_OP and nxt.value == "{"):
+                self._unimplemented(t, "defer")
+        elif t.type in (TOK_KEY, TOK_ID) and t.value in UNIMPLEMENTED_KEYWORDS:
             self._unimplemented(t, t.value)
 
         # v2.18：顶层大括号块 `{ ... }`（省略缩进的独立代码块）
@@ -1341,9 +1347,13 @@ class Parser:
             if (nxt.type == TOK_OP and nxt.value in ("{", ":")) or nxt.type == TOK_NEWLINE:
                 return self._parse_enum(t)
 
+        # static / readonly 仅在变量声明位置有 const 别名语义；方法/类修饰位置未实现，直接拒绝。
+        if t.type in (TOK_ID, TOK_KEY) and t.value in ("static", "readonly"):
+            self._unimplemented(t, t.value + "（仅支持变量声明 static x = 1 / readonly x = 1）")
+
         # v5.3：修饰符与结构别名；v7.3：保留可见性/只读语义
         if t.type in (TOK_ID, TOK_KEY) and t.value in ("public", "private", "protected", "abstract",
-                                             "final", "sealed", "override", "static", "readonly"):
+                                             "final", "sealed", "override"):
             mod = t.value
             self.consume()
             node = self.stmt()
