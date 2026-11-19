@@ -1,0 +1,82 @@
+{
+  "generated_at": "2026-11-19T18:44:01",
+  "host": "win32",
+  "case": "benchmarks/compare/case.json",
+  "expected": "sum = 500500",
+  "runs_per_language": 30,
+  "rows": [
+    {
+      "language": "Impor 3.11",
+      "artifact_bytes": 123392,
+      "artifact": "case_impor.exe（内置 tcc，32 位）",
+      "startup_ms_median": 23.61,
+      "rss_kb_peak": 6176.0,
+      "deps": "无（不依赖 Python / VC 运行库）",
+      "command": "C:\\Users\\41482\\Doubao\\chats\\2026-11-01\\new-chat\\ImporLang\\benchmarks\\compare\\case_impor.exe",
+      "output": "sum = 500500",
+      "output_ok": true,
+      "note": ""
+    },
+    {
+      "language": "TCC-C",
+      "artifact_bytes": 2048,
+      "artifact": "case_tcc.exe（tcc -O2）",
+      "startup_ms_median": 24.29,
+      "rss_kb_peak": 6920.0,
+      "deps": "无",
+      "command": "C:\\Users\\41482\\Doubao\\chats\\2026-11-01\\new-chat\\ImporLang\\benchmarks\\compare\\case_tcc.exe",
+      "output": "sum = 500500",
+      "output_ok": true,
+      "note": ""
+    },
+    {
+      "language": "Lua 5.4",
+      "artifact_bytes": 488960,
+      "artifact": "lua.exe + lua54.dll（若同目录存在）",
+      "startup_ms_median": 21.16,
+      "rss_kb_peak": 5408.0,
+      "deps": "需要 lua.exe / lua54.dll",
+      "command": "C:\\Users\\41482\\AppData\\Local\\Programs\\Lua\\bin\\lua.exe case.lua",
+      "output": "sum = 500500",
+      "output_ok": true,
+      "note": "脚本不打包"
+    },
+    {
+      "language": "Python 3.11",
+      "artifact_bytes": 8197968,
+      "artifact": "PyInstaller onefile",
+      "startup_ms_median": 1262.91,
+      "rss_kb_peak": 9732.0,
+      "deps": "无（打包运行时）",
+      "command": "C:\\Users\\41482\\Doubao\\chats\\2026-11-01\\new-chat\\ImporLang\\benchmarks\\compare\\dist\\case_python.exe",
+      "output": "sum = 500500",
+      "output_ok": true,
+      "note": "onefile"
+    },
+    {
+      "language": "Go 1.23",
+      "artifact_bytes": 2006016,
+      "artifact": "case_go.exe（-ldflags=-s -w）",
+      "startup_ms_median": 24.61,
+      "rss_kb_peak": 6868.0,
+      "deps": "无",
+      "command": "C:\\Users\\41482\\Doubao\\chats\\2026-11-01\\new-chat\\ImporLang\\benchmarks\\compare\\case_go.exe",
+      "output": "sum = 500500",
+      "output_ok": true,
+      "note": ""
+    },
+    {
+      "language": "Node 22",
+      "artifact_bytes": 80511640,
+      "artifact": "node.exe（不含脚本）",
+      "startup_ms_median": 119.56,
+      "rss_kb_peak": 29548.0,
+      "deps": "需要 node.exe（约 80 MB）",
+      "command": "C:\\Users\\41482\\AppData\\Local\\Temp\\impor_compare\\node\\node-v22.11.0-win-x64\\node.exe case.js",
+      "output": "sum = 500500",
+      "output_ok": true,
+      "note": "脚本不打包"
+    }
+  ],
+  "missing": []
+}

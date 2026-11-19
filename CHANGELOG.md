@@ -18,6 +18,15 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
   Mach-O x86_64 / arm64）与四个导出符号 `impor_add / impor_sub / impor_mul / impor_greet`。
 - 新增 `tools/check_artifact.py`，本地与 CI 共用同一套 PE / ELF / Mach-O 解析。
 
+### 新增：`tools/compare.py` 多语言真跑对照
+
+- 同一份 `benchmarks/compare/case.json`（1000 整数求和）分别用 Impor / TCC-C / Lua 5.4 /
+  Python(PyInstaller onefile) / Go / Node 跑，输出体积、30 次冷启动中位数、峰值内存、依赖。
+- 本机结果：Impor 120.5 KB / 23.61 ms / 6.0 MB / 无依赖；Lua 477.5 KB；Python onefile 7.8 MB / 1.26 s；
+  Go 1.9 MB；Node 76.8 MB；TCC-C 2.0 KB。README 只宣称“体积 + 零依赖 + 可被宿主加载”三项组合，
+  不宣称冷启动快于 TCC-C / Lua / Go。
+- 输出 `compare.json` 与 `docs/compare.md`，每个数字附复现命令。
+
 ### 修复：5 分钟陌生人测试在默认 PowerShell 下不可用
 
 - `tools/five_minute_check.ps1` 改为 **UTF-8 with BOM**，Windows PowerShell 5.1 与 PowerShell 7

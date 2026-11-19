@@ -38,6 +38,29 @@
 
 复现：`python Impor.py bench-spec examples/hello.impor --runs 30 --json`
 
+## 多语言对照（本机实测，`python tools/compare.py`）
+
+同一份 `benchmarks/compare/case.json`（1000 个整数求和），每个语言独立进程跑 30 次取中位数。不是博客数字，全部由脚本现场测量：
+
+| 语言 | 产物体积 | 冷启动中位数 | 峰值内存 | 目标机依赖 |
+|---|---:|---:|---:|---|
+| **Impor 3.11** | **120.5 KB** | **23.61 ms** | **6.0 MB** | **无** |
+| TCC-C | 2.0 KB | 24.29 ms | 6.8 MB | 无 |
+| Lua 5.4 | 477.5 KB（lua.exe + lua54.dll） | 21.16 ms | 5.3 MB | 需 lua.exe / lua54.dll |
+| Go 1.23 | 1.9 MB | 24.61 ms | 6.7 MB | 无 |
+| Node 22 | 76.8 MB（node.exe） | 119.56 ms | 28.9 MB | 需 node.exe |
+| Python 3.11（PyInstaller onefile） | 7.8 MB | 1262.91 ms | 9.5 MB | 无（打包运行时） |
+
+**结论只写数据能证明的那一句**：在「体积 + 零依赖 + 可被宿主直接加载」三项的组合上，Impor 是这张表里唯一同时满足的；单看冷启动，TCC-C / Lua / Go 与 Impor 同处约 25 ms 的进程启动地板，Impor 不宣称更快。
+
+被 C 加载所需代码约 10 行：`LoadLibrary` + `GetProcAddress("impor_add")` + 调用 + `FreeLibrary`，见 `examples/c_abi/README.md`。完整表与逐条命令在 `docs/compare.md`，原始数据在 `compare.json`。
+
+复现（3 分钟内，缺哪个运行时就把哪个参数指过去）：
+
+```powershell
+python tools/compare.py --runs 30
+```
+
 > **新手教程**：docs/新手教程.md（30 分钟从零入门，示例全部实测通过）
 
 > **头部标记已可选**：`important<<DAY<<english("English"):` 首行自 v2.3.1 起不再强制，

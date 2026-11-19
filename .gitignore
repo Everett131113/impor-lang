@@ -44,6 +44,8 @@ out2.exe
 # 本地基准报告
 bench.json
 conformance/report.json
+benchmarks/compare/*.exe
+benchmarks/compare/*.spec
 
 # 历史归档与构建中间产物（不进入版本库）
 _backup/

@@ -1,0 +1,10 @@
+// 读 case.json，求和，打印同一行结果。
+// 解释器与 C 后端 exe 都必须输出：sum = 500500
+
+var text = fileread("case.json")
+var data = json_decode(text)
+var nums = data["values"]
+var total = 0
+for v in nums:
+    total = total + v
+print("sum =", total)
