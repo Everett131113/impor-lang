@@ -51,7 +51,7 @@
 | Node 22 | 76.8 MB（node.exe） | 119.56 ms | 28.9 MB | 需 node.exe |
 | Python 3.11（PyInstaller onefile） | 7.8 MB | 1262.91 ms | 9.5 MB | 无（打包运行时） |
 
-**结论只写数据能证明的那一句**：在「体积 + 零依赖 + 可被宿主直接加载」三项的组合上，Impor 是这张表里唯一同时满足的；单看冷启动，TCC-C / Lua / Go 与 Impor 同处约 25 ms 的进程启动地板，Impor 不宣称更快。
+**结论只写数据能证明的那一句**：在脚本／胶水语言这一组（Lua / Python / Node）里，Impor 是唯一同时满足「120 KB 级体积 + 零运行时依赖 + 可被 C 宿主直接加载」的；TCC-C 体积更小，但它是 C 本身，不是胶水层；Go 零依赖但 1.9 MB，且默认不导出 C ABI。单看冷启动，TCC-C / Lua / Go 与 Impor 同处约 25 ms 的进程启动地板，Impor 不宣称更快。
 
 被 C 加载所需代码约 10 行：`LoadLibrary` + `GetProcAddress("impor_add")` + 调用 + `FreeLibrary`，见 `examples/c_abi/README.md`。完整表与逐条命令在 `docs/compare.md`，原始数据在 `compare.json`。
 
