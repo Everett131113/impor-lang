@@ -81,6 +81,26 @@ class TestConstIsActuallyReadonly(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn("6", out)
 
+    def test_c_backend_rejects_const_mutation(self):
+        with tempfile.TemporaryDirectory() as td:
+            src = os.path.join(td, "const_bad.impor")
+            exe = os.path.join(td, "const_bad.exe")
+            with open(src, "w", encoding="utf-8", newline="\n") as f:
+                f.write("const x = 5\nx = 6\nprint(x)\n")
+            proc = subprocess.run(
+                [sys.executable, IMPOR_PY, "build", src, "-o", exe, "--no-cache"],
+                cwd=ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                timeout=120,
+            )
+            self.assertNotEqual(proc.returncode, 0, proc.stdout)
+            self.assertIn("常量 x 不可修改", proc.stdout)
+            self.assertIn("C 后端", proc.stdout)
+            self.assertFalse(os.path.exists(exe), "拒绝时不应产出 exe")
+
     def test_this_alias_works(self):
         rc, out = _run_source(
             "class A {\n"

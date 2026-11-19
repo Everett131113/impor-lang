@@ -2108,6 +2108,59 @@ class CGen:
         return expr
 
 
+def _reject_const_mutation(root):
+    """C 后端不跟踪 const 环境：任何对 const 名字的再次赋值都必须在构建期拒绝。
+
+    这不是“降级”，而是把 C 后端无法兑现的只读承诺明确挡住；读取 const 仍然允许。
+    """
+    from impor.ast_nodes import Assign, CompoundAssign
+
+    consts = set()
+
+    def collect(node):
+        if isinstance(node, (list, tuple)):
+            for x in node:
+                collect(x)
+            return
+        if not hasattr(node, "__dict__"):
+            return
+        if isinstance(node, Assign) and getattr(node, "scope", "") == "const":
+            consts.add(node.name)
+        for v in node.__dict__.values():
+            if isinstance(v, (list, tuple)) or hasattr(v, "__dict__"):
+                collect(v)
+
+    collect(root)
+    if not consts:
+        return
+
+    def scan(node):
+        if isinstance(node, (list, tuple)):
+            for x in node:
+                scan(x)
+            return
+        if not hasattr(node, "__dict__"):
+            return
+        if isinstance(node, Assign):
+            if getattr(node, "scope", "") != "const" and node.name in consts:
+                raise UnsupportedFeature(
+                    "常量 %s 不可修改（const 只读）；C 后端不跟踪 const 环境，"
+                    "请改用 var 或删除重新赋值" % node.name,
+                    getattr(node, "lineno", 0), getattr(node, "col", 0))
+        elif isinstance(node, CompoundAssign) and node.name in consts:
+            raise UnsupportedFeature(
+                "常量 %s 不可修改（const 只读）；C 后端不跟踪 const 环境，"
+                "请改用 var 或删除重新赋值" % node.name,
+                getattr(node, "lineno", 0), getattr(node, "col", 0))
+        for k, v in node.__dict__.items():
+            if k.startswith("_"):
+                continue
+            if isinstance(v, (list, tuple)) or hasattr(v, "__dict__"):
+                scan(v)
+
+    scan(root)
+
+
 def c_transpile(ast_node, source_name=None, stats=None, source_lines=None,
                 emit_main=True):
     """Impor AST → C 源码字符串。抛 UnsupportedFeature 表示需用 Python 后端。
@@ -2121,6 +2174,7 @@ def c_transpile(ast_node, source_name=None, stats=None, source_lines=None,
                                 stats=stats)
     except LinkError as e:
         raise UnsupportedFeature(str(e), 0, 0)
+    _reject_const_mutation(ast_node)
     gen = CGen()
     gen.source_lines = source_lines
     gen.source_name = source_name

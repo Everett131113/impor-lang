@@ -17,7 +17,7 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
   语义的保留字同样明确拒绝，避免“写了像支持”。
 - `static / readonly` 仅在变量声明位置保留为 `const` 别名；方法/类修饰位置明确拒绝。
 - 修复快速转译路径绕过 `const` 检查的问题：含 `const` 的脚本回退树遍历，
-  `const x = 5; x = 6` 现在抛 `ConstError`（rc=1）。
+  `const x = 5; x = 6` 现在抛 `ConstError`（rc=1）；C 后端在构建期拒绝同一脚本。
 - 新增 `tools/keyword_audit.py`：遍历全部关键字，输出
   「已实现 / 明确拒绝 / 静默接受」三张表；静默接受非空即 exit 1，已接入 CI。
 - 新增 `tests/test_semantic_honesty.py`，用真实 CLI 断言上述退出码与文案。
