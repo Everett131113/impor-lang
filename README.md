@@ -55,7 +55,7 @@
 
 被 C 加载所需代码约 10 行：`LoadLibrary` + `GetProcAddress("impor_add")` + 调用 + `FreeLibrary`，见 `examples/c_abi/README.md`。完整表与逐条命令在 `docs/compare.md`，原始数据在 `compare.json`。
 
-复现（3 分钟内，缺哪个运行时就把哪个参数指过去）：
+复现（3 分钟内，缺哪个运行时就把哪个参数指过去；首次运行先 `pip install psutil`，脚本用它采样峰值内存）：
 
 ```powershell
 python tools/compare.py --runs 30
