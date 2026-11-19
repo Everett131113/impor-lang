@@ -23,7 +23,7 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 - 同一份 `benchmarks/compare/case.json`（1000 整数求和）分别用 Impor / TCC-C / Lua 5.4 /
   Python(PyInstaller onefile) / Go / Node 跑；固定 6 行，缺运行时填「未测量」。
 - 表分「总耗时」与「纯启动」两列：总耗时 = 启动 + 读 JSON + 求和 + 退出；纯启动 = 同产物走空路径。
-- 本机结果：Impor 120.5 KB / 22.90 ms / 22.64 ms / 6.0 MB / 无依赖；TCC-C 2.5 KB；
+- 本机结果：Impor 120.5 KB / 21.44 ms / 22.41 ms / 6.0 MB / 无依赖；TCC-C 2.5 KB；
   Lua 477.5 KB（含运行时）；Python onefile 7.8 MB / 1.26 s；Go 1.9 MB；Node 76.8 MB。
   README 只宣称“体积 + 零依赖 + 可被宿主加载”三项组合，不宣称启动快于 TCC-C / Lua / Go。
 - `--python-mode {auto,onefile,onedir,system}`：auto 现场用 PyInstaller 构建到临时目录，

@@ -44,14 +44,14 @@
 
 | 语言 | 产物 | 计数口径 | 测法 | 总耗时 | 纯启动 | 峰值内存 | 依赖 | 结果 |
 |---|---|---|---:|---:|---:|---|---|
-| **Impor 3.11** | **120.5 KB** · case_impor.exe | **可执行产物** | compiled | **22.90 ms** | **22.64 ms** | **6.0 MB** | **无** | OK |
-| TCC-C | 2.5 KB · case_tcc.exe | 可执行产物 | compiled | 24.28 ms | 22.62 ms | 6.8 MB | 无 | OK |
-| Lua 5.4 | 477.5 KB · lua.exe + lua54.dll | 含运行时 | script+runtime | 21.53 ms | 21.08 ms | 5.3 MB | lua.exe / lua54.dll | OK |
-| Python 3.11 | 7.8 MB · PyInstaller onefile | 含运行时（打包） | onefile | 1255.72 ms | 1250.81 ms | 9.5 MB | 无（打包运行时） | OK |
-| Go 1.23 | 1.9 MB · case_go.exe | 可执行产物 | compiled | 24.14 ms | 23.46 ms | 6.7 MB | 无 | OK |
-| Node 22 | 76.8 MB · node.exe | 含运行时 | script+runtime | 120.43 ms | 113.89 ms | 28.9 MB | node.exe | OK |
+| **Impor 3.11** | **120.5 KB** · case_impor.exe | **可执行产物** | compiled | **21.44 ms** | **22.41 ms** | **6.0 MB** | **无** | OK |
+| TCC-C | 2.5 KB · case_tcc.exe | 可执行产物 | compiled | 21.76 ms | 23.17 ms | 6.9 MB | 无 | OK |
+| Lua 5.4 | 477.5 KB · lua.exe + lua54.dll | 含运行时 | script+runtime | 21.27 ms | 21.06 ms | 5.3 MB | lua.exe / lua54.dll | OK |
+| Python 3.11 | 7.8 MB · PyInstaller onefile | 含运行时（打包） | onefile | 1207.48 ms | 1232.31 ms | 9.7 MB | 无（打包运行时） | OK |
+| Go 1.23 | 1.9 MB · case_go.exe | 可执行产物 | compiled | 24.57 ms | 23.20 ms | 6.9 MB | 无 | OK |
+| Node 22 | 76.8 MB · node.exe | 含运行时 | script+runtime | 120.02 ms | 114.22 ms | 29.4 MB | node.exe | OK |
 
-**结论只写数据能证明的那一句**：在脚本／胶水语言这一组（Lua / Python / Node）里，Impor 是唯一同时满足「120 KB 级体积 + 零运行时依赖 + 可被 C 宿主直接加载」的；TCC-C 体积更小，但它是 C 本身，不是胶水层；Go 零依赖但 1.9 MB，且默认不导出 C ABI。单看启动，TCC-C / Lua / Go 与 Impor 同处约 22–24 ms 的进程地板，Impor 不宣称更快。TCC-C 的 2.5 KB 来自 tcc 自带微型 CRT，MSVC 编译同源通常 100 KB+。
+**结论只写数据能证明的那一句**：在脚本／胶水语言这一组（Lua / Python / Node）里，Impor 是唯一同时满足「120 KB 级体积 + 零运行时依赖 + 可被 C 宿主直接加载」的；TCC-C 体积更小，但它是 C 本身，不是胶水层；Go 零依赖但 1.9 MB，且默认不导出 C ABI。单看启动，TCC-C / Lua / Go 与 Impor 同处约 21–25 ms 的进程地板，Impor 不宣称更快。TCC-C 的 2.5 KB 来自 tcc 自带微型 CRT，MSVC 编译同源通常 100 KB+。
 
 表里「总耗时」= 启动 + 读 JSON + 求和 + 退出；「纯启动」= 同一产物走空路径，只测进程地板。README 规格表里的 hello 示例与本表的 case 示例不是同一个程序，两组数字不应逐位对比。
 

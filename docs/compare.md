@@ -1,15 +1,15 @@
 # 多语言对照（本机实测）
 
-同机同一次运行；runs=30；commit=fd5445026270。
+同机同一次运行；runs=30；commit=8373c5539b3c。
 
 | 语言 | 产物 | 计数口径 | 测法 | 总耗时中位数 | 纯启动中位数 | 峰值内存 | 依赖 | 结果 |
 |---|---|---|---:|---:|---:|---:|---|---|
-| Impor 3.11 | 120.5 KB · case_impor.exe，内置 tcc 32 位 | 可执行产物 | compiled | 22.90 ms | 22.64 ms | 6176 KB | 无（不依赖 Python / VC 运行库） | OK |
-| TCC-C | 2.5 KB · case_tcc.exe（tcc -O2） | 可执行产物 | compiled | 24.28 ms | 22.62 ms | 6980 KB | 无 | OK |
-| Lua 5.4 | 477.5 KB · lua.exe + lua54.dll（若同目录存在） | 含运行时 | script+runtime | 21.53 ms | 21.08 ms | 5416 KB | 需要 lua.exe / lua54.dll | OK |
-| Python 3.11 | 7.8 MB · PyInstaller onefile | 含运行时（打包） | onefile | 1255.72 ms | 1250.81 ms | 9732 KB | 无（打包运行时） | OK |
-| Go 1.23 | 1.9 MB · case_go.exe（-ldflags=-s -w） | 可执行产物 | compiled | 24.14 ms | 23.46 ms | 6864 KB | 无 | OK |
-| Node 22 | 76.8 MB · node.exe（不含脚本） | 含运行时 | script+runtime | 120.43 ms | 113.89 ms | 29600 KB | 需要 node.exe（约 80 MB） | OK |
+| Impor 3.11 | 120.5 KB · case_impor.exe，内置 tcc 32 位 | 可执行产物 | compiled | 21.44 ms | 22.41 ms | 6176 KB | 无（不依赖 Python / VC 运行库） | OK |
+| TCC-C | 2.5 KB · case_tcc.exe（tcc -O2） | 可执行产物 | compiled | 21.76 ms | 23.17 ms | 6996 KB | 无 | OK |
+| Lua 5.4 | 477.5 KB · lua.exe + lua54.dll（若同目录存在） | 含运行时 | script+runtime | 21.27 ms | 21.06 ms | 5412 KB | 需要 lua.exe / lua54.dll | OK |
+| Python 3.11 | 7.8 MB · PyInstaller onefile | 含运行时（打包） | onefile | 1207.48 ms | 1232.31 ms | 9744 KB | 无（打包运行时） | OK |
+| Go 1.23 | 1.9 MB · case_go.exe（-ldflags=-s -w） | 可执行产物 | compiled | 24.57 ms | 23.20 ms | 6860 KB | 无 | OK |
+| Node 22 | 76.8 MB · node.exe（不含脚本） | 含运行时 | script+runtime | 120.02 ms | 114.22 ms | 29448 KB | 需要 node.exe（约 80 MB） | OK |
 
 口径说明：
 
