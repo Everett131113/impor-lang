@@ -21,11 +21,16 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 ### 新增：`tools/compare.py` 多语言真跑对照
 
 - 同一份 `benchmarks/compare/case.json`（1000 整数求和）分别用 Impor / TCC-C / Lua 5.4 /
-  Python(PyInstaller onefile) / Go / Node 跑，输出体积、30 次冷启动中位数、峰值内存、依赖。
-- 本机结果：Impor 120.5 KB / 23.61 ms / 6.0 MB / 无依赖；Lua 477.5 KB；Python onefile 7.8 MB / 1.26 s；
-  Go 1.9 MB；Node 76.8 MB；TCC-C 2.0 KB。README 只宣称“体积 + 零依赖 + 可被宿主加载”三项组合，
-  不宣称冷启动快于 TCC-C / Lua / Go。
-- 输出 `compare.json` 与 `docs/compare.md`，每个数字附复现命令。
+  Python(PyInstaller onefile) / Go / Node 跑；固定 6 行，缺运行时填「未测量」。
+- 表分「总耗时」与「纯启动」两列：总耗时 = 启动 + 读 JSON + 求和 + 退出；纯启动 = 同产物走空路径。
+- 本机结果：Impor 120.5 KB / 22.90 ms / 22.64 ms / 6.0 MB / 无依赖；TCC-C 2.5 KB；
+  Lua 477.5 KB（含运行时）；Python onefile 7.8 MB / 1.26 s；Go 1.9 MB；Node 76.8 MB。
+  README 只宣称“体积 + 零依赖 + 可被宿主加载”三项组合，不宣称启动快于 TCC-C / Lua / Go。
+- `--python-mode {auto,onefile,onedir,system}`：auto 现场用 PyInstaller 构建到临时目录，
+  失败 exit 2，不静默降级成 system。
+- 默认只写 `compare.local.json` / `docs/compare.local.md`；`--publish` 才覆盖正式文件。
+- `--strict` 任一行未测量即 exit 1；`--runs < 10` 表头标「样本不足」，strict 直接拒绝。
+- JSON 补 CPU / 内存 / OS build / commit / case sha256 / 各运行时版本；构建产物全部进临时目录。
 
 ### 修复：5 分钟陌生人测试在默认 PowerShell 下不可用
 

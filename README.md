@@ -42,23 +42,26 @@
 
 同一份 `benchmarks/compare/case.json`（1000 个整数求和），每个语言独立进程跑 30 次取中位数。不是博客数字，全部由脚本现场测量：
 
-| 语言 | 产物体积 | 冷启动中位数 | 峰值内存 | 目标机依赖 |
-|---|---:|---:|---:|---|
-| **Impor 3.11** | **120.5 KB** | **23.61 ms** | **6.0 MB** | **无** |
-| TCC-C | 2.0 KB | 24.29 ms | 6.8 MB | 无 |
-| Lua 5.4 | 477.5 KB（lua.exe + lua54.dll） | 21.16 ms | 5.3 MB | 需 lua.exe / lua54.dll |
-| Go 1.23 | 1.9 MB | 24.61 ms | 6.7 MB | 无 |
-| Node 22 | 76.8 MB（node.exe） | 119.56 ms | 28.9 MB | 需 node.exe |
-| Python 3.11（PyInstaller onefile） | 7.8 MB | 1262.91 ms | 9.5 MB | 无（打包运行时） |
+| 语言 | 产物 | 计数口径 | 测法 | 总耗时 | 纯启动 | 峰值内存 | 依赖 | 结果 |
+|---|---|---|---:|---:|---:|---|---|
+| **Impor 3.11** | **120.5 KB** · case_impor.exe | **可执行产物** | compiled | **22.90 ms** | **22.64 ms** | **6.0 MB** | **无** | OK |
+| TCC-C | 2.5 KB · case_tcc.exe | 可执行产物 | compiled | 24.28 ms | 22.62 ms | 6.8 MB | 无 | OK |
+| Lua 5.4 | 477.5 KB · lua.exe + lua54.dll | 含运行时 | script+runtime | 21.53 ms | 21.08 ms | 5.3 MB | lua.exe / lua54.dll | OK |
+| Python 3.11 | 7.8 MB · PyInstaller onefile | 含运行时（打包） | onefile | 1255.72 ms | 1250.81 ms | 9.5 MB | 无（打包运行时） | OK |
+| Go 1.23 | 1.9 MB · case_go.exe | 可执行产物 | compiled | 24.14 ms | 23.46 ms | 6.7 MB | 无 | OK |
+| Node 22 | 76.8 MB · node.exe | 含运行时 | script+runtime | 120.43 ms | 113.89 ms | 28.9 MB | node.exe | OK |
 
-**结论只写数据能证明的那一句**：在脚本／胶水语言这一组（Lua / Python / Node）里，Impor 是唯一同时满足「120 KB 级体积 + 零运行时依赖 + 可被 C 宿主直接加载」的；TCC-C 体积更小，但它是 C 本身，不是胶水层；Go 零依赖但 1.9 MB，且默认不导出 C ABI。单看冷启动，TCC-C / Lua / Go 与 Impor 同处约 25 ms 的进程启动地板，Impor 不宣称更快。
+**结论只写数据能证明的那一句**：在脚本／胶水语言这一组（Lua / Python / Node）里，Impor 是唯一同时满足「120 KB 级体积 + 零运行时依赖 + 可被 C 宿主直接加载」的；TCC-C 体积更小，但它是 C 本身，不是胶水层；Go 零依赖但 1.9 MB，且默认不导出 C ABI。单看启动，TCC-C / Lua / Go 与 Impor 同处约 22–24 ms 的进程地板，Impor 不宣称更快。TCC-C 的 2.5 KB 来自 tcc 自带微型 CRT，MSVC 编译同源通常 100 KB+。
+
+表里「总耗时」= 启动 + 读 JSON + 求和 + 退出；「纯启动」= 同一产物走空路径，只测进程地板。README 规格表里的 hello 示例与本表的 case 示例不是同一个程序，两组数字不应逐位对比。
 
 被 C 加载所需代码约 10 行：`LoadLibrary` + `GetProcAddress("impor_add")` + 调用 + `FreeLibrary`，见 `examples/c_abi/README.md`。完整表与逐条命令在 `docs/compare.md`，原始数据在 `compare.json`。
 
-复现（3 分钟内，缺哪个运行时就把哪个参数指过去；首次运行先 `pip install psutil`，脚本用它采样峰值内存）：
+复现（3 分钟内，缺哪个运行时就把哪个参数指过去；首次运行先 `pip install psutil`）：
 
 ```powershell
-python tools/compare.py --runs 30
+python tools/compare.py --runs 30            # 只写 compare.local.json / docs/compare.local.md
+python tools/compare.py --runs 30 --publish  # 正式更新 compare.json / docs/compare.md
 ```
 
 > **新手教程**：docs/新手教程.md（30 分钟从零入门，示例全部实测通过）

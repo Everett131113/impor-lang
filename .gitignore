@@ -46,6 +46,8 @@ bench.json
 conformance/report.json
 benchmarks/compare/*.exe
 benchmarks/compare/*.spec
+compare.local.json
+docs/compare.local.md
 
 # 历史归档与构建中间产物（不进入版本库）
 _backup/

@@ -7,6 +7,9 @@ import (
 )
 
 func main() {
+	if os.Getenv("IMPOR_COMPARE_FLOOR") != "" {
+		return
+	}
 	b, err := os.ReadFile("case.json")
 	if err != nil {
 		panic(err)

@@ -3,6 +3,7 @@
 #include <ctype.h>
 
 int main(void) {
+    if (getenv("IMPOR_COMPARE_FLOOR")) return 0;  /* 纯进程地板测量 */
     FILE *f = fopen("case.json", "rb");
     if (!f) { fprintf(stderr, "cannot open case.json\n"); return 1; }
     char *buf = (char *)malloc(1 << 20);
