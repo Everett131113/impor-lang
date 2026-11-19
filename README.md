@@ -17,11 +17,13 @@
 
 | 工作流 | 运行 | 结果 |
 |---|---|---|
-| `ci.yml` | [#14](https://github.com/Everett131113/impor-lang/actions/runs/44343129880) | 4 个 job 成功（Windows py3.11 / py3.12 full，Ubuntu py3.11 / py3.12 smoke） |
-| `c-abi-x64.yml` | [#14](https://github.com/Everett131113/impor-lang/actions/runs/44343130120) | MSVC x64 / GCC x64 / TCC win32 / GCC linux-arm64 四格成功 |
+| `ci.yml` | [#15](https://github.com/Everett131113/impor-lang/actions/runs/44418086033) | 4 个 job 成功（Windows py3.11 / py3.12 full，Ubuntu py3.11 / py3.12 smoke） |
+| `c-abi-x64.yml` | [#15](https://github.com/Everett131113/impor-lang/actions/runs/44418085903) | MSVC x64 / GCC x64 / TCC win32 / GCC linux-arm64 四格成功 |
+| 上一次基线 | [#14](https://github.com/Everett131113/impor-lang/actions/runs/44343129880) / [C ABI #14](https://github.com/Everett131113/impor-lang/actions/runs/44343130120) | 均成功（提交 `aa78f10`） |
 
+- CI #15：`docs/ci-2026-11-19-ci15.png`
 - CI #14：`docs/ci-2026-11-19-ci14.png`
-- C ABI #14：`docs/ci-2026-11-19-cabi14.png`
+- C ABI 四格：`docs/ci-2026-11-19-cabi14.png`
 
 > macOS arm64 / x64 两格在 `c-abi-macos.yml` 中手动触发，当前账号 macOS runner 额度不可用，未计入上述 push 门禁。仓库转为 public 后，徽章和运行页才会成为外部可核验证据。
 
