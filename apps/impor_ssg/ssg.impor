@@ -1,0 +1,147 @@
+# 用 Impor 写一个静态站点生成器
+#
+# 用法（在仓库根目录）：
+#   python Impor.py run apps/impor_ssg/ssg.impor
+#   python Impor.py build apps/impor_ssg/ssg.impor -o apps/impor_ssg/ssg.exe
+#   apps/impor_ssg/ssg.exe            # 不依赖 Python
+#
+# 输入：apps/impor_ssg/content/*.md
+# 模板：apps/impor_ssg/templates/layout.html
+# 输出：apps/impor_ssg/_site/*.html
+
+import std.path as path
+import std.fs as fs
+
+func _replace(s, old, repl) {
+    if len(old) == 0 {
+        return s
+    }
+    var out = ""
+    var i = 0
+    while i < len(s) {
+        if strcut(s, i, i + len(old)) == old {
+            out += repl
+            i += len(old)
+        } else {
+            out += strcut(s, i, i + 1)
+            i += 1
+        }
+    }
+    return out
+}
+
+func _escape(s) {
+    var t = _replace(s, "&", "&amp;")
+    t = _replace(t, "<", "&lt;")
+    t = _replace(t, ">", "&gt;")
+    return t
+}
+
+func _lines(text) {
+    # 保留函数名给阅读者；实际实现是逐行拼接，不依赖数组追加。
+    return text
+}
+
+func _starts(s, prefix) {
+    if len(s) < len(prefix) {
+        return false
+    }
+    return strcut(s, 0, len(prefix)) == prefix
+}
+
+func _render_md(text) {
+    var body = ""
+    var line = ""
+    var in_code = false
+    var i = 0
+    while i <= len(text) {
+        var c = "\n"
+        if i < len(text) {
+            c = strcut(text, i, i + 1)
+        }
+        if c == "\n" {
+            if _starts(line, "```") {
+                if in_code {
+                    body += "</code></pre>\n"
+                } else {
+                    body += "<pre><code>"
+                }
+                in_code = not in_code
+            } else if in_code {
+                body += _escape(line) + "\n"
+            } else if _starts(line, "## ") {
+                body += "<h2>" + _escape(strcut(line, 3, len(line))) + "</h2>\n"
+            } else if _starts(line, "# ") {
+                body += "<h1>" + _escape(strcut(line, 2, len(line))) + "</h1>\n"
+            } else if _starts(line, "- ") {
+                body += "<li>" + _escape(strcut(line, 2, len(line))) + "</li>\n"
+            } else if line != "" {
+                body += "<p>" + _escape(line) + "</p>\n"
+            }
+            line = ""
+        } else if c != "\r" {
+            line += c
+        }
+        i += 1
+    }
+    return body
+}
+
+func _title_of(text) {
+    var line = ""
+    var i = 0
+    while i <= len(text) {
+        var c = "\n"
+        if i < len(text) {
+            c = strcut(text, i, i + 1)
+        }
+        if c == "\n" {
+            if _starts(line, "# ") {
+                return strcut(line, 2, len(line))
+            }
+            line = ""
+        } else if c != "\r" {
+            line += c
+        }
+        i += 1
+    }
+    return "未命名"
+}
+
+func main() {
+    var content_dir = "apps/impor_ssg/content"
+    var site_dir = "apps/impor_ssg/_site"
+    var layout = fs.read("apps/impor_ssg/templates/layout.html")
+
+    var nav = ""
+    for name in fs.list(content_dir) {
+        if path.ext(name) == ".md" {
+            var stem = path.stem(name)
+            nav += " <a href=\"" + stem + ".html\">" + stem + "</a>"
+        }
+    }
+
+    fs.mkdir(site_dir)
+    var count = 0
+    for name in fs.list(content_dir) {
+        if path.ext(name) == ".md" {
+            var text = fs.read(path.join(content_dir, name))
+            var html = layout
+            html = _replace(html, "{{title}}", _escape(_title_of(text)))
+            html = _replace(html, "{{nav}}", nav)
+            html = _replace(html, "{{body}}", _render_md(text))
+            var out = path.join(site_dir, path.stem(name) + ".html")
+            fs.write(out, html)
+            count += 1
+            print("生成 " + out)
+        }
+    }
+
+    if fs.exists(path.join(site_dir, "index.html")) {
+        print("完成：" + to_str(count) + " 页 → " + site_dir)
+    } else {
+        print("警告：content/index.md 不存在，首页未生成")
+    }
+}
+
+main()

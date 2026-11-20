@@ -25,7 +25,8 @@ RUNTIME_BUILTINS = frozenset({
     "json_decode", "json_encode", "lerp", "lower", "max_arr", "min_arr",
     "now", "open", "pause", "randi", "randstr", "range", "readln",
     "regex_match", "remap", "rgb", "seed", "shuffle", "sign", "sleep", "snapshot",
-    "strcut", "strjoin", "strpad", "sum_arr", "to_num", "to_str",
+    "strcut", "strfind", "strjoin", "strlines", "strpad", "strreplace", "sum_arr", "to_num", "to_str",
+    "filelines",
     "trim", "type", "type_of", "upper", "vec2", "wait", "watch",
     "writeln", "ffi_open", "ffi_call",
 })

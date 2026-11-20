@@ -4,7 +4,36 @@
 
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
-版本：**3.11.0**（C ABI 矩阵 + `bench-spec`：push 门禁覆盖 win32 / win64 / linux64 / linux-arm64，每格校验机器类型与四个导出符号；macOS arm64 / x64 两格在 `c-abi-macos.yml` 手动触发（当前 macOS runner 额度不可用，不挂 push 门禁）。`impor bench-spec` 输出体积 / 冷启动 / 常驻内存 / 构建耗时。）
+版本：**3.12.0**（新增 `std.json / fs / path / regex / time / http` 六个模块；C 后端同步可用；其余保持 3.11 的语义与 API。3.12–3.14 承诺不删除任何已发布 API，见 `docs/compatibility.md`。）
+
+## 3 分钟上手（陌生人路径）
+
+1. 解压 ZIP，双击 `开始这里.bat`，看到「你好，Impor」即可。
+2. 双击 `examples\quickstart\1-你好.bat`，运行第一个脚本。
+3. 双击 `2-读文件.bat` / `3-调DLL.bat`，看读文件与调用系统 DLL。
+4. 不装 Python、编译器或第三方包；卡住先看 `常见问题.txt`。
+5. 想写自己的脚本：复制 `hello.impor`，改内容，双击同名 `.bat`。
+
+从仓库直接跑（需要 Python 3.9+）：
+
+```bash
+python Impor.py run examples/quickstart/hello.impor
+```
+
+**承诺兑现率：自动验证 21/21（100%），另有 2 项人工验收待测。** 每条承诺都能执行复现，明细见 [`docs/claims.md`](docs/claims.md)，源清单见 [`docs/claims.yaml`](docs/claims.yaml)。CI 会跑 `python tools/verify_claims.py`，任一条失败即红。
+
+### 三个真项目（陌生人可独立跑通）
+
+| 项目 | 证明什么 | 入口 |
+|---|---|---|
+| [`apps/impor_ssg`](apps/impor_ssg/README.md) | 读文件 → Markdown → 模板 → 写 HTML 的完整闭环；解释器与 C 后端同一份源码 | `python Impor.py run apps/impor_ssg/ssg.impor` |
+| [`apps/impor_action`](apps/impor_action/README.md) | 用 Impor 写的零依赖 GitHub Action；在别人机器上不需要 Python | `apps\impor_action\impor_action.exe examples` |
+| [`apps/impor_sqlite_report`](apps/impor_sqlite_report/README.md) | 10 万行 CSV → SQLite → HTML 报表；峰值内存 47 MB、约 0.8 s | `apps\impor_sqlite_report\report.exe` |
+
+三个项目都带自己的 README 与复现命令；`python tools/verify_release.py --check app_ssg / app_action / app_sqlite`
+会分别重新构建并断言结果，这三条也已写进 `docs/claims.yaml`。
+
+> 一体积口径：**语言产物**是 121.5 KB 的单文件 exe（`impor bench-spec`）；**便携构建包** `ImporPortable.exe` 约 16.8 MB，因为它自带 Python 运行时和内置 tcc，用于在没装 Python / 编译器的 Windows 上 `run` 与 `build`。两者不是同一个东西。
 
 > **C ABI 最小验收**：`impor build --lib examples/c_abi/lib.impor -o lib.dll` 产出 `lib.dll + lib.h + lib.def`；
 > 用 C demo 链接调用，输出 `add(2, 3) = 5`。字符串返回值用 `impor_free_str()` 释放。完整可复现步骤见 `examples/c_abi/README.md`。
@@ -164,7 +193,7 @@ python3 Impor.py repl
 
 ## 完整语法
 
-见 [docs/语言规范.md](docs/语言规范.md)（当前 3.11.0 语法规范，与实现一致）。
+见 [docs/语言规范.md](docs/语言规范.md)（当前 3.12.0 语法规范，与实现一致）。
 
 ## 目录结构
 

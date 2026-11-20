@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 先看 3 分钟上手
+    url: https://github.com/Everett131113/impor-lang#3-分钟上手陌生人路径
+    about: 解压、双击、看输出；卡住时先看常见问题。
+  - name: 提问与讨论
+    url: https://github.com/Everett131113/impor-lang/discussions
+    about: 不确定是不是 bug、想问怎么用，发到 Discussions。

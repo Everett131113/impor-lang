@@ -1,0 +1,94 @@
+# Impor Action — 在 GitHub Actions 上零依赖检查一个仓库里的 .impor 文件
+#
+# 用法（workflow）：
+#   - uses: Everett131113/impor-lang/apps/impor_action@main
+#     with:
+#       path: examples
+#
+# 这个 exe 由 `impor build` 生成，运行时不需要 Python / Node。
+
+import std.path as path
+
+var g_files = 0
+var g_lines = 0
+var g_bad = 0
+var g_async = 0
+
+func _starts(s, prefix) {
+    if len(s) < len(prefix) {
+        return false
+    }
+    return strcut(s, 0, len(prefix)) == prefix
+}
+
+func _contains(s, needle) {
+    var i = 0
+    while i + len(needle) <= len(s) {
+        if strcut(s, i, i + len(needle)) == needle {
+            return true
+        }
+        i += 1
+    }
+    return false
+}
+
+func _count_lines(text) {
+    var n = 1
+    var i = 0
+    while i < len(text) {
+        if strcut(text, i, i + 1) == "\n" {
+            n += 1
+        }
+        i += 1
+    }
+    return n
+}
+
+func walk(root, rel, depth) {
+    if depth > 8 {
+        return
+    }
+    var here = path.join(root, rel)
+    for name in filelist(here) {
+        var full = path.join(root, path.join(rel, name))
+        if len(filelist(full)) > 0 {
+            walk(root, path.join(rel, name), depth + 1)
+        } else if path.ext(name) == ".impor" {
+            global set g_files = g_files + 1
+            var text = fileread(full)
+            global set g_lines = g_lines + _count_lines(text)
+            if len(text) == 0 {
+                print("空文件：" + full)
+                global set g_bad = g_bad + 1
+            }
+            if _contains(text, "async def") or _contains(text, "await ") {
+                print("明确拒绝的写法：" + full)
+                global set g_async = g_async + 1
+                global set g_bad = g_bad + 1
+            }
+        }
+    }
+}
+
+func main() {
+    var argv = args()
+    var root = "."
+    if len(argv) > 0 {
+        root = argv[0]
+    }
+    print("Impor Action：扫描 " + root)
+    walk(root, "", 0)
+    print("文件：" + to_str(g_files) + " / 行数：" + to_str(g_lines))
+    print("问题：" + to_str(g_bad) + "（async/await：" + to_str(g_async) + "）")
+    if g_files == 0 {
+        print("失败：没有找到 .impor 文件")
+        exit(1)
+    }
+    if g_bad > 0 {
+        print("失败：存在空文件或明确拒绝的写法")
+        exit(1)
+    }
+    print("通过")
+}
+
+main()

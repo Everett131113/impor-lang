@@ -4,7 +4,74 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本（主版本.次版本.修订号）。
 
-> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `3.11.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `3.12.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+
+## [3.12.0] - 2026-11-19
+
+### 第 0 层：陌生人 3 分钟
+
+- 新增 `START_HERE.txt`（5 行中文）与 `常见问题.txt`（窗口一闪而过 / Defender / 找不到 Python / 权限 / 中文方块 / 如何 build）。
+- 新增 `examples/quickstart/`：`hello.impor`、`read_file.impor`、`call_dll.impor` 与三个双击 `.bat`。
+- 新增 `ImporPortable.exe`（16.8 MB，自带 Python 运行时与内置 tcc），在没装 Python 的 Windows 上 `run` / `build` 都可直接双击。
+- 新增 `portable_entry.py` / `ImporPortable.spec`；spec 显式打包 `impor/c_runtime.c` 与 `impor/tcc`，修复便携版 `build` 找不到运行时源码的问题。
+
+### 第 1 层：错误说人话
+
+- 新增语法错误码 `E2001–E2007 / E2099`；运行错误继续使用 `E1001–E1014 / E1099`。
+- 每条错误输出位置、人话原因、怎么修、稳定错误码、`docs/errors.md#E****` 文档锚点。
+- 新增 `docs/errors.md`（24 个错误码的可跳转锚点与正确写法）。
+- `defer expr` 文案改为「defer 需要块写法 `defer { ... }`；示例：defer { close(f) }」。
+- 新增 `tools/error_audit.py`：20 条真实 CLI 探针，20/20 合规，已接入 CI。
+
+### 第 2 层：不变卦
+
+- 新增 `api_baseline.json` + `tools/api_baseline.py`：冻结关键字、内建、模块、错误码；新增项必须带 RFC 才能刷新。
+- 新增 `conformance/compat_3_11/`：20 个 3.11 示例 + SHA256 manifest；`tools/compat_check.py` 在最新版逐条运行，20/20。
+- 新增 `docs/compatibility.md`：3.12–3.14 不删除任何已发布 API；破坏性变更必须走 RFC。
+- 新增 `docs/rfc/0000-template.md`。
+
+### 第 3 层：承诺可验证
+
+- 新增 `tools/verify_release.py`（21 个 check）与 `tools/verify_claims.py`。
+- 新增 `docs/claims.yaml`（21 条自动 + 2 条人工）与自动生成的 `docs/claims.md`。
+- 当前自动兑现率 **21/21（100%）**；人工项（陌生人 3 分钟、前 10 个真实用户）不冒充已验证。
+- CI 增跑 `api_baseline.py` / `compat_check.py` / `error_audit.py` / `verify_claims.py`。
+
+### 第 4 层：三个真项目
+
+- `apps/impor_ssg`：Markdown + 模板 → 4 页静态站点；解释器与 C 后端 exe 都能跑，exe 约 156 KB。
+- `apps/impor_action`：用 Impor 写的零依赖 GitHub Action；扫描 `.impor` 并拒绝 `async`，exe 约 144 KB。
+- `apps/impor_sqlite_report`：10 万行 CSV → SQLite → HTML 报表；`0.8 s`、峰值 `47 MB`、总金额 `100401555.2`。
+
+### 第 5 层：社区入口
+
+- 重写 `CONTRIBUTING.md`：3 分钟跑通、bug 必填项、本地验证、新增 API 四步、good first issue 范围。
+- 新增 `.github/ISSUE_TEMPLATE/`（bug / feature / config）。
+- 新增 `docs/community.md` 与 `docs/meeting/2026-11.md`：明确 10 个真实用户前不建群 / 论坛。
+
+### 新内建与运行时
+
+- 新增 `strfind` / `strlines` / `strjoin` / `strreplace` / `filelines`；解释器、C 运行时、`builtin_manifest`、`runtime.py` 四端同名同义。
+- C 后端补 `fileexists / filesize / filemkdir / filelist`。
+- 修复 FFI 每次调用不释放参数数组导致的 10 万行级内存堆积。
+- 新增 `tests/test_text_builtins.py` 覆盖文本/文件内建与注册表一致性。
+
+### 3.12.0 收尾修复（2026-11-20）
+
+- 便携版 `build` 不再出现「exe 图标写入失败」：冻结版改为在进程内对副本写图标并原子替换，
+  并对刚产出的 exe 被扫描器短暂占用做重试；同时消除图标子进程的 GBK 解码异常。
+- 修正 `imporc` 版本线：`tools/sync_version.py` 同步 `bootstrap/imporc.impor` 版本串；
+  重建改用 `bootstrap/build_with_python.py --install`，并让 `rebuild_imporc.py` 在种子失败时直接报错，
+  不再把旧 exe 误拷成新版本。
+- 修复用户自定义函数被内建劫持：`ctrans` 先查用户函数表再查内建，`imporc` 的 `strfind(hay, needle)` 恢复为 2 参数语义。
+- 修复整除/取余除零时调用栈为空：现在抛带行号的 `ZeroDivisionError`，栈帧完整。
+- 语法层接受 `then` / `do` / `则` 作为块引导；`打印` / `输出` 仅作普通标识符，不再静默当作关键字。
+- `ModuleNotFound` 独立为 `E1015`（此前与 `ImportError` 共用 `E1010`），错误码表恢复唯一；
+  新增 `docs/rfc/0002-error-codes.md` 并刷新 `api_baseline.json`。
+- 回归：全量 `719` 条测试通过；`verify_release.py` 21/21；`verify_claims.py` 自动项 21/21。
+- 增量构建缓存键纳入 `c_runtime.c` / `ctrans.py` / `cfast.py` 指纹，改运行时或转译器不再命中旧 exe。
+- `fileread` 在复制成字符串后释放临时缓冲，反复读取大文件不再堆积。
+- 桌面打包不再复制 `apps/impor_sqlite_report/report.db`、`report.html` 与 `apps/impor_ssg/_site/` 运行产物。
 
 ## [3.11.0] - 2026-11-18
 

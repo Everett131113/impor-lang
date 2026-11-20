@@ -7,9 +7,11 @@ BeginUpdateResource / UpdateResource / EndUpdateResource 直接改 PE 资源段�
 """
 import ctypes
 import os
+import shutil
 import struct
 import subprocess
 import sys
+import time
 
 RT_ICON = 3
 RT_GROUP_ICON = 14
@@ -109,8 +111,32 @@ def _apply_inprocess(exe_path, ico_path=None):
     images = _load_ico(ico_path)
     if not images:
         raise IconError("ICO 没有可用帧")
-    _update_inplace(os.path.abspath(exe_path), images)
-    return True
+    exe_path = os.path.abspath(exe_path)
+    # 对副本写入再原子替换：刚由 tcc 产出的 exe 常被扫描器短暂占用，
+    # 直接改原文件会在 EndUpdateResource 时报 ERROR_ACCESS_DENIED(5)。
+    tmp_path = exe_path + ".icon.tmp"
+    try:
+        shutil.copy2(exe_path, tmp_path)
+        _update_inplace(tmp_path, images)
+    except BaseException:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+    last_exc = None
+    for _ in range(10):
+        try:
+            os.replace(tmp_path, exe_path)
+            return True
+        except PermissionError as exc:
+            last_exc = exc
+            time.sleep(0.15)
+    try:
+        os.remove(tmp_path)
+    except OSError:
+        pass
+    raise IconError("替换带图标 exe 失败（文件可能被占用）：%s" % last_exc)
 
 
 def apply_icon(exe_path, ico_path=None):
@@ -129,6 +155,12 @@ def apply_icon(exe_path, ico_path=None):
     if not os.path.exists(ico_path):
         raise IconError("图标不存在：%s" % ico_path)
 
+    # 冻结版（ImporPortable.exe）没有 Python 解释器，sys.executable 指向便携版
+    # 自身，不能再拼 `-m impor.peicon`；直接在进程内写资源。
+    if getattr(sys, "frozen", False):
+        _apply_inprocess(exe_path, ico_path)
+        return True
+
     pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = dict(os.environ)
     env["PYTHONPATH"] = pkg_root + os.pathsep + env.get("PYTHONPATH", "")
@@ -136,7 +168,8 @@ def apply_icon(exe_path, ico_path=None):
         r = subprocess.run(
             [sys.executable, "-m", "impor.peicon", os.path.abspath(exe_path),
              os.path.abspath(ico_path)],
-            capture_output=True, text=True, timeout=30, env=env,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=30, env=env,
         )
     except subprocess.TimeoutExpired:
         raise IconError("写入图标超时")

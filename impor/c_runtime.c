@@ -10,15 +10,12 @@
 #include <stdint.h>
 #include <setjmp.h>
 #include <limits.h>
+#include <errno.h>
+#include <sys/stat.h>
 #ifdef _WIN32
 #include <windows.h>
-#define IMPOR_STDCALL __stdcall
-#else
-#define IMPOR_STDCALL
-#endif
-#ifdef _WIN32
-/* TCC 自带的最小 Windows 头没有声明 winnls 接口，手动补上。
-   仅用于把 UTF-8 路径转成 UTF-16，避免中文目录被 ANSI 代码页误读。 */
+#include <direct.h>
+#include <wchar.h>
 #ifndef CP_UTF8
 #define CP_UTF8 65001
 #endif
@@ -32,9 +29,12 @@ int __stdcall WideCharToMultiByte(unsigned int CodePage, unsigned long dwFlags,
                                   const wchar_t *lpWideCharStr, int cchWideChar,
                                   char *lpMultiByteStr, int cbMultiByte,
                                   const char *lpDefaultChar, int *lpUsedDefaultChar);
+#define IMPOR_STDCALL __stdcall
 #else
 #include <unistd.h>
+#include <dirent.h>
 #include <dlfcn.h>
+#define IMPOR_STDCALL
 #endif
 
 typedef enum { V_NULL, V_INT, V_FLOAT, V_STR, V_BOOL, V_ARR, V_OBJ, V_DICT, V_FUNC, V_MODULE } VType;
@@ -1635,6 +1635,97 @@ static Val rt_strcut(Val v, Val st, Val ed) {
     return r;
 }
 
+static Val rt_strfind(Val v, Val sub, Val start) {
+    const char *s = rt_str_of(v);
+    const char *needle = rt_str_of(sub);
+    long long st = rt_int(start);
+    size_t off;
+    const char *hit;
+    if (s != rt_u8c_s) rt_u8c_reset(s);
+    if (st < 0) st = 0;
+    if (st > rt_u8c_n) return v_int(-1);
+    off = rt_u8c_at(s, st);
+    hit = strstr(s + off, needle);
+    return v_int(hit ? (st + rt_u8len_prefix(s + off, hit)) : -1);
+}
+
+static Val rt_strjoin(Val arr, Val sep) {
+    const char *s = rt_str_of(sep);
+    size_t sl = strlen(s), total = 1, used = 0;
+    long long i, n;
+    char *buf;
+    Val r;
+    if (arr.t != V_ARR || !arr.a) rt_throw("TypeError", "strjoin 需要数组");
+    n = arr.a->n;
+    for (i = 0; i < n; i++) total += strlen(rt_str_of(arr.a->items[i])) + sl;
+    buf = (char *)malloc(total);
+    if (!buf) rt_abort("内存不足");
+    for (i = 0; i < n; i++) {
+        const char *item = rt_str_of(arr.a->items[i]);
+        size_t il = strlen(item);
+        if (i > 0) { memcpy(buf + used, s, sl); used += sl; }
+        memcpy(buf + used, item, il); used += il;
+    }
+    buf[used] = '\0';
+    r = v_str(buf);
+    free(buf);
+    return r;
+}
+
+static Val rt_strreplace(Val v, Val oldv, Val newv) {
+    const char *s = rt_str_of(v);
+    const char *o = rt_str_of(oldv);
+    const char *n = rt_str_of(newv);
+    size_t sl = strlen(s), ol = strlen(o), nl = strlen(n), count = 0, total;
+    const char *p, *hit;
+    char *buf, *w;
+    Val r;
+    if (ol == 0) return v_str(s);
+    for (p = s; (hit = strstr(p, o)) != NULL; p = hit + ol) count++;
+    if (nl >= ol) total = sl + 1 + count * (nl - ol);
+    else total = sl + 1 - count * (ol - nl);
+    buf = (char *)malloc(total);
+    if (!buf) rt_abort("内存不足");
+    p = s; w = buf;
+    while ((hit = strstr(p, o)) != NULL) {
+        size_t keep = (size_t)(hit - p);
+        memcpy(w, p, keep); w += keep;
+        memcpy(w, n, nl); w += nl;
+        p = hit + ol;
+    }
+    memcpy(w, p, strlen(p) + 1);
+    r = v_str(buf);
+    free(buf);
+    return r;
+}
+
+static Val rt_strlines(Val v) {
+    const char *s = rt_str_of(v);
+    const char *start = s, *p = s;
+    Val r = v_arr();
+    r.a = arr_new(16);
+    while (1) {
+        if (*p == '\n' || *p == '\0') {
+            size_t len;
+            char *buf;
+            Val line;
+            if (*p == '\0' && p == start) break;
+            len = (size_t)(p - start);
+            if (len > 0 && start[len - 1] == '\r') len--;
+            buf = (char *)malloc(len + 1);
+            if (!buf) rt_abort("内存不足");
+            memcpy(buf, start, len); buf[len] = '\0';
+            line = v_str(buf);
+            free(buf);
+            arr_push(r.a, line);
+            if (*p == '\0') break;
+            start = p + 1;
+        }
+        p++;
+    }
+    return r;
+}
+
 /* ---------- 数学 ---------- */
 static Val rt_clamp(Val v, Val lo, Val hi) {
     double x = rt_num(v), l = rt_num(lo), h = rt_num(hi);
@@ -1759,7 +1850,17 @@ static Val rt_fileread(Val path) {
         (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) {
         memmove(buf, buf + 3, got - 2);
     }
-    return v_str(buf);
+    {
+        Val out = v_str(buf);
+        free(buf);
+        return out;
+    }
+}
+static Val rt_filelines(Val path) {
+    Val text = rt_fileread(path);
+    Val lines = rt_strlines(text);
+    if (text.s) free(text.s);
+    return lines;
 }
 static Val rt_filewrite(Val path, Val content) {
     FILE *fp = rt_fopen_utf8(rt_str_of(path), "wb");
@@ -1792,6 +1893,96 @@ static Val rt_filemv(Val oldpath, Val newpath) {
         rt_abort("filemv: 移动/重命名失败");
 #endif
     return v_bool(1);
+}
+
+static Val rt_fileexists(Val path) {
+#ifdef _WIN32
+    wchar_t w[4096];
+    if (MultiByteToWideChar(CP_UTF8, 0, rt_str_of(path), -1, w, 4096) <= 0) {
+        return v_bool(0);
+    }
+    DWORD attr = GetFileAttributesW(w);
+    return v_bool(attr != INVALID_FILE_ATTRIBUTES);
+#else
+    struct stat st;
+    return v_bool(stat(rt_str_of(path), &st) == 0);
+#endif
+}
+
+static Val rt_filesize(Val path) {
+    FILE *fp = rt_fopen_utf8(rt_str_of(path), "rb");
+    if (!fp) {
+        return v_int(0);
+    }
+    fseek(fp, 0, SEEK_END);
+    long n = ftell(fp);
+    fclose(fp);
+    return v_int(n < 0 ? 0 : n);
+}
+
+static Val rt_filemkdir(Val path) {
+#ifdef _WIN32
+    wchar_t w[4096];
+    if (MultiByteToWideChar(CP_UTF8, 0, rt_str_of(path), -1, w, 4096) <= 0) {
+        rt_abort("filemkdir: 路径无效");
+    }
+    if (!CreateDirectoryW(w, NULL)) {
+        DWORD err = GetLastError();
+        if (err != ERROR_ALREADY_EXISTS) {
+            rt_abort("filemkdir: 创建目录失败");
+        }
+    }
+#else
+    struct stat st;
+    if (stat(rt_str_of(path), &st) != 0) {
+        if (mkdir(rt_str_of(path), 0755) != 0 && errno != EEXIST) {
+            rt_abort("filemkdir: 创建目录失败");
+        }
+    }
+#endif
+    return v_bool(1);
+}
+
+static Val rt_filelist(Val path) {
+    Val r = v_arr();
+    r.a = arr_new(16);
+#ifdef _WIN32
+    wchar_t w[4096], pattern[4098];
+    if (MultiByteToWideChar(CP_UTF8, 0, rt_str_of(path), -1, w, 4096) <= 0) {
+        rt_abort("filelist: 路径无效");
+    }
+    wcscpy(pattern, w);
+    wcscat(pattern, L"\\*");
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileW(pattern, &fd);
+    if (h == INVALID_HANDLE_VALUE) {
+        return r;
+    }
+    do {
+        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) {
+            continue;
+        }
+        char name[4096];
+        if (WideCharToMultiByte(CP_UTF8, 0, fd.cFileName, -1, name, 4096, NULL, NULL) > 0) {
+            arr_push(r.a, v_str(name));
+        }
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+#else
+    DIR *d = opendir(rt_str_of(path));
+    if (!d) {
+        return r;
+    }
+    struct dirent *e;
+    while ((e = readdir(d)) != NULL) {
+        if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0) {
+            continue;
+        }
+        arr_push(r.a, v_str(e->d_name));
+    }
+    closedir(d);
+#endif
+    return r;
 }
 
 static Val rt_filewritebytes(Val path, Val data) {

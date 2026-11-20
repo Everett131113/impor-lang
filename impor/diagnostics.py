@@ -113,12 +113,37 @@ ERROR_CODES = {
     "NameError": "E1008",
     "ConstError": "E1009",
     "ImportError": "E1010",
+    "ModuleNotFound": "E1015",
     "RecursionError": "E1011",
     "OverflowError": "E1012",
     "MemoryError": "E1013",
     "ContractError": "E1014",
     "RuntimeError": "E1099",
 }
+
+# 语法/编译期错误码：与运行错误分开编号，永不复用。
+# 语法错误在进入运行前就被挡住，因此不需要 subject（异常名）也能附码。
+SYNTAX_CODES = {
+    "E2001": "未实现的关键字",
+    "E2002": "无法解析的记号 / 期望其他记号",
+    "E2003": "表达式缺失",
+    "E2004": "括号、引号或代码块未闭合",
+    "E2005": "缩进层级不一致",
+    "E2006": "赋值左侧不可写",
+    "E2007": "默认参数 / 变参写法不支持",
+    "E2099": "其他语法错误",
+}
+
+_SYNTAX_CODE_RULES = [
+    (r"默认参数|变参|可变参数|缺省参数", "E2007"),
+    (r"尚未实现|当前版本不支持|v3\.x 计划|需要块写法", "E2001"),
+    (r"表达式缺失|缺少表达式|需要一个值或表达式", "E2003"),
+    (r"未闭合|unclosed|缺少闭合|括号.*闭合|缺少 ?}", "E2004"),
+    (r"缩进|indent", "E2005"),
+    (r"左值|lvalue|赋值左侧", "E2006"),
+    (r"无法解析的记号", "E2002"),
+    (r"期望 .*得到|期望 ?[A-Z_]+|期望 ID|期望 (数字|字符串|标识符)", "E2002"),
+]
 
 # v4.3：`impor explain` 的标题与最小示例（错误码 → 人话）
 ERROR_TITLES = {
@@ -136,6 +161,7 @@ ERROR_TITLES = {
     "E1012": ("OverflowError", "整数溢出", "var x = 9223372036854775807 + 1"),
     "E1013": ("MemoryError", "内存不足", "var a = list(1000000000)"),
     "E1014": ("ContractError", "接口契约不满足", "interface S { func area() { return 0 } }\nclass A implements S { }"),
+    "E1015": ("ModuleNotFound", "模块文件不存在", "import no_such_mod"),
     "E1099": ("RuntimeError", "未分类运行错误", "print(1)"),
 }
 
@@ -143,6 +169,12 @@ ERROR_TITLES = {
 def code_info(name_or_code):
     """错误码或异常名 → dict(code,name,title,example,why,fix)；未知返回 None。"""
     key = str(name_or_code or "").strip()
+    if key.upper().startswith("E") and key.upper() in SYNTAX_CODES:
+        code = key.upper()
+        title = SYNTAX_CODES[code]
+        return {"code": code, "name": "SyntaxError", "title": title,
+                "example": "", "why": "语法在编译期被拒绝；Impor 不会静默忽略不支持的写法。",
+                "fix": "按提示改写为已支持的写法；完整清单见 docs/errors.md#%s。" % code}
     if key.upper().startswith("E") and key.upper() in ERROR_TITLES:
         code = key.upper()
         name, title, example = ERROR_TITLES[code]
@@ -173,8 +205,20 @@ def error_code(name):
     """异常名 → 统一错误码；未知统一为 E1099。"""
     return ERROR_CODES.get(str(name or ""), "E1099")
 
+
+def syntax_code(message):
+    """语法错误消息 → 稳定错误码（E2xxx）；无法分类时为 E2099。"""
+    for pat, code in _SYNTAX_CODE_RULES:
+        if re.search(pat, message or "", re.I):
+            return code
+    return "E2099"
+
+
 # (正则, 为什么, 修复)；按顺序匹配第一条命中的规则
 _RULES = [
+    (r"尚未实现（v3\.x|当前版本不支持|不再静默接受",
+     "这个保留字/语法还没有在当前发布线实现。Impor 选择明确拒绝，而不是静默忽略后继续执行。",
+     "删除该写法，改用已实现的等价写法；不要依赖它当前会产生任何效果。"),
     (r"无法解析的记号",
      "这个记号不允许出现在语句的这个位置，解析器无法把它接进当前语法结构。",
      "检查前一行是否已经写完整（是否漏了逗号、括号或运算符），必要时先把这一行注释掉再定位。"),
@@ -235,6 +279,9 @@ _RULES = [
     (r"AccessError|private 符号|不能跨文件",
      "模块顶层的 private 符号只在定义它的文件内可见，跨文件访问会被拒绝。",
      "把该符号改成 public（去掉 private），或在模块里提供一个公开函数转发；确实要跨文件共享就显式导出。"),
+    (r"ValueError|值不合法|JSON 解析失败|正则无效|字节值必须", 
+     "传入了无法转换成目标类型的值，或内容不符合该函数的取值范围。",
+     "检查输入是否为合法数字 / JSON / 正则；转换前先判断空串和非法字符，不要直接假定输入可信。"),
     (r"ImportError|ModuleNotFound|模块 .* 未找到|导入.*失败",
      "导入的名字在模块搜索路径里找不到对应的文件或包。",
      "确认文件名（含 .impor 后缀）与相对路径正确；可用 impor list-modules 查看当前可发现的模块。"),
@@ -349,7 +396,8 @@ def _snippet(source_lines, line, col, context, color):
 
 def render_diagnostic(kind, message, line=0, col=0, source_lines=None,
                       filename=None, subject=None, hint=None,
-                      why=None, fix=None, color=None, context=1):
+                      why=None, fix=None, color=None, context=1,
+                      code=None):
     """四段式诊断渲染。
 
         <kind>: 第N行 列M: <message>            ← 哪里 + 是什么
@@ -369,12 +417,15 @@ def render_diagnostic(kind, message, line=0, col=0, source_lines=None,
         fix = fix or f
     if hint:
         fix = hint
-    # v4.2：运行错误统一附加错误码（解释器 / C 后端同一套 E1001…E1099）
     if subject and str(kind) in ("运行错误", "测试失败", "测试失败·语法错误"):
         code = error_code(subject)
-        if not str(message).rstrip().endswith("[%s]" % code):
+    elif code is None and str(kind).startswith("语法"):
+        code = syntax_code(message)
+    if code:
+        tag = "[%s]" % code
+        if not str(message).rstrip().endswith(tag):
             lines = str(message).split("\n")
-            lines[0] = "%s [%s]" % (lines[0], code)
+            lines[0] = "%s %s" % (lines[0], tag)
             message = "\n".join(lines)
     head = "%s: " % _paint(str(kind), _C_KIND, on)
     if line:
@@ -391,6 +442,8 @@ def render_diagnostic(kind, message, line=0, col=0, source_lines=None,
     out.extend(_snippet(source_lines, line, col, context, on))
     out.append("  %s %s" % (_paint("为什么：", _C_WHY, on), why))
     out.append("  %s %s" % (_paint("修复：", _C_FIX, on), fix))
+    if code:
+        out.append("  %s docs/errors.md#%s" % (_paint("文档：", _C_DIM, on), code))
     return "\n".join(out)
 
 

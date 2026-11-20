@@ -80,7 +80,13 @@ Impor(I++) 3.6.*/
 /_*
 /*.exe
 
+# 真项目运行产物（可重建，不入库）
+/apps/impor_sqlite_report/report.db
+/apps/impor_sqlite_report/report.html
+/apps/impor_ssg/_site/
+
 # 示例允许清单必须随包交付，不能被上面的 .impor/ 规则忽略
 !examples/ffi/.impor/
 !examples/ffi/.impor/ffi_allow.json
 
+examples/quickstart/sample.copy.txt

@@ -71,9 +71,17 @@ BUILTINS = {
     "sum_arr": "rt_sumarr",
     "strpad": "rt_strpad",
     "strcut": "rt_strcut",
+    "strjoin": "rt_strjoin",
+    "strlines": "rt_strlines",
+    "strreplace": "rt_strreplace",
+    "filelines": "rt_filelines",
     "fileread": "rt_fileread",
     "filewrite": "rt_filewrite",
     "filewritebytes": "rt_filewritebytes",
+    "fileexists": "rt_fileexists",
+    "filelist": "rt_filelist",
+    "filemkdir": "rt_filemkdir",
+    "filesize": "rt_filesize",
     "filemv": "rt_filemv",
     "system": "rt_system",
     "exit": "rt_exit",
@@ -84,6 +92,7 @@ BUILTINS = {
     "regex_match": "rt_regex_match",
     "regex_find": "rt_regex_find",
     "regex_replace": "rt_regex_replace",
+    "strfind": "rt_strfind",
     "run_tasks": "rt_run_tasks",
     "task_status": "rt_task_status",
     "args": "rt_args",
@@ -1995,10 +2004,17 @@ class CGen:
                 'rt_throw("FFIError", "FFI 参数个数与 argtypes 不一致");' % args_count)
         if rtyp == "void":
             lines.append("    fn(%s);" % ", ".join(arg_exprs))
+            lines.append("    if (_args.t == V_ARR && _args.a) { rt_arr_unreg(_args.a);"
+                         " if (_args.a->items) free(_args.a->items);"
+                         " free(_args.a); _args.a = NULL; }")
             lines.append("    return v_null();")
         else:
             lines.append("    %s r = fn(%s);" % (rtyp, ", ".join(arg_exprs)))
-            lines.append("    return %s;" % rexpr)
+            lines.append("    Val _ret = %s;" % rexpr)
+            lines.append("    if (_args.t == V_ARR && _args.a) { rt_arr_unreg(_args.a);"
+                         " if (_args.a->items) free(_args.a->items);"
+                         " free(_args.a); _args.a = NULL; }")
+            lines.append("    return _ret;")
         lines.append("}")
         self.ffi_sites.append("\n".join(lines))
         return "%s(%s, %s, %s)" % (
@@ -2049,6 +2065,16 @@ class CGen:
             return "rt_ffi_open(%s)" % self._gen_expr(n.args[0])
         if name == "ffi_call":
             return self._gen_ffi_call(n)
+        if name in self.funcs_map:
+            cname = self.funcs_map[name]
+            params = [f[2] for f in self.funcs if f[1] == cname][0]
+            if len(n.args) != len(params):
+                raise UnsupportedFeature(
+                    "%s 需要 %d 个参数，给了 %d 个" %
+                    (name, len(params), len(n.args)), n.lineno, n.col)
+            args = [self._gen_expr(a) for a in n.args]
+            return ("({ rt_trace_push(%s, %d); Val _tr = %s(%s); rt_trace_pop(); _tr; })" %
+                    (c_escape_str(name), n.lineno, cname, ", ".join(args)))
         if name in BUILTINS:
             fn = BUILTINS[name]
             args = [self._gen_expr(a) for a in n.args]
@@ -2068,16 +2094,6 @@ class CGen:
             raise UnsupportedFeature(
                 "内建函数 %s() 在 C 后端暂不支持（请用 --backend=py）" % name,
                 n.lineno, n.col)
-        if name in self.funcs_map:
-            cname = self.funcs_map[name]
-            params = [f[2] for f in self.funcs if f[1] == cname][0]
-            if len(n.args) != len(params):
-                raise UnsupportedFeature(
-                    "%s 需要 %d 个参数，给了 %d 个" %
-                    (name, len(params), len(n.args)), n.lineno, n.col)
-            args = [self._gen_expr(a) for a in n.args]
-            return ("({ rt_trace_push(%s, %d); Val _tr = %s(%s); rt_trace_pop(); _tr; })" %
-                    (c_escape_str(name), n.lineno, cname, ", ".join(args)))
         # v4.2：局部 / 全局变量里存放的函数值（闭包、函数作参数）
         if (self._cur_fn and name in self._cur_fn[1]) or (
                 (not self._cur_fn) and name in self.globals_map):

@@ -1,0 +1,23 @@
+// std/time.impor — 时间戳、睡眠与人可读时间
+// 使用：import std.time  →  std.time.readable()
+
+func readable() {
+    return now()
+}
+
+func seconds() {
+    return clock()
+}
+
+func sleep_ms(ms) {
+    sleep(ms / 1000.0)
+}
+
+func elapsed(start) {
+    return clock() - start
+}
+
+export readable
+export seconds
+export sleep_ms
+export elapsed

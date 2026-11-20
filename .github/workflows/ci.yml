@@ -62,6 +62,19 @@ jobs:
       - name: 保留字兑现表（静默接受必须为 0）
         run: python tools/keyword_audit.py
 
+      - name: API 基线（删除 / 改义即失败）
+        run: python tools/api_baseline.py
+
+      - name: 3.11 示例兼容（20/20）
+        run: python tools/compat_check.py
+
+      - name: 错误可行动审计（20/20）
+        run: python tools/error_audit.py
+
+      - name: README 承诺验收（auto 项全过）
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.11'
+        run: python tools/verify_claims.py
+
       - name: 单元测试
         if: matrix.suite == 'full'
         run: python run_tests.py

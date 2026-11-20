@@ -2,17 +2,28 @@
 // 用法：
 //   use std.text            // 注入文本工具到当前作用域
 //   import std.collections  // 访问 collections.map(...)
-//   use std                  // 注入全部标准库子模块（text/mathx/collections/algo）
+//   use std                  // 注入全部标准库子模块
 //
-// 子模块会被运行时自动挂到 std 包命名空间（std.text / std.mathx / std.collections / std.algo）。
-// 这里再显式导出一次，使 `use std` 可一次注入全部标准库。
+// 子模块会被运行时自动挂到 std 包命名空间（std.text / std.mathx / ...）。
 
 import std.text as text
 import std.mathx as mathx
 import std.collections as collections
 import std.algo as algo
+import std.json as json
+import std.fs as fs
+import std.path as path
+import std.regex as regex
+import std.time as time
+import std.http as http
 
 export text
 export mathx
 export collections
 export algo
+export json
+export fs
+export path
+export regex
+export time
+export http

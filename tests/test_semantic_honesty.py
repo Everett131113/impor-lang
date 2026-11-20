@@ -44,8 +44,10 @@ class TestUnimplementedKeywordsRejected(unittest.TestCase):
             'async def f() {\n    print("a")\n}\nf()\n', "async")
 
     def test_defer_statement(self):
-        self.assert_syntax_reject(
-            'defer print("d")\nprint("main")\n', "defer")
+        rc, out = _run_source('defer print("d")\nprint("main")\n')
+        self.assertEqual(rc, 2, f"defer 表达式应 exit 2，实际 {rc}\n{out}")
+        self.assertIn("defer 需要块写法", out)
+        self.assertIn("defer { close(f) }", out)
 
     def test_await_expression(self):
         self.assert_syntax_reject(

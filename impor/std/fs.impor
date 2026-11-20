@@ -1,0 +1,51 @@
+// std/fs.impor — 文件读写与目录操作
+// 使用：import std.fs  →  std.fs.read("a.txt")
+
+func read(path) {
+    return fileread(path)
+}
+
+func write(path, text) {
+    filewrite(path, text)
+    return text
+}
+
+func exists(path) {
+    return fileexists(path)
+}
+
+func list(dir) {
+    return filelist(dir)
+}
+
+func mkdir(dir) {
+    filemkdir(dir)
+}
+
+func move(old_path, new_path) {
+    filemv(old_path, new_path)
+}
+
+func size(path) {
+    return filesize(path)
+}
+
+func read_json(path) {
+    return json_decode(fileread(path))
+}
+
+func write_json(path, value) {
+    var text = json_encode(value)
+    filewrite(path, text)
+    return text
+}
+
+export read
+export write
+export exists
+export list
+export mkdir
+export move
+export size
+export read_json
+export write_json

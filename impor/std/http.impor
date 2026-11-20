@@ -1,0 +1,55 @@
+// std/http.impor — 最小 HTTP GET（使用系统自带 curl，不装第三方包）
+// 使用：import std.http  →  var body = std.http.get("https://example.com")
+// 只用基础内建，解释器与 C 后端行为一致。
+
+func _has_char(s, ch) {
+    var i = 0
+    while i < len(s) {
+        if strcut(s, i, i + 1) == ch {
+            return true
+        }
+        i += 1
+    }
+    return false
+}
+
+func _safe_url(url) {
+    var s = to_str(url)
+    if len(s) < 7 {
+        return false
+    }
+    if strcut(s, 0, 7) != "http://" and strcut(s, 0, 8) != "https://" {
+        return false
+    }
+    for ch in ["\"", "'", "&", "|", ";", "<", ">", "`", "\n", "\r", " ", "$"] {
+        if _has_char(s, ch) {
+            return false
+        }
+    }
+    return true
+}
+
+func get(url) {
+    if not _safe_url(url) {
+        print("http.get：只接受 http:// 或 https:// 的普通 URL")
+        exit(1)
+    }
+    var stamp = to_str(int(clock()))
+    var tmp = ".impor_http_" + stamp + ".tmp"
+    var cmd = "curl -sS -L --max-time 30 --fail -o \"" + tmp + "\" \"" + url + "\""
+    var rc = system(cmd)
+    if rc != 0 {
+        print("http.get：请求失败，curl 退出码 " + to_str(rc))
+        exit(1)
+    }
+    var body = fileread(tmp)
+    filewrite(tmp, "")
+    return body
+}
+
+func get_json(url) {
+    return json_decode(get(url))
+}
+
+export get
+export get_json

@@ -209,8 +209,25 @@ def make_builtins(interp):
     def builtin_strcut(s, st, ed):
         return str(s)[int(st):int(ed)]
 
+    def builtin_strfind(s, sub, start=0):
+        """strfind(s, sub, start=0)：返回子串首次出现的字符下标，找不到返回 -1。"""
+        return str(s).find(str(sub), int(start))
+
+    def builtin_strlines(s):
+        """strlines(s)：按 \n / \r\n 切分成行，返回数组（不保留行尾换行）。"""
+        return str(s).splitlines()
+
+    def builtin_filelines(path):
+        """filelines(path)：读文件并按行切分；读完不保留整块文本。"""
+        with open(str(path), "r", encoding="utf-8", errors="replace") as f:
+            return f.read().splitlines()
+
     def builtin_strjoin(lst, sep):
         return str(sep).join(str(x) for x in lst)
+
+    def builtin_strreplace(s, old, new):
+        """strreplace(s, old, new)：一次扫描替换全部子串，避免逐字符拼接。"""
+        return str(s).replace(str(old), str(new))
 
     def builtin_hash(s):
         import hashlib
@@ -839,6 +856,10 @@ def make_builtins(interp):
         "json_encode": builtin_json_encode, "json_decode": builtin_json_decode,
         "regex_match": builtin_regex_match, "regex_find": builtin_regex_find,
         "regex_replace": builtin_regex_replace,
+        "strfind": builtin_strfind,
+        "strlines": builtin_strlines,
+        "filelines": builtin_filelines,
+        "strreplace": builtin_strreplace,
         "run_tasks": builtin_run_tasks, "task_status": builtin_task_status,
         "ffi_open": builtin_ffi_open, "ffi_call": builtin_ffi_call,
         "ffi_alloc": builtin_ffi_alloc, "ffi_alloc_str": builtin_ffi_alloc_str,
@@ -977,6 +998,7 @@ BUILTIN_DOCS = {
     "strpad": "strpad(s, n[, ch])：补齐到长度 n。",
     "strcut": "strcut(s, st, ed)：截取 [st, ed) 子串。",
     "strjoin": "strjoin(arr[, 分隔符])：数组拼接为字符串。",
+    "strreplace": "strreplace(s, 旧, 新)：替换全部子串。",
     "hash": "hash(s)：字符串哈希。",
     "randi": "randi(a, b)：[a, b] 随机整数。",
     "randstr": "randstr(n)：随机 n 位字符串。",

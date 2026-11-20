@@ -31,7 +31,7 @@ __all__ = [
     "range", "type", "type_of", "to_num", "to_str", "inputstr", "expect",
     "clamp", "lerp", "remap", "sign", "distance", "angle",
     "randi", "randstr", "seed", "trim", "upper", "lower",
-    "strpad", "strcut", "strjoin", "hash",
+    "strpad", "strcut", "strjoin", "strfind", "strlines", "filelines", "strreplace", "hash",
     "arrappend", "arrpop", "arrfind", "arrfill", "arrdup", "arrrev",
     "shuffle", "max_arr", "min_arr", "sum_arr",
     "vec2", "rgb", "frame", "fps",
@@ -402,6 +402,23 @@ def strcut(s, st, ed):
 
 def strjoin(lst, sep):
     return str(sep).join(str(x) for x in lst)
+
+
+def strfind(s, sub, start=0):
+    return str(s).find(str(sub), int(start))
+
+
+def strlines(s):
+    return str(s).splitlines()
+
+
+def filelines(path):
+    with _b.open(str(path), "r", encoding="utf-8", errors="replace") as f:
+        return f.read().splitlines()
+
+
+def strreplace(s, old, new):
+    return str(s).replace(str(old), str(new))
 
 
 def hash(s):

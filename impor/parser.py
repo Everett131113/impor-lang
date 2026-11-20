@@ -81,7 +81,7 @@ class Parser:
         """v3.4：块引导符可以是 `:`，也可以是 `then`/`则`（可省略）。"""
         if self._is_op(":"):
             self.consume()
-        elif self.peek().type == TOK_ID and self.peek().value in ("then", "do"):
+        elif self.peek().type == TOK_ID and self.peek().value in ("then", "do", "则"):
             self.consume()
 
     def _skip_semis(self):
@@ -911,7 +911,10 @@ class Parser:
         if t.type in (TOK_KEY, TOK_ID) and t.value == "defer":
             nxt = self.peek(1)
             if not (nxt.type == TOK_OP and nxt.value == "{"):
-                self._unimplemented(t, "defer")
+                raise ImporSyntaxError(
+                    "defer 需要块写法 `defer { ... }`；示例：defer { close(f) }（在当前作用域退出时执行，后写先执行）",
+                    t.line, t.col, self.filename,
+                    "改写为 defer { close(f) }；延迟执行的是整个代码块，不是一次普通函数调用。")
         elif t.type in (TOK_KEY, TOK_ID) and t.value in UNIMPLEMENTED_KEYWORDS:
             self._unimplemented(t, t.value)
 

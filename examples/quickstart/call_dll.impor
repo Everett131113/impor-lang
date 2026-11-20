@@ -1,0 +1,9 @@
+// 调 DLL：Windows 10/11 自带 winsqlite3.dll，不需要安装 SQLite
+var lib = "C:/Windows/System32/winsqlite3.dll"
+if not fileexists(lib) {
+    print("这台机器没有 winsqlite3.dll，跳过 DLL 示例。")
+    exit(0)
+}
+var v = ffi_call(lib, "sqlite3_libversion_number", [], "int", [], "stdcall")
+print("SQLite 版本号：", v)
+print("DLL 调用成功。")

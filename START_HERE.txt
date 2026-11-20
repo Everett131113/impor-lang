@@ -1,0 +1,6 @@
+Impor (I++) 3 分钟上手
+1. 解压后双击「开始这里.bat」，看到“你好，Impor”即可。
+2. 双击 examples\quickstart\1-你好.bat，运行第一个脚本。
+3. 双击 2-读文件.bat / 3-调DLL.bat，看读文件与调用系统 DLL。
+4. 不用装 Python、编译器或第三方包；有问题先看 常见问题.txt。
+5. 想写自己的脚本：复制 hello.impor，改内容后双击同名 .bat。

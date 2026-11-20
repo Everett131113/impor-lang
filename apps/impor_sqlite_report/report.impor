@@ -1,0 +1,201 @@
+# apps/impor_sqlite_report/report.impor
+#
+# 读 10 万行 CSV → 写入 SQLite（Windows 自带 winsqlite3.dll）→ 聚合 → 生成 HTML 报表。
+# 用法（在仓库根目录）：
+#   python Impor.py run apps/impor_sqlite_report/report.impor
+#   python Impor.py build apps/impor_sqlite_report/report.impor -o apps/impor_sqlite_report/report.exe
+#   apps/impor_sqlite_report/report.exe
+#
+# 不依赖 Python / Node / sqlite3.exe；只用 winsqlite3.dll 的 C ABI。
+
+import std.path as path
+
+var g_lib = "C:/Windows/System32/winsqlite3.dll"
+var g_db = 0
+var g_rows = 0
+var g_total = 0.0
+var g_batch = []
+var g_batch_n = 0
+
+func _starts(s, prefix) {
+    if len(s) < len(prefix) {
+        return false
+    }
+    return strcut(s, 0, len(prefix)) == prefix
+}
+
+func _replace(s, old, repl) {
+    if len(old) == 0 {
+        return s
+    }
+    var out = ""
+    var i = 0
+    while i < len(s) {
+        if strcut(s, i, i + len(old)) == old {
+            out += repl
+            i += len(old)
+        } else {
+            out += strcut(s, i, i + 1)
+            i += 1
+        }
+    }
+    return out
+}
+
+func _exec(sql) {
+    var rc = ffi_call(g_lib, "sqlite3_exec", [g_db, sql, 0, 0, 0], "int",
+                      ["addr", "cstr", "addr", "addr", "addr"], "stdcall")
+    if rc != 0 {
+        print("sqlite3_exec 失败：" + to_str(rc))
+        exit(1)
+    }
+    return rc
+}
+
+func _open_db() {
+    var out = ffi_alloc(8)
+    # 用磁盘数据库而不是 :memory:，10 万行时内存不会随行数线性上涨。
+    var rc = ffi_call(g_lib, "sqlite3_open", ["apps/impor_sqlite_report/report.db", out], "int",
+                      ["cstr", "addr"], "stdcall")
+    if rc != 0 {
+        print("sqlite3_open 失败：" + to_str(rc))
+        exit(1)
+    }
+    ffi_call(g_lib, "sqlite3_exec",
+             [ffi_read_i64(out), "PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-2000; PRAGMA temp_store=FILE; PRAGMA mmap_size=0;", 0, 0, 0],
+             "int", ["addr", "cstr", "addr", "addr", "addr"], "stdcall")
+    return ffi_read_i64(out)
+}
+
+func _flush_batch() {
+    if g_batch_n == 0 {
+        return
+    }
+    # 一批 400 行：先把原始 CSV 行拼成一块，再一次扫描替换成 SQL 值。
+    # 这样每 400 行只产生常数个临时字符串，10 万行不会把内存堆到 80 MB。
+    var raw = strjoin(g_batch, "\n")
+    raw = strreplace(raw, "'", "''")
+    var vals = strreplace(raw, ",", "','")
+    vals = strreplace(vals, "\n", "'),('")
+    _exec("INSERT INTO sales(region,category,amount) VALUES ('" + vals + "');")
+    global set g_batch = []
+    global set g_batch_n = 0
+}
+
+func _add_row(line) {
+    global set g_batch = arrappend(g_batch, line)
+    global set g_batch_n = g_batch_n + 1
+    global set g_rows = g_rows + 1
+    if g_rows % 10000 == 0 {
+        print(".. 已读 " + to_str(g_rows) + " 行")
+    }
+    if g_batch_n >= 100 {
+        _flush_batch()
+    }
+}
+
+func _process_line(line) {
+    var a = strfind(line, ",", 0)
+    if a < 0 {
+        return
+    }
+    var b = strfind(line, ",", a + 1)
+    if b < 0 {
+        return
+    }
+    _add_row(line)
+}
+
+func _report_rows() {
+    var stmt_out = ffi_alloc(8)
+    var sql = "SELECT region, printf('%.2f', SUM(amount)), COUNT(*) FROM sales GROUP BY region ORDER BY region;"
+    var rc = ffi_call(g_lib, "sqlite3_prepare_v2",
+                      [g_db, sql, -1, stmt_out, 0], "int",
+                      ["addr", "cstr", "i32", "addr", "addr"], "stdcall")
+    if rc != 0 {
+        print("sqlite3_prepare_v2 失败：" + to_str(rc))
+        exit(1)
+    }
+    var stmt = ffi_read_i64(stmt_out)
+    var html = ""
+    var grand = 0.0
+    var n = 0
+    loop
+        rc = ffi_call(g_lib, "sqlite3_step", [stmt], "int", ["addr"], "stdcall")
+        if rc != 100
+            break
+        var region = ffi_read_str_at(ffi_call(g_lib, "sqlite3_column_text",
+            [stmt, 0], "ptr", ["addr", "i32"], "stdcall"))
+        var sum_text = ffi_read_str_at(ffi_call(g_lib, "sqlite3_column_text",
+            [stmt, 1], "ptr", ["addr", "i32"], "stdcall"))
+        var cnt = ffi_read_str_at(ffi_call(g_lib, "sqlite3_column_text",
+            [stmt, 2], "ptr", ["addr", "i32"], "stdcall"))
+        html += "<tr><td>" + region + "</td><td class='num'>" + sum_text + "</td><td class='num'>" + cnt + "</td></tr>"
+        grand += to_num(sum_text)
+        n += 1
+    ffi_call(g_lib, "sqlite3_finalize", [stmt], "int", ["addr"], "stdcall")
+    return [html, to_str(grand), to_str(n)]
+}
+
+func _write_report(rows_html, grand, region_count) {
+    var stamp = now()
+    var html = "<!DOCTYPE html>\n<html lang='zh-CN'><head><meta charset='utf-8'>\n"
+    html += "<title>销售报表 · Impor</title>\n"
+    html += "<style>body{font:15px/1.6 -apple-system,'Segoe UI','Microsoft YaHei',sans-serif;background:#0f1216;color:#e6e8eb;margin:0;padding:40px}"
+    html += "h1{font-size:26px;margin:0 0 6px}small{color:#8b98a6}table{border-collapse:collapse;width:100%;margin-top:24px;background:#161b21}"
+    html += "th,td{padding:10px 14px;border-bottom:1px solid #2a323c;text-align:left}th{color:#9fb3c8;font-weight:600}"
+    html += "td.num{text-align:right;font-family:Consolas,monospace;color:#ffd479}tr:last-child td{border-bottom:0}"
+    html += ".kpi{display:flex;gap:16px;margin-top:20px}.kpi div{background:#161b21;border:1px solid #2a323c;border-radius:8px;padding:14px 18px}"
+    html += ".kpi b{display:block;font-size:22px;color:#fff}</style></head><body>\n"
+    html += "<h1>销售报表</h1><small>数据源：sales_100k.csv · 生成器：Impor + SQLite C ABI · " + stamp + "</small>\n"
+    html += "<div class='kpi'><div><small>记录数</small><b>" + to_str(g_rows) + "</b></div>"
+    html += "<div><small>总金额</small><b>" + grand + "</b></div>"
+    html += "<div><small>区域数</small><b>" + region_count + "</b></div></div>\n"
+    html += "<table><thead><tr><th>区域</th><th>销售额</th><th>订单数</th></tr></thead><tbody>\n"
+    html += rows_html
+    html += "</tbody></table></body></html>\n"
+    filewrite("apps/impor_sqlite_report/report.html", html)
+}
+
+func main() {
+    var csv_path = "apps/impor_sqlite_report/data/sales_100k.csv"
+    var expect = 100000
+    var argv = args()
+    if len(argv) > 0 {
+        csv_path = argv[0]
+    }
+    if len(argv) > 1 {
+        expect = int(argv[1])
+    }
+    var lines = filelines(csv_path)
+    global set g_db = _open_db()
+    _exec("DROP TABLE IF EXISTS sales;")
+    _exec("CREATE TABLE sales(region TEXT, category TEXT, amount REAL);")
+    _exec("BEGIN;")
+
+    var li = 1
+    while li < len(lines) {
+        var line = lines[li]
+        if line != "" {
+            _process_line(line)
+        }
+        li += 1
+    }
+    _flush_batch()
+    _exec("COMMIT;")
+
+    var res = _report_rows()
+    _write_report(res[0], res[1], res[2])
+    ffi_call(g_lib, "sqlite3_close", [g_db], "int", ["addr"], "stdcall")
+
+    print("CSV 行：" + to_str(g_rows))
+    print("总金额：" + res[1])
+    print("区域：" + res[2])
+    print("报表：apps/impor_sqlite_report/report.html")
+    if g_rows != expect {
+        print("失败：期望 " + to_str(expect) + " 行，实际 " + to_str(g_rows))
+        exit(1)
+    }
+}
+
+main()

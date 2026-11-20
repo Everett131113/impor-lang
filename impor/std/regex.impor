@@ -1,0 +1,24 @@
+// std/regex.impor — 正则匹配、查找、替换
+// 使用：import std.regex as re  →  re.is_match(text, "^a")
+// 注意：match 是语言关键字，因此函数名用 is_match。
+
+func is_match(text, pattern) {
+    return regex_match(text, pattern)
+}
+
+func find_all(text, pattern) {
+    return regex_find(text, pattern)
+}
+
+func replace_all(text, pattern, replacement) {
+    return regex_replace(text, pattern, replacement)
+}
+
+func contains(text, pattern) {
+    return len(regex_find(text, pattern)) > 0
+}
+
+export is_match
+export find_all
+export replace_all
+export contains

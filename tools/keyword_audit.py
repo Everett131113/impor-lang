@@ -69,9 +69,26 @@ NOTE_OVERRIDES = {
 }
 
 
+def _defer_probe_ok():
+    """defer 是已实现的块语法；同时非块写法必须明确拒绝。"""
+    try:
+        parse_source('defer { print("d") }\n', filename="<keyword-audit>")
+    except Exception as e:
+        return False, f"块写法未被接受：{e}"
+    try:
+        parse_source('defer print("d")\n', filename="<keyword-audit>")
+    except ImporSyntaxError as e:
+        if "defer 需要块写法" in str(e):
+            return True, ""
+        return False, f"非块写法的报错不对：{e}"
+    except Exception as e:
+        return False, f"非块写法报了别的错：{e}"
+    return False, "非块写法被静默接受"
+
+
 def main():
     all_keywords = sorted(KEYWORDS | SOFT_KEYWORDS | {"final"})
-    rejected = sorted(UNIMPLEMENTED_KEYWORDS | {"final"})
+    rejected = sorted((UNIMPLEMENTED_KEYWORDS | {"final"}) - {"defer"})
     implemented = sorted(set(all_keywords) - set(rejected))
 
     silent = []
@@ -79,6 +96,9 @@ def main():
         ok, why = _reject_probe_ok(kw)
         if not ok:
             silent.append((kw, why))
+    ok, why = _defer_probe_ok()
+    if not ok:
+        silent.append(("defer", why))
 
     # 拒绝集合里的每个词都必须真出现在 KEYWORDS / SOFT / final 中的至少一处。
     unknown = [kw for kw in rejected

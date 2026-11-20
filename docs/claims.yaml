@@ -1,0 +1,127 @@
+# docs/claims.yaml — README / 文档里的每条承诺，都必须能执行验证。
+#
+# status:
+#   auto    = 由 `python tools/verify_claims.py` 自动执行，失败即 CI 红。
+#   manual  = 需要人按步骤实测，结果记录在 docs/claims.md。
+#
+# check  = verify_release.py 的 check id；命令统一由 verify_claims.py 调起。
+# 新增承诺时：先加 check，再加这里的一条；不能只写文案不加验证。
+
+version: 1
+updated: 2026-11-19
+
+claims:
+  - id: version
+    claim: "命令行版本号与 VERSION 文件一致"
+    status: auto
+    check: version
+
+  - id: quickstart_hello
+    claim: "解压后双击示例 1，能看到「你好，Impor」"
+    status: auto
+    check: quickstart_hello
+
+  - id: quickstart_read_file
+    claim: "示例 2 能读取 sample.txt 并写回副本"
+    status: auto
+    check: quickstart_read_file
+
+  - id: quickstart_dll
+    claim: "示例 3 在 Windows 上能调用系统 DLL（winsqlite3）"
+    status: auto
+    check: quickstart_dll
+
+  - id: exe
+    claim: "单文件 exe 不依赖 Python 可运行，体积 ≤ 160 KB"
+    status: auto
+    check: exe
+
+  - id: c_abi
+    claim: "C ABI 构建产出 .dll / .h / .def 三个文件"
+    status: auto
+    check: c_abi
+
+  - id: stdlib_interp
+    claim: "std.json / fs / path / regex / time 在解释器下全部可用"
+    status: auto
+    check: stdlib_interp
+
+  - id: stdlib_http
+    claim: "std.http 能在解释器下完成一次 GET"
+    status: auto
+    check: stdlib_http
+
+  - id: stdlib_c
+    claim: "六个 std 模块在 C 后端 exe 中同样可用"
+    status: auto
+    check: stdlib_c
+
+  - id: errors_actionable
+    claim: "错误信息包含位置 / 原因 / 修复 / 错误码 / 文档锚点五项"
+    status: auto
+    check: errors_actionable
+
+  - id: error_docs
+    claim: "每个错误码都有可跳转的文档锚点"
+    status: auto
+    check: error_docs
+
+  - id: api_frozen
+    claim: "已发布的 API 面被 api_baseline.json 冻结，漂移即失败"
+    status: auto
+    check: api_frozen
+
+  - id: compat_20
+    claim: "3.11 的 20 个公开示例在 3.12 全部通过"
+    status: auto
+    check: compat_20
+
+  - id: keywords
+    claim: "65 个保留字没有一个是静默接受"
+    status: auto
+    check: keywords
+
+  - id: portable
+    claim: "Windows 便携版 ImporPortable.exe 存在且可分发"
+    status: auto
+    check: portable
+
+  - id: entry_files
+    claim: "START_HERE、常见问题与三个双击示例都在包内"
+    status: auto
+    check: entry_files
+
+  - id: defer
+    claim: "defer 块写法可用，非块写法明确拒绝"
+    status: auto
+    check: defer
+
+  - id: reject_async
+    claim: "async / await 明确拒绝，不静默接受"
+    status: auto
+    check: reject_async
+
+  - id: app_ssg
+    claim: "apps/impor_ssg 能用 Impor 生成 4 页静态站点"
+    status: auto
+    check: app_ssg
+
+  - id: app_action
+    claim: "apps/impor_action 的 Impor exe 能在 quickstart 上通关"
+    status: auto
+    check: app_action
+
+  - id: app_sqlite
+    claim: "apps/impor_sqlite_report 处理 10 万行 CSV，峰值内存 < 50 MB"
+    status: auto
+    check: app_sqlite
+
+  - id: stranger_3min
+    claim: "陌生人从解压到看到输出 < 180 秒，不装任何东西"
+    status: manual
+    how_to_verify: "找一位没用过 Impor 的人，从解压 ZIP 开始计时，到看到「你好，Impor」停止；记录秒数与卡住位置。"
+
+  - id: user_feedback
+    claim: "前 10 个真实用户能独立跑通 quickstart，不需要作者解释"
+    status: manual
+    how_to_verify: "让用户只看 START_HERE.txt 操作；记录是否需要额外解释、卡在哪一步。"

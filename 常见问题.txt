@@ -1,0 +1,21 @@
+Impor 常见问题（陌生人版）
+
+Q1：双击后窗口一闪而过？
+A：请双击带“-”的 .bat，不要直接双击 .impor。窗口会停留等你按回车。
+
+Q2：Windows Defender 提示“未知发布者”？
+A：这是未签名的小工具。点“更多信息”→“仍要运行”。源码就在 ZIP 里，可自行核对。
+
+Q3：提示“找不到 Python”？
+A：你解压的是源码版。请用 ZIP 根目录的 ImporPortable.exe；或安装 Python 3.11 后运行 impor.bat。
+
+Q4：提示“没有权限”/文件被占用？
+A：把整个 ZIP 解压到桌面或文档目录，不要直接在压缩包里双击；关闭占用该文件的编辑器后重试。
+
+Q5：中文显示成方块？
+A：脚本必须存为 UTF-8。Windows 记事本“另存为”时选择 UTF-8。
+
+Q6：我想编译成 exe 发给别人？
+A：双击“命令提示符”，进入本目录，运行：
+   ImporPortable.exe build examples\quickstart\hello.impor -o hello.exe
+生成的 hello.exe 不需要 Python，可以直接发给别人。

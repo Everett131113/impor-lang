@@ -188,9 +188,11 @@ print("done")
 ''', ["then-ok", "ze-ok", "done"])
 
 
-class TestChineseSoftAliases(unittest.TestCase):
-    def test_print_alias(self):
-        ok_run(self, '打印 "hi"\n输出 1, 2\n', ["hi", "1 2"])
+class TestPrintTolerance(unittest.TestCase):
+    def test_print_without_parens_comma(self):
+        # 3.6.7 起纯英文关键字：`打印`/`输出` 不再是关键字；这里只验证
+        # `print` 的无括号与逗号写法仍然是语法宽容层的一部分。
+        ok_run(self, 'print "hi"\nprint 1, 2\n', ["hi", "1 2"])
 
 
 class TestCatchTolerance(unittest.TestCase):

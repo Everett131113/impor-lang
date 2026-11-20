@@ -1,0 +1,17 @@
+name: Impor check
+description: 用 Impor 编译出的零依赖 exe 检查仓库里的 .impor 文件
+author: Everett131113
+inputs:
+  path:
+    description: 要扫描的目录（相对仓库根）
+    required: false
+    default: "."
+runs:
+  using: composite
+  steps:
+    - name: Run Impor check
+      shell: pwsh
+      run: '& "$env:GITHUB_ACTION_PATH\impor_action.exe" "${{ inputs.path }}"'
+branding:
+  icon: check-circle
+  color: blue

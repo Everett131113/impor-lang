@@ -2,7 +2,7 @@
 """版本号读取：仓库根 VERSION 为唯一真源，构建/冻结时允许回退基线。"""
 import os
 
-_BASE = "3.6.17"
+_BASE = "3.12.0"
 
 
 def _read_version():

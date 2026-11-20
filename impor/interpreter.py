@@ -979,8 +979,14 @@ class Interpreter:
             if op == "*":
                 return l * r
             if op == "/":
+                if r == 0:
+                    raise ImporException("ZeroDivisionError", "division by zero",
+                                         n.lineno, col=n.col)
                 return l / r
             if op == "%":
+                if r == 0:
+                    raise ImporException("ZeroDivisionError", "modulo by zero",
+                                         n.lineno, col=n.col)
                 return l % r
             if op == ">":
                 return l > r

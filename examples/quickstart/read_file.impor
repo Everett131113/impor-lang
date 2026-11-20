@@ -1,0 +1,6 @@
+// 读文件：读取同目录 sample.txt，再写一份副本
+var text = fileread("sample.txt")
+print("读到的内容：")
+print(text)
+filewrite("sample.copy.txt", text)
+print("已写出 sample.copy.txt")

@@ -867,6 +867,16 @@ def _build_cache_key(fname, src, out_abs, tcc, fast=False):
             h.update(b"\0%d:%d" % (st.st_mtime_ns, st.st_size))
         except OSError:
             note_swallowed("tcc stat")
+    # 编译器/运行时指纹：改 c_runtime.c 或转译器后必须重建，不能命中旧产物
+    here = os.path.dirname(os.path.abspath(__file__))
+    for rel in ("c_runtime.c", "ctrans.py", "cfast.py"):
+        p = os.path.join(here, rel)
+        if os.path.isfile(p):
+            try:
+                st = os.stat(p)
+                h.update(b"\0" + rel.encode("ascii") + b"\0%d:%d" % (st.st_mtime_ns, st.st_size))
+            except OSError:
+                note_swallowed("toolchain stat")
     # 依赖指纹：同目录/同名包内的 .impor 变化会让缓存失效
     base = os.path.dirname(os.path.abspath(fname))
     seen = 0

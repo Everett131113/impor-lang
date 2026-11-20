@@ -2203,7 +2203,7 @@ var goutname = "out2.exe"
 if len(gt2) > 0
     set gmode = gt2
     if gmode == "version" or gmode == "--version"
-        print("imporc (Impor 自举编译器) v3.11.0 · 子集模式")
+        print("imporc (Impor 自举编译器) v3.12.0 · 子集模式")
         exit(0)
     if gmode == "" or gmode == "help" or gmode == "--help"
         print("用法：imporc [run|build] <脚本> [-o 输出]  或  imporc version")

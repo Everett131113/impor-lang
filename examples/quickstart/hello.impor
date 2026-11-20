@@ -1,0 +1,4 @@
+// 第一个 Impor 脚本：双击 1-你好.bat 运行
+var name = "Impor"
+print("你好，" + name + "！")
+print("这是第", 1, "个脚本。")

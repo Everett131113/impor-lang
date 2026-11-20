@@ -1,0 +1,7 @@
+important<<DAY<<english("English"):
+// 九九乘法表（5x5）
+for i in range(1, 6)
+    var line = ""
+    for j in range(1, 6)
+        set line = line + strpad(to_str(i * j), 3, " ")
+    print(line)
