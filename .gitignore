@@ -26,6 +26,8 @@ desktop.ini
 
 # Impor 运行时与构建中间产物
 .impor/
+!examples/quickstart/.impor/
+!examples/quickstart/.impor/ffi_allow.json
 imporc_args.txt
 imporc_self_raw.exe
 imporc_self.exe
