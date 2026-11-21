@@ -7,8 +7,8 @@ var h = 24
 for y in range(0, h)
     var line = ""
     for x in range(0, w)
-        var cr = -2.2 + x * 3.4 / w
-        var ci = -1.2 + y * 2.4 / h
+        var cr =-2.2 + x * 3.4 / w
+        var ci =-1.2 + y * 2.4 / h
         var zr = 0.0
         var zi = 0.0
         var n = 0

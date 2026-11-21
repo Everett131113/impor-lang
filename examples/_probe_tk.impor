@@ -4,12 +4,12 @@ import tkinter
 
 var root = tkinter.Tk()
 root.title("probe")
-var cv = tkinter.Canvas(root, {"width": 300, "height": 200})
+var cv = tkinter.Canvas(root, { "width": 300, "height": 200 })
 cv.pack()
 
 // 1) Canvas 绘图 + Tcl 风格选项对 + itemconfig
 var id = cv.create_rectangle(10, 10, 60, 60, "-fill", "#ff0000")
-cv.itemconfig(id, {"fill": "#00ff00"})
+cv.itemconfig(id, { "fill": "#00ff00" })
 print("canvas type:", cv.type(id))
 
 // 2) Python 列表方法调用
@@ -21,14 +21,14 @@ print("pop -> len:", len(a), "head:", a[0])
 
 // 3) 全局变量 + 回调（after/bind 调用 Impor 闭包）
 var n = 0
-func tick()
+def tick()
     global set n = n + 1
     if n < 3
         root.after(10, tick)
     else
         root.destroy()
 
-func on_key(ev)
+def on_key(ev)
     print("key:", ev.keysym)
 
 root.bind("<KeyPress>", on_key)

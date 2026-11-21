@@ -136,7 +136,7 @@ class TestLSPCapabilities(unittest.TestCase):
         self.assertTrue(caps["renameProvider"]["prepareProvider"])
 
     def test_semantic_tokens_are_delta_encoded(self):
-        srv = self._server("func add(a, b):\n    var total = a + b\n    return total\n")
+        srv = self._server("def add(a, b):\n    var total = a + b\n    return total\n")
         data = self._call(srv, "_on_semantic_tokens", {})["data"]
         self.assertEqual(len(data) % 5, 0)
         lengths = data[2::5]
@@ -145,7 +145,7 @@ class TestLSPCapabilities(unittest.TestCase):
         self.assertTrue(any(mod for mod in data[4::5]))
 
     def test_folding_range_groups_block(self):
-        srv = self._server("func f():\n    var a = 1\n    var b = 2\nvar c = 3\n")
+        srv = self._server("def f():\n    var a = 1\n    var b = 2\nvar c = 3\n")
         folds = self._call(srv, "_on_folding_range", {})
         self.assertTrue(any(f["startLine"] == 0 and f["endLine"] == 2 for f in folds))
 
@@ -155,7 +155,7 @@ class TestLSPCapabilities(unittest.TestCase):
         self.assertEqual([h["label"] for h in hints], [": int", ": string"])
 
     def test_code_lens_reports_reference_count(self):
-        srv = self._server("func add(a, b):\n    return a + b\nadd(1, 2)\n")
+        srv = self._server("def add(a, b):\n    return a + b\nadd(1, 2)\n")
         lenses = self._call(srv, "_on_code_lens", {})
         self.assertTrue(lenses)
         self.assertEqual(lenses[0]["command"]["command"], "impor.showReferences")
@@ -177,7 +177,7 @@ class TestLSPCapabilities(unittest.TestCase):
 
 class TestUnifiedSemanticMap(unittest.TestCase):
     def test_analyzer_keeps_v323_expectations(self):
-        src = ('import math as m\nfunc add(a, b):\n    var total = a + b\n'
+        src = ('import math as m\ndef add(a, b):\n    var total = a + b\n'
                '    return total\nclass Box:\n    var value = 1\nexception Bad\n'
                'struct Point\nfor item in [1, 2]:\n    print(item)\n')
         table = semantic_symbol_map(src)

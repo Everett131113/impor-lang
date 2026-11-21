@@ -2,7 +2,7 @@
 // 使用：use std.collections 或 import std.collections
 // 依赖：调用方传入函数（闭包/具名函数均可）。
 
-func map(lst, fn) {
+def map(lst, fn) {
     var out = []
     for x in lst {
         arrappend(out, fn(x))
@@ -10,7 +10,7 @@ func map(lst, fn) {
     return out
 }
 
-func filter(lst, fn) {
+def filter(lst, fn) {
     var out = []
     for x in lst {
         if fn(x) {
@@ -20,7 +20,7 @@ func filter(lst, fn) {
     return out
 }
 
-func reduce(lst, fn, init) {
+def reduce(lst, fn, init) {
     var acc = init
     for x in lst {
         acc = fn(acc, x)
@@ -28,7 +28,7 @@ func reduce(lst, fn, init) {
     return acc
 }
 
-func reverse(lst) {
+def reverse(lst) {
     var out = []
     var i = len(lst) - 1
     while i >= 0 {
@@ -38,7 +38,7 @@ func reverse(lst) {
     return out
 }
 
-func contains(lst, x) {
+def contains(lst, x) {
     for v in lst {
         if v == x {
             return true
@@ -47,7 +47,7 @@ func contains(lst, x) {
     return false
 }
 
-func count(lst, x) {
+def count(lst, x) {
     var c = 0
     for v in lst {
         if v == x {
@@ -57,7 +57,7 @@ func count(lst, x) {
     return c
 }
 
-func uniq(lst) {
+def uniq(lst) {
     var out = []
     for v in lst {
         if not contains(out, v) {
@@ -68,14 +68,14 @@ func uniq(lst) {
 }
 
 // 空列表时返回 0（Impor 无 null 字面量）
-func first(lst) {
+def first(lst) {
     if len(lst) == 0 {
         return 0
     }
     return lst[0]
 }
 
-func last(lst) {
+def last(lst) {
     if len(lst) == 0 {
         return 0
     }
@@ -83,7 +83,7 @@ func last(lst) {
 }
 
 // v3.9 扩展：查找 / 切片（不修改原列表）
-func find(lst, fn) {
+def find(lst, fn) {
     for x in lst {
         if fn(x) {
             return x
@@ -92,7 +92,7 @@ func find(lst, fn) {
     return 0
 }
 
-func find_index(lst, fn) {
+def find_index(lst, fn) {
     var i = 0
     while i < len(lst) {
         if fn(lst[i]) {
@@ -100,10 +100,10 @@ func find_index(lst, fn) {
         }
         i += 1
     }
-    return -1
+    return - 1
 }
 
-func take(lst, n) {
+def take(lst, n) {
     var out = []
     var i = 0
     while i < len(lst) and i < n {
@@ -113,7 +113,7 @@ func take(lst, n) {
     return out
 }
 
-func drop(lst, n) {
+def drop(lst, n) {
     var out = []
     var i = n
     while i < len(lst) {
@@ -124,7 +124,7 @@ func drop(lst, n) {
 }
 
 // v4.1：递归拍平嵌套列表（依赖 type_of 判断元素是否为列表）
-func flatten(lst) {
+def flatten(lst) {
     var out = []
     for x in lst {
         if type_of(x) == "list" {

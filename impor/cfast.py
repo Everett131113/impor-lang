@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
-"""v3.7.3 原生数值快路径。
+"""v3.7.3 原生数值快路径（v4.1 起为 build 默认路径）。
 
 只接受“纯整数、单返回值”的脚本子集，生成不装箱的 C 代码：
 变量与参数都是 ``long long``，算术直接落到机器整数，不经过 ``Val*`` 堆分配。
 任何超出子集的写法都抛 ``FastUnsupported``，由 CLI 回退到原有后端；
 绝不静默改变语义。
 
-这个路径是显式 opt-in（``impor build --fast``），因为 C 的 64 位整数
-不具备 Impor 解释器的任意精度整数语义。
+v4.1 的两处变化：
+1. ``impor build`` 默认先尝试这条路径（``--no-fast`` 可关闭），
+   因此计算密集脚本默认就能拿到不装箱的速度。
+2. 溢出不再静默回绕：``iadd/isub/imul/ineg`` 做 64 位边界检查，
+   越界时报清楚的中文错误并以退出码 3 结束，提示改用 ``--no-fast``
+   走 Impor 的任意精度整数语义。C 的 64 位整数终究不是 Impor 的大整数，
+   这条检查保证“不会算出一个悄悄错了的结果”。
 """
 
 from . import ast_nodes as A
@@ -357,12 +362,17 @@ class _FastCompiler:
             l, r = self._expr(e.left), self._expr(e.right)
             if e.op == "%":
                 return "imod(%s, %s)" % (l, r)
+            helper = {"+": "iadd", "-": "isub", "*": "imul"}.get(e.op)
+            if helper:
+                return "%s(%s, %s)" % (helper, l, r)
             op = {"and": "&&", "or": "||"}.get(e.op, e.op)
             return "(%s %s %s)" % (l, op, r)
         if isinstance(e, A.UnaryOp):
             c = self._expr(e.child)
             if e.op == "not":
                 return "(!%s)" % c
+            if e.op == "-":
+                return "ineg(%s)" % c
             return "(%s%s)" % (e.op, c)
         if isinstance(e, A.TernaryExpr):
             return "(%s ? %s : %s)" % (self._expr(e.cond),
@@ -402,7 +412,8 @@ class _FastCompiler:
             return pad + "%s = %s;\n" % (name, self._expr(s.expr))
         if isinstance(s, A.CompoundAssign):
             name = ("g_" if (not self.in_func or s.scope == "global") else "v_") + s.name
-            return pad + "%s %s= %s;\n" % (name, s.op, self._expr(s.expr))
+            helper = {"+": "iadd", "-": "isub", "*": "imul", "%": "imod"}[s.op]
+            return pad + "%s = %s(%s, %s);\n" % (name, helper, name, self._expr(s.expr))
         if isinstance(s, A.Print):
             a = s.items[0]
             if isinstance(a, A.Str):
@@ -458,13 +469,43 @@ class _FastCompiler:
 
     def compile(self):
         self.prepare()
-        parts = ["#include <stdio.h>", "#include <stdlib.h>", "#include <stdint.h>", "",
+        parts = ["#include <stdio.h>", "#include <stdlib.h>", "#include <stdint.h>",
+                 "#include <limits.h>", "",
                  "/* Python/Impor 取模符号跟随除数；C 的 %% 跟随被除数，必须校正。 */",
                  "static long long imod(long long a, long long b) {",
-                 "    if (b == 0) { fprintf(stderr, \"division by zero\\n\"); exit(1); }",
+                 "    if (b == 0) { fprintf(stderr, \"除数为 0：数值快路径无法完成取模。\\n\"",
+                 "                       \"  需要 Impor 的错误语义请用：impor build 脚本.impor --no-fast\\n\"); exit(3); }",
                  "    long long r = a % b;",
                  "    if (r != 0 && ((r < 0) != (b < 0))) r += b;",
                  "    return r;",
+                 "}", "",
+                 "/* v4.1：64 位整数溢出检查。C 的 long long 不是 Impor 的任意精度整数，",
+                 "   所以宁可报错退出，也不静默回绕成一个错的结果。 */",
+                 "static void iovf(const char *op) {",
+                 "    fprintf(stderr, \"ImporRuntimeError: 数值快路径的 64 位整数溢出（%s）。\\n\"",
+                 "                    \"  Impor 解释器的整数是任意精度，这个脚本需要它。\\n\"",
+                 "                    \"  请改用：impor build 脚本.impor --no-fast\\n\", op);",
+                 "    exit(3);",
+                 "}",
+                 "static long long iadd(long long a, long long b) {",
+                 "    if ((b > 0 && a > LLONG_MAX - b) || (b < 0 && a < LLONG_MIN - b)) iovf(\"加法\");",
+                 "    return a + b;",
+                 "}",
+                 "static long long isub(long long a, long long b) {",
+                 "    if ((b < 0 && a > LLONG_MAX + b) || (b > 0 && a < LLONG_MIN + b)) iovf(\"减法\");",
+                 "    return a - b;",
+                 "}",
+                 "static long long imul(long long a, long long b) {",
+                 "    long long r;",
+                 "    if (a == 0 || b == 0) return 0;",
+                 "    if ((a == -1 && b == LLONG_MIN) || (b == -1 && a == LLONG_MIN)) iovf(\"乘法\");",
+                 "    r = (long long)((unsigned long long)a * (unsigned long long)b);",
+                 "    if (r / b != a) iovf(\"乘法\");",
+                 "    return r;",
+                 "}",
+                 "static long long ineg(long long a) {",
+                 "    if (a == LLONG_MIN) iovf(\"取负\");",
+                 "    return -a;",
                  "}", ""]
         for fn in self.funcs.values():
             parts.append("static long long f_%s(%s);" %
@@ -492,3 +533,4 @@ class _FastCompiler:
 def c_fast_transpile(ast):
     """把数值脚本 AST 转成纯 C；超出子集抛 FastUnsupported。"""
     return _FastCompiler(ast).compile()
+

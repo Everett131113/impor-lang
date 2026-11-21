@@ -48,14 +48,14 @@ _CHAOS_CHARS = (
 # 结构化随机行片段池：模仿 Impor 但大概率非法
 _STRUCT_LINES = [
     "var x = 1", "var s = \"hi\"", "var lst = [1, 2, 3]", "var d = {\"a\": 1}",
-    "set x = x + 1", "func f(a, b)", "    return a + b", "if x > 0", "else",
+    "set x = x + 1", "def f(a, b)", "    return a + b", "if x > 0", "else",
     "while i < 10", "for i in range(0, 5)", "print(x)", "return x",
-    "class A", "    func m(self)", "        return 1", "import mymod",
+    "class A", "    def m(self)", "        return 1", "import mymod",
     "from mymod import hello", "from . import tool", "try", "catch err", "loop",
     "break", "continue", "match x", "case 1:", "case _:", "default:",
     "raise Err(\"msg\")", "export calc", "new A()", "x.y = 1", "a[0] = 2",
     "x += 1", "r\"raw\\n\"", "/* 注释 */", "// 注释", "1 + 2 * 3", "\"a\" + \"b\"",
-    "not x", "-x", "x ? 1 : 2", "lambda", "async", "def", "func",
+    "not x", "-x", "x ? 1 : 2", "lambda", "async", "def", "def",
 ]
 _STRUCT_JUNK = ["+", "-", "*", "/", "(", ")", ",", "==", "!=", "<", ">", "=", "..", ".", "["]
 
@@ -63,7 +63,7 @@ _STRUCT_JUNK = ["+", "-", "*", "/", "(", ")", ",", "==", "!=", "<", ">", "=", ".
 _PROG_BLOCKS = [
     "while i < 12\n    set i = i + 1\n    set s = s + i\n",
     "for j in range(0, 5)\n    set s = s + j\n",
-    "func add(a, b)\n    return a + b\n",
+    "def add(a, b)\n    return a + b\n",
     "if i % 2 == 0\n    print(s)\nelse\n    set s = s + 1\n",
 ]
 _PROG_LINES = [

@@ -103,6 +103,12 @@ class EditorPane(tk.Frame):
         self._outline_job = None
         self._bracket_job = None
         self._completion_job = None
+        self._sem_dirty = False
+        self._sem_job = None
+        self._sem_pos_cache = {}
+        self._sem_cache_key = None
+        self._sem_map_cache = {}
+        self._sem_map_key = None
         # 输入时不再自动弹补全（打 p 弹 print）；保留 Ctrl+Space 手动补全。
         self.auto_complete = False
         self._param_job = None
@@ -322,6 +328,15 @@ class EditorPane(tk.Frame):
             if self._hl_job:
                 self.after_cancel(self._hl_job)
             self._hl_job = self.after(180, self.highlight)
+            # 语义着色依赖整份符号索引；输入过程中先沿用上一帧结果，
+            # 停下来后再重算一次，避免每个按键都把 UI 线程卡住。
+            self._sem_dirty = True
+            if self._sem_job:
+                try:
+                    self.after_cancel(self._sem_job)
+                except Exception:
+                    pass
+            self._sem_job = self.after(900, self._refresh_semantic)
             self._schedule_diagnostics()
             if getattr(self.app, "split_pane", None):
                 if self._sync_job:
@@ -975,16 +990,35 @@ class EditorPane(tk.Frame):
         if cache is not None:
             self._sem_map = cache.get(getattr(self, "_virtual_start", -1), {})
         else:
-            self._sem_map = (semantic_symbol_map(sem_src)
-                             if getattr(self.app, "semantic_highlight", True) else {})
-        self._sem_pos = {}
+            self._sem_map = dict(getattr(self, "_sem_map_cache", {}) or {})
+            if (getattr(self.app, "semantic_highlight", True)
+                    and not getattr(self, "_sem_dirty", False)
+                    and len(content) <= 200_000 and total_lines <= 1200):
+                sem_key = (len(content), hash(content))
+                if sem_key != getattr(self, "_sem_map_key", None):
+                    self._sem_map = semantic_symbol_map(sem_src)
+                    self._sem_map_cache = dict(self._sem_map)
+                    self._sem_map_key = sem_key
+            elif not getattr(self, "_sem_dirty", False):
+                # 大文件只做词法高亮，避免打开时整份解析。
+                self._sem_map = {}
+        self._sem_pos = dict(getattr(self, "_sem_pos_cache", {}) or {})
         if (not forced and not getattr(self, "_virtual_no_index", False)
                 and getattr(self.app, "semantic_highlight", True) and getattr(self, "path", "")
-                and len(content) <= 2_000_000):
-            try:
-                self._sem_pos = self.app.index.semantic_positions(self.path, content)
-            except Exception:
-                self._sem_pos = {}
+                and len(content) <= 200_000 and total_lines <= 1200
+                and not getattr(self, "_sem_dirty", False)):
+            key = (self.path, len(content), hash(content))
+            if key != getattr(self, "_sem_cache_key", None):
+                try:
+                    self._sem_pos = self.app.index.semantic_positions(self.path, content)
+                    self._sem_pos_cache = dict(self._sem_pos)
+                    self._sem_cache_key = key
+                except Exception:
+                    self._sem_pos = {}
+        elif not getattr(self, "_sem_dirty", False) and (
+                len(content) > 200_000 or total_lines > 1200):
+            # 超阈值文件不做整份语义分析，保留词法高亮即可。
+            self._sem_pos = {}
         for tag in ("kw", "kw2", "builtin", "string", "num", "comment", "doc", "func", "cls", "decl", "op",
                     "sem", "sem_var", "sem_param", "sem_field", "sem_module", "br0", "br1", "br2", "br3"):
             t.tag_remove(tag, tag_start, tag_end)
@@ -1115,6 +1149,15 @@ class EditorPane(tk.Frame):
         self._match_bracket()
         if getattr(self, "_mm_job", None) is None:
             self._mm_job = self.after(350, self._refresh_minimap)
+
+    def _refresh_semantic(self):
+        """输入停止后重算一次语义着色；输入期间不阻塞 UI。"""
+        self._sem_job = None
+        self._sem_dirty = False
+        try:
+            self.highlight()
+        except Exception:
+            pass
 
     def _refresh_minimap(self):
         self._mm_job = None

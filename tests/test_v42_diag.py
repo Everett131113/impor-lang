@@ -47,9 +47,9 @@ class TestErrorCodes(unittest.TestCase):
 
 class TestDiagnosticConsistency(unittest.TestCase):
     SRC = (
-        "func b(x)\n"
+        "def b(x)\n"
         "    return 1 / x\n"
-        "func a()\n"
+        "def a()\n"
         "    return b(0)\n"
         "a()\n"
     )
@@ -102,7 +102,7 @@ class TestDiagnosticConsistency(unittest.TestCase):
     def test_interpreter_catch_keeps_exit_zero(self):
         src = os.path.join(self.tmp, "c.impor")
         with io.open(src, "w", encoding="utf-8") as f:
-            f.write("func f()\n"
+            f.write("def f()\n"
                     "    try\n"
                     "        var x = 1 / 0\n"
                     "    catch ZeroDivisionError e\n"

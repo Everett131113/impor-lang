@@ -750,7 +750,7 @@ class CGen:
         self.globals_map = {}      # 顶层变量名 -> gN
         self.funcs = []            # [(name, cname, params, body)]
         self.funcs_map = {}        # name -> cname
-        self.exports = []          # v3.8.2：export func → C ABI 元数据
+        self.exports = []          # v3.8.2：export def → C ABI 元数据
         self._fn_writes = {}       # fn名 -> 函数内写集合（局部变量名）
         self.classes = []          # [ClassDef 节点]（按源码顺序，基类在前）
         self.class_methods = {}    # 类名 -> [(方法名, params, body)]
@@ -767,6 +767,7 @@ class CGen:
         self._arg_seq = 0
         self._match_seq = 0
         self._try_seq = 0
+        self.exceptions = set()     # v4.1：exception 声明的类型名（catch 过滤用）
         self.closures = []          # 嵌套函数（闭包）定义
         self._closure_map = {}      # (外层函数名, 嵌套函数名) -> cloN
         self._boxed_by_fn = {}      # 函数名 -> 被闭包捕获、需要装箱的局部名
@@ -1005,7 +1006,9 @@ class CGen:
                         "param_types": list(getattr(s, "param_types", []) or []),
                         "ret_type": getattr(s, "ret_type", "") or "",
                     })
-                self._fn_writes[s.name] = self._collect_writes(s.body)
+                w = self._collect_writes(s.body)
+                w.update(s.params)
+                self._fn_writes[s.name] = w
                 self._collect_closures_for(s)
             elif isinstance(s, ClassDef):
                 # 类：收集方法（作为带 (Obj*, Val*) 签名的方法函数）与字段初始化
@@ -1021,7 +1024,9 @@ class CGen:
                         self._fcnt += 1
                         self.method_cnames[(s.cls_name, st.name)] = fn
                         self.class_methods[s.cls_name].append((st.name, st.params, st.body))
-                        self._fn_writes["%s.%s" % (s.cls_name, st.name)] = self._collect_writes(st.body)
+                        w = self._collect_writes(st.body)
+                        w.update(st.params)
+                        self._fn_writes["%s.%s" % (s.cls_name, st.name)] = w
                     elif isinstance(st, _Assign):
                         if st.scope == "global":
                             raise UnsupportedFeature(
@@ -1032,9 +1037,9 @@ class CGen:
                             "类体只支持方法（def）与字段赋值（var 名 = 初值）",
                             getattr(st, "lineno", 0), getattr(st, "col", 0))
             elif isinstance(s, ExceptionDef):
-                raise UnsupportedFeature(
-                    _UNSUP_NODE.get(type(s).__name__, "类/异常定义"),
-                    s.lineno, s.col)
+                # v4.1：exception 声明本身不产生代码，只登记类型名，
+                # 供 raise / catch 与解释器同名对齐。
+                self.exceptions.add(s.exc_name)
 
     def _collect_globals(self, node):
         """收集顶层赋值名 → 全局变量（含顶层 while/if/块 体内的声明）。"""
@@ -1185,6 +1190,11 @@ class CGen:
         self._collect_lambdas(node)
         out = []
         out.append("/* 由 Impor (I++) 编译器生成，勿手改 */")
+        if not self.emit_main:
+            # v4.1：共享库（DLL）模式。运行时据此跳过 atexit 注册——
+            # tcc 的 DLL CRT 在 FreeLibrary/进程退出时会重复走退出钩子，
+            # 之前会以 0xC0000005 崩溃。DLL 里改由宿主显式调用 impor_runtime_shutdown()。
+            out.append("#define IMPOR_BUILD_DLL 1")
         out.append("#include <stdio.h>")
         out.append("#include <stdlib.h>")
         out.append("#include <string.h>")
@@ -1466,7 +1476,7 @@ class CGen:
             Assign, CompoundAssign, Print, If, While, For, Def, Return,
             Break, Continue, ExitScript, ClsOut, AssertNode, ExprStmt,
             ClassDef, ExceptionDef, Call, IndexSet, AttrSet, Block,
-            MatchNode, BindingPattern, TryCatch,
+            MatchNode, BindingPattern, TryCatch, Raise,
         )
         t = type(n)
         if t is MatchNode:
@@ -1576,8 +1586,9 @@ class CGen:
         if t is ClassDef:
             return ["reg_class(&ci_%s);" % n.cls_name]
         if t is ExceptionDef:
-            raise UnsupportedFeature(_UNSUP_NODE.get(t.__name__, "不支持的语法"),
-                                     n.lineno, n.col)
+            return []  # v4.1：声明本身无代码，名字已在收集阶段登记
+        if t is Raise:
+            return [self._gen_raise(n)]
         raise UnsupportedFeature(
             "C 后端暂不支持：%s" % _UNSUP_NODE.get(t.__name__, t.__name__),
             getattr(n, "lineno", 0), getattr(n, "col", 0))
@@ -1668,16 +1679,32 @@ class CGen:
         out.append("}")
         return out
 
+    def _gen_raise(self, n):
+        """v4.1：raise Foo("消息") → rt_throw("Foo", "消息")。
+
+        exception 声明的类型名在收集阶段登记，但这里不强制查表：
+        与解释器一致，raise 后面的名字本身就是类型名。
+        """
+        tname = n.exc_type_name or "Error"
+        msg = ('rt_str_of(rt_tostr(%s))' % self._gen_expr(n.msg_expr)
+               if n.msg_expr is not None else '""')
+        return 'rt_throw(%s, %s);' % (c_escape_str(tname), msg)
+
     def _gen_try(self, n):
         """try/catch/finally → setjmp 跳转栈。
 
         v3.8.4：运行时已有 g_jmp_stack / g_err_type / g_err_msg，这里补上
         push/pop 与 catch 变量绑定。异常由 rt_throw() longjmp 回最近一层。
+
+        v4.1：按类型过滤 catch（catch Foo e），类型不匹配时先跑 finally，
+        再把异常抛给外一层 try —— 与解释器的捕获顺序一致。
         """
         self._try_seq += 1
         tid = self._try_seq
         tj = "_tj%d" % tid
+        rh = "_rh%d" % tid
         out = ["{", "    int %s = g_jmp_n++;" % tj,
+               "    int %s = 0;" % rh,
                "    if (setjmp(g_jmp_stack[%s]) == 0) {" % tj]
         self._gen_block(out, n.body, indent=2)
         out.append("        g_jmp_n = %s;" % tj)
@@ -1687,10 +1714,20 @@ class CGen:
             ev = n.err_var or "__err"
             target = self._lname(ev) if self._cur_fn else self._gname(ev)
             out.append("        Val %s = rt_err_obj();" % target)
-            self._gen_block(out, n.catch_body, indent=2)
+            if n.err_type:
+                out.append("        if (rt_err_matches(%s)) {" % c_escape_str(n.err_type))
+                self._gen_block(out, n.catch_body, indent=3)
+                out.append("        } else {")
+                out.append("            %s = 1;" % rh)
+                out.append("        }")
+            else:
+                self._gen_block(out, n.catch_body, indent=2)
+        else:
+            out.append("        %s = 1;" % rh)
         out.append("    }")
         if n.finally_body:
-            self._gen_block(out, n.finally_body, indent=2)
+            self._gen_block(out, n.finally_body, indent=1)
+        out.append("    if (%s) rt_rethrow(%s);" % (rh, tj))
         out.append("}")
         return out
 

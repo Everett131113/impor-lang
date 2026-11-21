@@ -82,7 +82,7 @@ OOP_SRC = ("class Animal\n"
 EACH_SRC = ("var a = [10, 20, 30]\n"
             "for x in a\n"
             "    print(x)\n"
-            "func add(p, q)\n"
+            "def add(p, q)\n"
             "    return p + q\n"
             "print(add(2, 3))\n")
 

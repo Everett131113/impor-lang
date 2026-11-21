@@ -9,7 +9,7 @@ while i < len(guesses)
     if guess == answer
         print("第", i + 1, "次：猜中了", guess)
         break
-    elseif guess < answer
+    elif guess < answer
         print("第", i + 1, "次：", guess, "小了")
     else
         print("第", i + 1, "次：", guess, "大了")

@@ -3,7 +3,7 @@ important<<DAY<<english("English"):
 use std.text
 var sentence = "the quick the lazy the end"
 var words = split(sentence, " ")
-var freq = {}
+var freq = { }
 for w in words
     freq[w] = freq.get(w, 0) + 1
 for w in freq.keys()

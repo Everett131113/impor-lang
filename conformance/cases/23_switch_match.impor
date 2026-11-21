@@ -1,7 +1,7 @@
 enum Color { RED = 10, GREEN = 20, BLUE = 30 }
 
-func classify(x)
-    switch x
+def classify(x)
+    match x
         case 1
             return "one"
         case Color.GREEN
@@ -9,14 +9,14 @@ func classify(x)
         default
             return "default"
 
-func bind(x)
-    switch x
+def bind(x)
+    match x
         case v
             return "v=" + to_str(v)
 
-func neg(x)
-    switch x
-        case -1
+def neg(x)
+    match x
+        case - 1
             return "minus"
         default
             return "other"

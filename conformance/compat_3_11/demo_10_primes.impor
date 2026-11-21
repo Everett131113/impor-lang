@@ -1,10 +1,10 @@
 important<<DAY<<english("English"):
 // 素数判断与枚举
-func is_prime(n)
+def is_prime(n)
     if n < 2
         return false
     var d = 2
-    loop
+    while true
         if d * d > n
             break
         if n % d == 0

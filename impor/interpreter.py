@@ -334,15 +334,18 @@ class Env:
             cur = cur.outer
         raise ImporException("ScopeError", f"nonlocal：找不到外层局部变量 '{name}'")
 
-    def update_nearest(self, name, value):
-        """复合赋值：就近更新找到的绑定；找不到则写入当前环境。"""
+    def update_nearest(self, name, value, lineno=0, col=0):
+        """更新已存在的绑定；找不到就报 NameError，绝不静默创建变量。"""
         cur = self
         while cur is not None:
             if name in cur.store:
                 cur.store[name] = value
                 return
             cur = cur.outer
-        self.store[name] = value
+        raise ImporException(
+            "NameError",
+            f"变量 {name} 未声明；首次赋值请写 `var {name} = ...`",
+            lineno, col=col)
 
     def has(self, name):
         cur = self
@@ -569,6 +572,11 @@ class Interpreter:
             if t.__name__ == "Assign" and getattr(cur, "scope", "") == "const":
                 # const / readonly / static 的只读语义由树遍历解释器兑现；
                 # 转译快速路径不认识 const，必须回退，否则 x = 6 会静默改写常量。
+                return False
+            if t.__name__ in ("Assign", "CompoundAssign") and getattr(cur, "scope", "") in (
+                    "update", "global", "nonlocal"):
+                # 更新/跨作用域赋值必须走树遍历：Python 直译会把“未声明变量”
+                # 静默创建成局部变量，破坏 v3.13 的严格声明语义。
                 return False
             if t.__name__ not in self._FAST_OK_NODES:
                 if t.__name__ in ("ImportNode", "FromImportNode", "ExportNode",
@@ -1069,7 +1077,7 @@ class Interpreter:
             self.cur_env.set_nonlocal(n.name, v)
         elif n.scope == 'update':
             # v2.10：set 就近更新——沿作用域链更新已存在绑定；无则写入当前环境
-            self.cur_env.update_nearest(n.name, v)
+            self.cur_env.update_nearest(n.name, v, n.lineno, n.col)
         else:
             self.cur_env.set_local(n.name, v)
         return v
@@ -1101,7 +1109,7 @@ class Interpreter:
         elif n.scope == 'nonlocal':
             self.cur_env.set_nonlocal(n.name, res)
         else:
-            self.cur_env.update_nearest(n.name, res)
+            self.cur_env.update_nearest(n.name, res, n.lineno, n.col)
         return res
 
     # ---------- 语句 ----------

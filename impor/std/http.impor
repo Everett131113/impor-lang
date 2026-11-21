@@ -2,7 +2,7 @@
 // 使用：import std.http  →  var body = std.http.get("https://example.com")
 // 只用基础内建，解释器与 C 后端行为一致。
 
-func _has_char(s, ch) {
+def _has_char(s, ch) {
     var i = 0
     while i < len(s) {
         if strcut(s, i, i + 1) == ch {
@@ -13,7 +13,7 @@ func _has_char(s, ch) {
     return false
 }
 
-func _safe_url(url) {
+def _safe_url(url) {
     var s = to_str(url)
     if len(s) < 7 {
         return false
@@ -21,7 +21,7 @@ func _safe_url(url) {
     if strcut(s, 0, 7) != "http://" and strcut(s, 0, 8) != "https://" {
         return false
     }
-    for ch in ["\"", "'", "&", "|", ";", "<", ">", "`", "\n", "\r", " ", "$"] {
+    for ch in["\"", "'", "&", "|", ";", "<", ">", "`", "\n", "\r", " ", "$"] {
         if _has_char(s, ch) {
             return false
         }
@@ -29,7 +29,7 @@ func _safe_url(url) {
     return true
 }
 
-func get(url) {
+def get(url) {
     if not _safe_url(url) {
         print("http.get：只接受 http:// 或 https:// 的普通 URL")
         exit(1)
@@ -47,7 +47,7 @@ func get(url) {
     return body
 }
 
-func get_json(url) {
+def get_json(url) {
     return json_decode(get(url))
 }
 

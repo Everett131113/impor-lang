@@ -34,7 +34,7 @@ ENUM_SRC = (
     '    LARGE\n'
     'print(Color.RED, Color.GREEN, Color.BLUE)\n'
     'print(Size.SMALL, Size.MEDIUM, Size.LARGE)\n'
-    'func name_of(c)\n'
+    'def name_of(c)\n'
     '    if c == Color.RED\n'
     '        return "红"\n'
     '    if c == Color.GREEN\n'
@@ -151,7 +151,7 @@ class TestEnumPythonTranspile(unittest.TestCase):
 
 SWITCH_SRC = (
     'enum Color { RED, GREEN, BLUE }\n'
-    'func name(c)\n'
+    'def name(c)\n'
     '    switch c\n'
     '        case Color.RED\n'
     '            return "红"\n'
@@ -195,22 +195,22 @@ class TestReadabilityLint(unittest.TestCase):
         return [i.code for i in readability_lint(ast)]
 
     def test_short_name(self):
-        body = 'func f(a)\n    var b = a\n    return b\nprint(f(1))\n'
+        body = 'def f(a)\n    var b = a\n    return b\nprint(f(1))\n'
         self.assertIn("style-naming", self._codes(body))
 
     def test_magic_number_repeated(self):
-        body = ('func f(x)\n'
+        body = ('def f(x)\n'
                 '    if x > 999\n        return 999\n'
                 '    if x < 999\n        return 1001\n'
                 '    return 0\nprint(f(1))\n')
         self.assertIn("style-magic-number", self._codes(body))
 
     def test_long_function(self):
-        body = 'func long_one()\n' + ('    print(1)\n' * 35) + 'long_one()\n'
+        body = 'def long_one()\n' + ('    print(1)\n' * 35) + 'long_one()\n'
         self.assertIn("style-long-function", self._codes(body))
 
     def test_default_lint_does_not_add_style_noise(self):
-        body = 'func f(a)\n    var b = a\n    return b\nprint(f(1))\n'
+        body = 'def f(a)\n    var b = a\n    return b\nprint(f(1))\n'
         codes = [i.code for i in analyze(parse_source(body), body.split("\n")).issues]
         self.assertNotIn("style-naming", codes)
         self.assertNotIn("style-magic-number", codes)
@@ -219,7 +219,7 @@ class TestReadabilityLint(unittest.TestCase):
 
 FMT_SRC = (
     '// 顶部注释：格式化后必须保留\n'
-    'func calc(a,b){\n'
+    'def calc(a,b){\n'
     'var x=1+2   // 行尾注释\n'
     'if x>2{\n'
     'print( "值:"+to_str( x ) )\n'

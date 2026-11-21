@@ -32,7 +32,7 @@ def _read_version():
             return v
     except OSError:
         pass
-    return "3.12.0"
+    return "4.0.0"
 
 
 __version__ = _read_version()  # 唯一版本常量；升版只改 VERSION

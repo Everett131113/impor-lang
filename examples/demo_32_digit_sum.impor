@@ -1,6 +1,6 @@
 important<<DAY<<english("English"):
 // 递归求各位数字之和
-func digit_sum(n)
+def digit_sum(n)
     if n < 10
         return n
     return n % 10 + digit_sum(div(n, 10))

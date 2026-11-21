@@ -3,14 +3,16 @@
 > 本表由 `python tools/verify_claims.py` 生成，不要手改。
 > 每条承诺对应一个可执行 check；auto 项失败会让 CI 变红。
 
-- 生成时间：2026-11-20 19:07
-- 提交：`d9c8b7f`
-- **自动验证：21/21（100%）**
+- 生成时间：2026-11-21 10:05
+- 构建标识：`package`
+- **当前构建：4.0.0 · 保留字 55 · 内建 101 · 标准库 10 · 错误码 24 · 全仓 .impor 216/216**
+- **自动验证：22/22（100%）**
 - 人工验收：2 项（未完成前不计入兑现率）
 
 | 结果 | 承诺 | 状态 | 验证方式 |
 |---|---|---|---|
 | ✅ | 命令行版本号与 VERSION 文件一致 | auto | `verify_release.py --check version` |
+| ✅ | 全仓 .impor 已格式化（文件系统扫描，不依赖 Git） | auto | `verify_release.py --check fmt_clean` |
 | ✅ | 解压后双击示例 1，能看到「你好，Impor」 | auto | `verify_release.py --check quickstart_hello` |
 | ✅ | 示例 2 能读取 sample.txt 并写回副本 | auto | `verify_release.py --check quickstart_read_file` |
 | ✅ | 示例 3 在 Windows 上能调用系统 DLL（winsqlite3） | auto | `verify_release.py --check quickstart_dll` |
@@ -22,8 +24,8 @@
 | ✅ | 错误信息包含位置 / 原因 / 修复 / 错误码 / 文档锚点五项 | auto | `verify_release.py --check errors_actionable` |
 | ✅ | 每个错误码都有可跳转的文档锚点 | auto | `verify_release.py --check error_docs` |
 | ✅ | 已发布的 API 面被 api_baseline.json 冻结，漂移即失败 | auto | `verify_release.py --check api_frozen` |
-| ✅ | 3.11 的 20 个公开示例在 3.12 全部通过 | auto | `verify_release.py --check compat_20` |
-| ✅ | 65 个保留字没有一个是静默接受 | auto | `verify_release.py --check keywords` |
+| ✅ | 3.11 行为基线的 20 个公开示例在 4.0 全部通过 | auto | `verify_release.py --check compat_20` |
+| ✅ | 所有保留字都真正保留，没有一个是静默接受 | auto | `verify_release.py --check keywords` |
 | ✅ | Windows 便携版 ImporPortable.exe 存在且可分发 | auto | `verify_release.py --check portable` |
 | ✅ | START_HERE、常见问题与三个双击示例都在包内 | auto | `verify_release.py --check entry_files` |
 | ✅ | defer 块写法可用，非块写法明确拒绝 | auto | `verify_release.py --check defer` |

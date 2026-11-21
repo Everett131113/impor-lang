@@ -1,9 +1,9 @@
 important<<DAY<<english("English"):
 // 倒序字符串
-func reverse_text(s)
+def reverse_text(s)
     var out = ""
     var i = len(s) - 1
-    loop
+    while true
         if i < 0
             break
         set out = out + strcut(s, i, i + 1)

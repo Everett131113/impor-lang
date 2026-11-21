@@ -12,7 +12,7 @@
 import std.path as path
 import std.fs as fs
 
-func _replace(s, old, repl) {
+def _replace(s, old, repl) {
     if len(old) == 0 {
         return s
     }
@@ -30,26 +30,26 @@ func _replace(s, old, repl) {
     return out
 }
 
-func _escape(s) {
+def _escape(s) {
     var t = _replace(s, "&", "&amp;")
     t = _replace(t, "<", "&lt;")
     t = _replace(t, ">", "&gt;")
     return t
 }
 
-func _lines(text) {
+def _lines(text) {
     # 保留函数名给阅读者；实际实现是逐行拼接，不依赖数组追加。
     return text
 }
 
-func _starts(s, prefix) {
+def _starts(s, prefix) {
     if len(s) < len(prefix) {
         return false
     }
     return strcut(s, 0, len(prefix)) == prefix
 }
 
-func _render_md(text) {
+def _render_md(text) {
     var body = ""
     var line = ""
     var in_code = false
@@ -87,7 +87,7 @@ func _render_md(text) {
     return body
 }
 
-func _title_of(text) {
+def _title_of(text) {
     var line = ""
     var i = 0
     while i <= len(text) {
@@ -108,7 +108,7 @@ func _title_of(text) {
     return "未命名"
 }
 
-func main() {
+def main() {
     var content_dir = "apps/impor_ssg/content"
     var site_dir = "apps/impor_ssg/_site"
     var layout = fs.read("apps/impor_ssg/templates/layout.html")

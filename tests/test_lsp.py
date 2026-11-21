@@ -11,9 +11,9 @@ SRC = (
     'important<<DAY<<english("English"):\n'
     "import math\n"                 # 未使用导入 → unused-import
     "var counter = 0\n"             # 模块级全局
-    "func helper(x)\n"              # 定义 helper（第 4 行）
+    "def helper(x)\n"              # 定义 helper（第 4 行）
     "    return x + counter\n"
-    "func main()\n"
+    "def main()\n"
     "    var temp = 1\n"            # 未使用变量 → unused-variable（第 8 行）
     "    var y = helper(3)\n"       # 引用 helper（第 9 行）
     "    print(y)\n"
@@ -62,7 +62,7 @@ class TestLspV25(unittest.TestCase):
         self.assertIn("counter", labels)     # 模块级变量
         self.assertIn("math", labels)        # 导入名
         self.assertIn("print", labels)       # 内建函数
-        self.assertIn("func", labels)        # 关键字
+        self.assertIn("def", labels)        # 关键字
         for it in items:
             self.assertIn("kind", it)
 
@@ -76,7 +76,7 @@ class TestLspV25(unittest.TestCase):
         changes = result["changes"][URI]
         locs = {(e["range"]["start"]["line"], e["range"]["start"]["character"])
                 for e in changes}
-        self.assertIn((3, 5), locs)   # 定义 func helper（源码第 4 行，0 起 3）
+        self.assertIn((3, 4), locs)   # 定义 def helper（源码第 4 行，0 起 3；def 后名字列 4）
         self.assertIn((7, 12), locs)  # 调用 helper(3)（源码第 8 行，0 起 7）
 
     def test_rename_unknown_symbol_rejected(self):

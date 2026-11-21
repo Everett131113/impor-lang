@@ -1,19 +1,19 @@
 // std/time.impor — 时间戳、睡眠与人可读时间
 // 使用：import std.time  →  std.time.readable()
 
-func readable() {
+def readable() {
     return now()
 }
 
-func seconds() {
+def seconds() {
     return clock()
 }
 
-func sleep_ms(ms) {
+def sleep_ms(ms) {
     sleep(ms / 1000.0)
 }
 
-func elapsed(start) {
+def elapsed(start) {
     return clock() - start
 }
 

@@ -19,7 +19,7 @@ else
 
 // 循环
 var i = 1
-loop
+while true
     print("计数:", i)
     set i = i + 1
     if i > 3

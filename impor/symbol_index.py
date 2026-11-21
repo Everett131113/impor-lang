@@ -468,16 +468,41 @@ class ProjectIndex:
         by_scope = {}
         for s in syms:
             by_scope.setdefault((s.name, s.scope), []).append(s)
+        # 先一次性算出每行所属作用域。原实现对每个引用调用 scope_at_line，
+        # 每次都要重扫全部符号与行；千行文件会退化成十几秒，直接卡死 UI。
+        lines = text.split("\n")
+        scope_by_line = {}
+        scope_start = {}
+        for s in syms:
+            if s.kind not in ("func", "class", "exception", "struct"):
+                continue
+            start = max(1, int(s.line or 1))
+            base = len(lines[start - 1]) - len(lines[start - 1].lstrip(" \t")) \
+                if start <= len(lines) else 0
+            end = len(lines)
+            for i in range(start, len(lines)):
+                raw = lines[i]
+                if raw.strip() and (len(raw) - len(raw.lstrip(" \t"))) <= base:
+                    end = i
+                    break
+            label = s.scope + "." + s.name
+            for ln in range(start, min(end, len(lines)) + 1):
+                if start >= scope_start.get(ln, 0):
+                    scope_start[ln] = start
+                    scope_by_line[ln] = label
         out = {}
+        by_name = {}
+        for s in syms:
+            by_name.setdefault(s.name, []).append(s)
         for name, refs in tmp.refs.items():
             for p, line, col in refs:
                 if p != path:
                     continue
-                scope = tmp.scope_at_line(path, line)
+                scope = scope_by_line.get(line, "<module>")
                 cands = by_scope.get((name, scope)) or []
                 if not cands:
                     # 变量在嵌套块中声明但作用域仍是函数；再按同行最近声明兜底
-                    cands = [s for s in syms if s.name == name and s.line <= line]
+                    cands = [s for s in by_name.get(name, ()) if s.line <= line]
                 if not cands:
                     continue
                 s = min(cands, key=lambda x: abs(x.line - line))

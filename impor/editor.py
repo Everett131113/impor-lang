@@ -219,10 +219,10 @@ print(arr)
 print("最大:", max_arr(arr), "最小:", min_arr(arr), "和:", sum_arr(arr))
 '''),
     ("4. 函数与闭包", f'''{HEADER_MARK}
-func add(x, y)
+def add(x, y)
     return x + y
 
-func make_counter(start)
+def make_counter(start)
     def inc()
         nonlocal set start = start + 1
         return start
@@ -286,7 +286,7 @@ print(s)
 print("切割:", strcut("abcdef", 1, 4))
 '''),
     ("10. 斐波那契", f'''{HEADER_MARK}
-func fib(n)
+def fib(n)
     if n < 2
         return n
     return fib(n - 1) + fib(n - 2)
@@ -2520,13 +2520,13 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
 
     def insert_snippet(self):
         snips = [
-            ("函数", 'func name(args):\n    # TODO\n    return 0\n'),
-            ("类", 'class Name:\n    func init():\n        # TODO\n'),
+            ("函数", 'def name(args):\n    # TODO\n    return 0\n'),
+            ("类", 'class Name:\n    def init():\n        # TODO\n'),
             ("条件", 'if cond:\n    # TODO\nelse:\n    # TODO\n'),
             ("循环", 'for i in 1..10:\n    print(i)\n'),
             ("异常", 'try:\n    # TODO\ncatch e:\n    print(e)\n'),
             ("测试", 'expect(actual, expected, "case")\n'),
-            ("接口", 'interface Name {\n    func method() {\n        return 0\n    }\n}\n'),
+            ("接口", 'interface Name {\n    def method() {\n        return 0\n    }\n}\n'),
             ("记录", 'record Name {\n    var x = 0\n}\n'),
             ("命名空间", 'namespace Name {\n    var x = 0\n}\n'),
             ("匿名函数", 'var f = lambda (x): x * 2\n'),
@@ -4201,7 +4201,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         indent = re.match(r"[ \t]*", t.get(f"{start} linestart", start)).group(0)
         body_indent = indent + " " * max(2, getattr(self, "indent_width", 4))
         body = "\n".join(body_indent + ln.lstrip() if ln.strip() else "" for ln in sel.split("\n"))
-        block = f"{indent}func {name}():\n{body}\n"
+        block = f"{indent}def {name}():\n{body}\n"
         full = t.get("1.0", "end-1c")
         start_off = self._text_offset(full, start)
         end_off = self._text_offset(full, end)

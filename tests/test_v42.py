@@ -71,6 +71,7 @@ def ok_build(expected_ok, src, expect=()):
         shutil.rmtree(d, ignore_errors=True)
 
 
+@unittest.skip("v4.0.0 已删除这组历史写法；拒绝行为见 tests/test_v4_alias_removed.py")
 class TestPrintTolerance(unittest.TestCase):
     def test_print_without_parens(self):
         out = ok_run(self, 'print "你好"\nprint 1, 2, "a"\n', ["你好", "1 2 a"])
@@ -100,7 +101,7 @@ class TestTypeAnnotations(unittest.TestCase):
         ok_run(self, '''
 var x: int = 5
 var y: str = "s"
-func add(a: int, b: int) -> int {
+def add(a: int, b: int) -> int {
   return a + b
 }
 print(add(x, 2), y)
@@ -116,7 +117,7 @@ print(add(x, 2), y)
 class TestMultilineDelimiters(unittest.TestCase):
     def test_call_split_over_lines(self):
         ok_run(self, '''
-func add(a, b) {
+def add(a, b) {
   return a + b
 }
 var r = add(1,
@@ -143,6 +144,7 @@ if 1 > 0 {
 ''', ["deep", "after"])
 
 
+@unittest.skip("v4.0.0 已删除这组历史写法；拒绝行为见 tests/test_v4_alias_removed.py")
 class TestLoops(unittest.TestCase):
     def test_do_until_runs_once_then_condition(self):
         ok_run(self, '''
@@ -175,6 +177,7 @@ for j = 1; j <= 2; j++ { print("cf2", j) }
 ''', ["cf 0", "cf 1", "cf 2", "cf2 1", "cf2 2"])
 
 
+@unittest.skip("v4.0.0 已删除这组历史写法；拒绝行为见 tests/test_v4_alias_removed.py")
 class TestConditionTolerance(unittest.TestCase):
     def test_unless(self):
         ok_run(self, 'unless 0 > 1 { print("unless-ok") }\n', ["unless-ok"])
@@ -188,6 +191,7 @@ print("done")
 ''', ["then-ok", "ze-ok", "done"])
 
 
+@unittest.skip("v4.0.0 已删除这组历史写法；拒绝行为见 tests/test_v4_alias_removed.py")
 class TestPrintTolerance(unittest.TestCase):
     def test_print_without_parens_comma(self):
         # 3.6.7 起纯英文关键字：`打印`/`输出` 不再是关键字；这里只验证
@@ -215,6 +219,7 @@ try {
 ''', ["e"])
 
 
+@unittest.skip("v4.0.0 已删除这组历史写法；拒绝行为见 tests/test_v4_alias_removed.py")
 class TestOperators(unittest.TestCase):
     def test_incdec(self):
         ok_run(self, '''
@@ -245,9 +250,10 @@ print(i)
 
 
 class TestDeclarations(unittest.TestCase):
+    @unittest.skip("v4.0.0 已删除免括号参数")
     def test_no_paren_def(self):
         ok_run(self, '''
-func 加 a, b {
+def 加 a, b {
   return a + b
 }
 print(加(2, 3))
@@ -256,8 +262,8 @@ print(加(2, 3))
     def test_new_without_parens(self):
         ok_run(self, '''
 class 盒 {
-  func __init__() { self.v = 1 }
-  func get() { return self.v }
+  def __init__() { self.v = 1 }
+  def get() { return self.v }
 }
 var o = new 盒
 print(o.get())
@@ -266,16 +272,17 @@ print(o.get())
     def test_super_without_parens(self):
         ok_run(self, '''
 class 甲 {
-  func hi() { return "hi" }
+  def hi() { return "hi" }
 }
 class 乙 extends 甲 {
-  func hi() { return super.hi() + "!" }
+  def hi() { return super.hi() + "!" }
 }
 var o = new 乙()
 print(o.hi())
 ''', ["hi!"])
 
 
+@unittest.skip("v4.0.0 已删除这组历史写法；拒绝行为见 tests/test_v4_alias_removed.py")
 class TestCBackendTolerance(unittest.TestCase):
     """同一批宽容写法在 C 后端（Python 转译 + C 编译）也要成立。"""
 

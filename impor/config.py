@@ -136,6 +136,16 @@ def apply_config(interp, start_dir=None):
     cache_dir = pkg_cache_dir()
     if os.path.isdir(cache_dir) and cache_dir not in interp.module_search_paths:
         interp.module_search_paths.append(cache_dir)
+    # v4.0.1：每个已安装包目录各自也加入搜索路径。
+    # 原因：缓存根只能解析 <pkg>/__pkg__.impor；旧式包（<pkg>/<name>.impor）必须以包目录为根才能 import。
+    if os.path.isdir(cache_dir):
+        try:
+            for _n in sorted(os.listdir(cache_dir)):
+                _p = os.path.join(cache_dir, _n)
+                if os.path.isdir(_p) and _p not in interp.module_search_paths:
+                    interp.module_search_paths.append(_p)
+        except OSError:
+            pass
     return cfg
 
 

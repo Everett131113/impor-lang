@@ -16,13 +16,13 @@ IMPOR = os.path.join(ROOT, "Impor.py")
 
 MOD_SRC = (
     'export add, base\n'
-    'func add(a, b)\n'
+    'def add(a, b)\n'
     '    return a + b\n'
     'var base = 10\n'
 )
 MAIN_SRC = (
     'import modx as m\n'
-    'func apply_mod(x)\n'
+    'def apply_mod(x)\n'
     '    return x.add(1, 2) + x.base\n'
     'var mm = m\n'
     'print(apply_mod(mm))\n'

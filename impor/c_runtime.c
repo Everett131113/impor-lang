@@ -37,6 +37,37 @@ int __stdcall WideCharToMultiByte(unsigned int CodePage, unsigned long dwFlags,
 #define IMPOR_STDCALL
 #endif
 
+/* ===== v4.1 DLL 模式：绕开 CRT 堆，改用进程堆 =====
+   背景：tcc 生成的 DLL 第一次走 CRT malloc 时，会往 msvcrt.dll 的共享退出表登记
+   堆清理钩子；宿主 FreeLibrary 卸载 DLL 后，进程退出仍会调到已卸载代码，触发
+   0xC0000005。改用 GetProcessHeap() 分配后，DLL 不再登记该钩子，
+   “加载 → 调用 → 卸载 → 退出”全程退出码为 0（2026-11-21 实测）。 */
+#if defined(IMPOR_BUILD_DLL) && defined(_WIN32)
+static void *rtd_alloc(size_t n) {
+    return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, n ? n : (size_t)1);
+}
+static void *rtd_realloc(void *p, size_t n) {
+    HANDLE hp = GetProcessHeap();
+    if (!p) return HeapAlloc(hp, HEAP_ZERO_MEMORY, n ? n : (size_t)1);
+    if (!n) { HeapFree(hp, 0, p); return NULL; }
+    return HeapReAlloc(hp, HEAP_ZERO_MEMORY, p, n);
+}
+static void rtd_free(void *p) {
+    if (p) HeapFree(GetProcessHeap(), 0, p);
+}
+static char *rtd_strdup(const char *s) {
+    size_t n = strlen(s ? s : "") + 1;
+    char *d = (char *)rtd_alloc(n);
+    if (d) memcpy(d, s ? s : "", n);
+    return d;
+}
+#define malloc(n) rtd_alloc((size_t)(n))
+#define calloc(c, n) rtd_alloc((size_t)(c) * (size_t)(n))
+#define realloc(p, n) rtd_realloc((void *)(p), (size_t)(n))
+#define free(p) rtd_free((void *)(p))
+#define strdup(s) rtd_strdup(s)
+#endif
+
 typedef enum { V_NULL, V_INT, V_FLOAT, V_STR, V_BOOL, V_ARR, V_OBJ, V_DICT, V_FUNC, V_MODULE } VType;
 typedef struct Arr Arr;
 typedef struct Obj Obj;
@@ -91,10 +122,17 @@ static void rt_note_alloc(long long bytes) {
     g_rt_allocs++;
     g_rt_bytes += bytes;
     if (g_rt_bytes > g_rt_peak) g_rt_peak = g_rt_bytes;
+#if defined(IMPOR_BUILD_DLL)
+    /* 共享库模式不注册 atexit：tcc 的 DLL CRT 在 FreeLibrary/进程退出时会再次
+       走退出钩子，导致 0xC0000005 崩溃（2026-11-21 实测）。宿主可显式调用
+       impor_runtime_shutdown() 回收，或交给操作系统在卸载时收回。 */
+    (void)0;
+#else
     if (!g_rt_shutdown_ready) {
         g_rt_shutdown_ready = 1;
         atexit(rt_shutdown);
     }
+#endif
 }
 static void rt_note_free(long long bytes) {
     g_rt_frees++;
@@ -725,16 +763,17 @@ static Val rt_range(Val n) {
     return r;
 }
 static Val rt_arr_get(Val a, Val b) {
-    if (a.t != V_ARR || !a.a) rt_abort("下标访问需要数组");
+    if (a.t != V_ARR || !a.a) rt_throw("TypeError", "下标访问需要数组");
     long long i = rt_int(b);
-    if (i < 0 || i >= a.a->n) rt_abort("list index out of range");
+    /* v4.1：越界改为 rt_throw，让 try/catch 能捕获（与解释器一致） */
+    if (i < 0 || i >= a.a->n) rt_throw("IndexError", "list index out of range");
     return a.a->items[i];
 }
 static Val rt_arr_set(Val a, Val b, Val c) {
     if (a.t == V_DICT) return rt_dict_set(a, b, c);
-    if (a.t != V_ARR || !a.a) rt_abort("下标赋值需要数组");
+    if (a.t != V_ARR || !a.a) rt_throw("TypeError", "下标赋值需要数组");
     long long i = rt_int(b);
-    if (i < 0 || i >= a.a->n) rt_abort("list index out of range");
+    if (i < 0 || i >= a.a->n) rt_throw("IndexError", "list index out of range");
     rt_val_free(a.a->items[i]);
     a.a->items[i] = rt_val_dup(c);
     return c;
@@ -1012,6 +1051,20 @@ static Val rt_err_obj(void) {
     rt_objset(o, "name", v_str(g_err_type));
     rt_objset(o, "msg", v_str(g_err_msg));
     return v_obj(o);
+}
+
+/* ================= v4.1：自定义异常与类型化 catch =================
+   exception Foo 只在编译期登记名字；raise Foo("消息") 直接落成
+   rt_throw("Foo", "消息")，catch Foo e 用 rt_err_matches("Foo") 过滤。
+   类型不匹配时 rt_rethrow() 把异常抛给外一层 try，语义与解释器一致。 */
+static int rt_err_matches(const char *t) {
+    if (!t || !t[0]) return 1;
+    return strcmp(g_err_type, t) == 0;
+}
+static void rt_rethrow(int level) {
+    if (level > 0) longjmp(g_jmp_stack[level - 1], 1);
+    rt_report_error();
+    exit(1);
 }
 static Val obj_call(Obj *o, const char *name, Val *args, int n) {
     (void)n;
@@ -1391,11 +1444,11 @@ static Val rt_div(Val a, Val b) {
 static Val rt_mod(Val a, Val b) {
     if (a.t == V_FLOAT || b.t == V_FLOAT) {
         double d = rt_num(b);
-        if (d == 0) rt_abort("integer division or modulo by zero");
+        if (d == 0) rt_throw("ZeroDivisionError", "integer division or modulo by zero");
         return v_float(fmod(rt_num(a), d));
     }
     long long d = rt_int(b);
-    if (d == 0) rt_abort("integer modulo by zero");
+    if (d == 0) rt_throw("ZeroDivisionError", "integer modulo by zero");
     long long r = rt_int(a) % d;
     if (r != 0 && ((r < 0) != (d < 0))) r += d;  /* Python 取正模语义 */
     return v_int(r);
@@ -2082,13 +2135,27 @@ static void rt_json_enc_dict(Val v, RtBuf *b) {
     }
     rt_buf_addc(b, '}');
 }
+/* v4.1：浮点序列化取“最短且能原样读回”的写法。
+   之前固定 %.17g 会把 6.6 写成 6.5999999999999996，与解释器 json.dumps 不同。 */
+static void rt_fmt_shortest_double(double d, char *buf, size_t cap) {
+    int p;
+    for (p = 15; p <= 17; p++) {
+        snprintf(buf, cap, "%.*g", p, d);
+        if (strtod(buf, NULL) == d) break;
+    }
+    /* Python 的浮点 repr 一定带小数点：1024 要写成 1024.0 */
+    if (!strchr(buf, '.') && !strchr(buf, 'e') && !strchr(buf, 'E')) {
+        size_t n = strlen(buf);
+        if (n + 3 <= cap) { buf[n] = '.'; buf[n + 1] = '0'; buf[n + 2] = '\0'; }
+    }
+}
 static void rt_json_enc(Val v, RtBuf *b) {
     char tmp[64];
     switch (v.t) {
         case V_NULL: rt_buf_add(b, "null"); break;
         case V_BOOL: rt_buf_add(b, v.i ? "true" : "false"); break;
         case V_INT: snprintf(tmp, sizeof(tmp), "%lld", v.i); rt_buf_add(b, tmp); break;
-        case V_FLOAT: snprintf(tmp, sizeof(tmp), "%.17g", v.f); rt_buf_add(b, tmp); break;
+        case V_FLOAT: rt_fmt_shortest_double(v.f, tmp, sizeof(tmp)); rt_buf_add(b, tmp); break;
         case V_STR: rt_json_escape(b, v.s ? v.s : ""); break;
         case V_ARR: rt_json_enc_arr(v, b); break;
         case V_DICT: rt_json_enc_dict(v, b); break;

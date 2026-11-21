@@ -1,15 +1,15 @@
-func f(x) {
-    switch x {
-        case 1:
-            switch x {
-                case 1:
+def f(x) {
+    match x {
+        case 1 :
+            match x {
+                case 1 :
                     return "aa"
-                default:
+                default :
                     return "ab"
-            }
-        case 2:
+        }
+        case 2 :
             return "b"
-        default:
+        default :
             return "z"
     }
     return "end"

@@ -4,7 +4,97 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本（主版本.次版本.修订号）。
 
-> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `3.12.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `4.0.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+
+## [未发布]
+
+### 四端一致性收口 + 默认构建提速（v4.1 修订）
+
+- **异常在 C 后端补齐**：`exception` 声明、`raise T("消息")`、`catch T e` 的类型过滤，以及类型不匹配时“先跑 finally 再抛给外一层”的语义（`rt_err_matches` / `rt_rethrow`）。数组越界与除零从 `rt_abort`（直接退出）改成 `rt_throw`（可被 `try/catch` 捕获）。`examples/demo_29_exceptions.impor`、`examples/errors.impor` 与“嵌套 try + 类型不匹配”用例，解释器与独立 exe 的 stdout 逐字节一致。
+- **`impor build` 默认走数值快路径**：`--fast` 从显式 opt-in 变为默认行为，新增 `--no-fast` 退回完整 Val 后端；`--lib` / `--c-source` 固定走完整后端。快路径的 `+ - * %` 与取负换成带 64 位溢出检查的 `iadd/isub/imul/ineg`，溢出时打印中文错误并以退出码 3 结束、提示改用 `--no-fast`，不再静默回绕。构建摘要新增「后端：」一行。
+- **JSON 浮点**：C 运行时改用最短可回读的浮点写法（`6.6` 而不是 `6.5999999999999996`），整数值浮点保证带 `.0`。
+- **能力矩阵落地**：新增 `tools/support_matrix.py`，16 个用例同时跑 解释器 / 转译器 / C 后端(完整) / C 后端(auto) / imporc，直接生成 `docs/能力矩阵.md`；`--check` 只在已知基线之外出现新不一致时判红，基线在 `docs/能力矩阵基线.json`。
+- 实测（本机）：fib(28) 解释器 292 ms、完整 Val 后端 456 ms、默认构建 42 ms；矩阵 16 例 C 后端 14/16 与解释器一致，imporc 7/16（`import` 与较新内建未进 imporc 映射表，仍为已知缺口）。
+
+### 包管理器：装完即可 import（vendor 化）
+
+- `impor pkg install` 默认把包装到 `<项目>/lib/<名字>/`，并把 `./lib`（必要时补 `./lib/<名字>`）写进 `impor.toml` 的 `[module_search_paths]`，装完直接 `import` 可用；`--no-vendor` 保留旧的"只进缓存"行为。
+- `impor pkg install` / `impor pkg remove` 不再在缺少 `impor.toml` 的目录里凭空生成配置：此时只写全局缓存并打印提示（此前会往当前目录写入 `impor.toml` + `impor.lock`）。
+- `impor/config.py`：全局缓存下**每个已安装包目录**也加入模块搜索路径，修复"安装成功但 `import` 报 `E1015`"（`<包>/<名字>.impor` 这种没有 `__pkg__.impor` 的布局）。
+- `impor.toml` 的 `[dependencies]` 与 `[module_search_paths]` 改为按行编辑，保留注释与原有顺序（此前 `_write_toml` 整篇重写会删掉注释）。
+
+验收：`tests.test_impor` / `tests.test_v51` 中 pkg 相关 14 项通过；自建 25 条 vendor 断言全过；`tools/verify_release.py` 22/22。
+
+## [4.0.0] - 2026-11-21
+
+### 唯一写法：12 类兼容写法物理删除
+
+- `impor/lexer.py` 从 `KEYWORDS` 删除 `func` / `loop` / `local`，`DEPRECATED_ALIASES` 只保留 `elseif` / `switch`。
+- `impor/parser.py` 删除 12 类分支：`func`、`loop`、`let/local`、裸 `print`、`:=`、`++/--`、`&& || !`、`<>`、`then`、`unless`、`for each/of`、`1..n`、C 风格 `for`、`do..until`。`imporc.impor` 同步删除对 `func` 的识别；旧写法统一报 `E2002`，不静默降级。裸 `print` 在语句位置按内建标识符拦截（`print "hi"` / `print 1 + 2` / `print x` 均 `E2002`），`print(...)` 正常；`impor lint` 对这类文件返回 1 并带错误码，不再输出“未发现问题”。
+- 源码迁移：`bootstrap/imporc.impor` 55 处 `func→def`，并删除其 4 处 `func` 解析分支；`tests/` 33 个文件 191 处；`conformance/compat_3_11/` 9 个 fixture 改为 `def` / `while true`，`manifest.json` 重算哈希并标注 `syntax_version: 4.0.0`。
+- API 基线关键字 58 → 55；新增 `tests/test_v4_alias_removed.py` 锁定删除项。
+
+### 验收自证
+
+- `tools/check_fmt_all.py` 改为文件系统扫描（`os.walk`），不再调用 `git ls-files`；发布包内可直接跑。
+- `tools/verify_claims.py` 去掉 `git rev-parse`；README 首屏的版本、保留字、内建、标准库、错误码、格式门禁数字全部从发布包内文件计算并写入标记块，`--check` 会抓漂移。
+- README 删除硬编码的 47 MB / 0.8 s / 121.5 KB / 16.8 MB / 28 ms；改为工具现场打印或指向复现命令。
+
+### 明确边界
+
+- `elseif` / `switch`、分号、冒号缩进块、`extends`、`new A` 省括号、`super.m()`、`catch {}`、裸 `exit`、隐式返回、`var x`、`static/readonly` 仍兼容，不在本次 12 类清单内。
+- README 没有“可 catch 熔断”的承诺；本版未新增步数/时间预算 API，避免把未实现的能力写成文案。
+
+## [3.14.0] - 2026-11-21
+
+### 验收机制变成可执行事实
+
+- `tools/api_baseline.json` 进仓库 `tools/` 并随发布包分发；`api_frozen` 继续按基线校验公开面。
+- README 兑现率改由 `python tools/verify_claims.py` 直出，手写数字被标记块替换；新增 `--check` 模式，README 或 `docs/claims.md` 与脚本结果不一致时直接失败。当前自动验证 22/22，人工验收 2 项。
+- 新增 `tests/test_v314.py`：缺文件干净失败、仅 WARN 时 rc=0、冒烟不创建 Tk 三项锁死。
+
+### 全仓格式化锁绿
+
+- `tools/check_fmt_all.py` 进入 CI 与发布门禁：受版本控制的 237 个 `.impor` 中，216 个纳入门禁并全部通过；跳过的 21 个是 3.11 冻结 fixture（20）与自举生成物 `bootstrap/imporc.impor`（1）。
+- 同步修复 `impor/fmt.py` 三个真实缺陷：大括号块内缩进子块被拍平、`return [` 前空格丢失、一元负号后多空格；修复后对 108 个改动文件做 AST 对比，语义未变。
+
+### 后端口径定稿
+
+- 解释器是唯一语义定义；C 后端明确为“语法子集，不支持即编译期拒绝”，不再自称唯一发布通道。
+- 删除代码与当前文档中的旧口径残留；历史 CHANGELOG 标注“该口径已废止”，不篡改历史事实。
+
+### 退出码与测试入口
+
+- `impor check`：只有 error 级问题返回非零，格式未达标只给 WARN；文件不存在输出干净失败信息，不再抛 `UnboundLocalError` 或内部栈。
+- `examples/snake.impor --smoke` 走纯逻辑 60 帧，不创建 `Tk()`，无显示环境也能跑。
+
+### 未做（明确边界到 v4）
+
+- 12 类同义写法仍保留；物理删别名、edition 开关与 parser 分支删除留给 v4，v3.14 只完成格式化锁绿与口径收口。
+
+## [3.13.0] - 2026-11-20
+
+### 已修：声明语义变真
+
+- `set q = 5` / `q = 5` / `q := 5` 在 `q` 未声明时，解释器、`impor run`、`impor lint`、`impor build`、`impor compile` 全部拒绝；不再静默创建变量。
+- `Env.update_nearest` 找不到绑定改为抛 `NameError`；裸赋值不再被解析成 `local` 声明；快速后端对 `update/global/nonlocal` 强制回退树遍历。
+- `impor lint` 新增 `undeclared-assign`；`build` / `compile` 新增 `_decl_gate` 静态门禁。
+- enum 合成变量单独豁免，全仓 206 个 `.impor` 重扫零误报。
+- 回归：`tests/test_strict_declarations.py`（四端 + 声明后更新 + 函数内更新）。
+
+### 已改口径：不再自称“好语言”
+
+- 定位写死为 **教学语言 + 小型工具 + 可发布玩具**。
+- 删除“C 后端是唯一发布通道”的旧口径，改为“解释器/便携版是默认路径，C 后端是可选的脱离 Python 分发路径”。
+- README 新增 `fib(28)` 算力实测：解释器 301–331 ms，C exe 473–479 ms，**C 后端更慢**；删除“原生更快”的误读空间。
+- 类型注解降级为“仅字面量静态提示”，新增 `docs/类型注解边界.md`。
+- 修复 `docs/语言规范.md` 两个 `## 14`（C 后端改为 §23）与 19.2 中文关键字矛盾。
+
+### 未做（明确边界）
+
+- 12 类同义写法未物理删除；`impor fmt` 与 `impor lint --style` 负责收敛，兼容层标为 deprecated。
+- C 后端大整数 / 自定义异常未补齐，边界见 `docs/3.13-后端能力边界.md`。
+- CHANGELOG 历史未拆分，本版只停止继续膨胀。
 
 ## [3.12.0] - 2026-11-19
 
@@ -72,6 +162,10 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 - 增量构建缓存键纳入 `c_runtime.c` / `ctrans.py` / `cfast.py` 指纹，改运行时或转译器不再命中旧 exe。
 - `fileread` 在复制成字符串后释放临时缓冲，反复读取大文件不再堆积。
 - 桌面打包不再复制 `apps/impor_sqlite_report/report.db`、`report.html` 与 `apps/impor_ssg/_site/` 运行产物。
+- 修复安装到含括号目录（如 `Impor(I++) 3.12.0`）时双击入口报「未知命令: (」：`.bat` 的 `if (...)` 块会被路径里的 `)` 截断，
+  入口与三个快速开始脚本改为 `goto` 结构，`install.bat` 的 `cd /d` 补引号；桌面发布目录同步改为无括号的 `Impor 3.12.0`。
+- 入口中文提示不再由 `echo` 输出，改由 `type examples/quickstart/_welcome.txt` 输出，避免 cmd 在部分双击环境下把全角冒号误当命令分隔符。
+- CLI 首次运行不再打印旧版的“未找到可选的头部标记”提示；头部标记自 v2.3 起就是可选项，新手入口保持干净输出。
 
 ## [3.11.0] - 2026-11-18
 
@@ -246,9 +340,9 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 - `_BIN_OPS` 补入 `->`，`def add(a : int) -> int` 不会再被格式化成 `- >`，格式化后的 C ABI 源码仍可直接 `build --lib`。
 - `examples/c_abi/lib.impor` 改为 fmt-clean，`impor fmt --check` 通过。
 
-### 变更：C 后端成为唯一发布路径
+### 变更：C 后端当时被定为唯一发布通道（该口径已在 3.13 废止）
 
-- `impor build` 是唯一发布出口（exe 或 DLL）；`impor run` / `repl` / `run-dbg` 只做开发期运行与调试。
+- `impor build` 是当时的唯一发布出口（exe 或 DLL）；`impor run` / `repl` / `run-dbg` 只做开发期运行与调试。
 - `impor compile`（Impor → Python）保留为开发兼容，不再承担发布职责；帮助文案已明确标注“不是发布路径”。
 - `imporc` 只做内部一致性探针，不再是对外编译入口。
 - C 后端遇到不支持特性时，不再引导用户“改用 Python 后端发布”，只提示开发期用 `impor run` 验证。

@@ -5,10 +5,10 @@ Impor (I++) 词法分析器。
 Token 类型：
   OP, NUM, STR, ID, KEY, EOF, INDENT, DEDENT, NEWLINE
 
-关键字（真正的保留字）：
-  if else elseif while for in def func var set return true false
+关键字（真正的保留字，v4.0.0 共 55 个）：
+  if else elseif while for in def var set return true false
   and or not break continue import as try catch finally nonlocal
-  global class new super exception raise loop exit cls
+  global class new super exception raise exit cls
 
 说明：
   - 支持 // 与 # 单行注释，/* */ 多行注释（可跨行）
@@ -50,18 +50,18 @@ TOK_DOC = "DOC"    # v3.5 文档注释：以 `##` 开头的整行，供 hover / 
 
 KEYWORDS = {
     "if", "else", "elseif", "while", "for", "in",
-    "def", "func", "var", "set", "return",
+    "def", "var", "set", "return",
     "true", "false", "and", "or", "not",
     "break", "continue", "import", "as",
     "try", "catch", "finally",
     "nonlocal", "global", "class", "new", "super",
-    "exception", "raise", "loop", "exit", "cls",
+    "exception", "raise", "exit", "cls",
     "from", "export", "assert", "use",
     "yield", "with",  # v3.8.4：保留但未实现，语法阶段必须明确拒绝
     "const", "switch",  # v2.17：只读常量声明；match 的 C 风格别名
     # v2.18：新增关键字（目标 120 个保留字）——别名 / 字面量 / 预留特性
     # 注：fn / repeat 为软关键字（语句位置特殊解析，其他位置可作标识符，避免撞 std 模块与内建）
-    "local", "elif", "until",
+    "elif", "until",
     "case", "default", "nil", "null", "none",
     # v3.7.2：以下 6 个改为软关键字（仍保留语法，但可作标识符）。
     # 从 KEYWORDS 移除后，parser 按上下文判断，未命中语法时按普通 ID 处理。
@@ -72,14 +72,15 @@ KEYWORDS = {
     "sealed",
 }
 
+# v4.0.0：已删除的历史关键字。不再进入 KEYWORDS，但也不允许被当作标识符，
+# 否则 `let x = 1` 会被拆成两个语句而静默“成功”。
+REMOVED_KEYWORDS = frozenset({"func", "loop", "local", "let", "then", "unless", "do"})
+
 # v3.7.2：同义关键字收敛。左边是 deprecated 别名，右边是唯一推荐主写法。
 # fmt 只输出主写法；LSP 补全只推主写法；规范/教程/conformance 以主写法为准。
 DEPRECATED_ALIASES = {
-    "func": "def",
     "elseif": "elif",
     "switch": "match",
-    "loop": "while",
-    "let": "var",
 }
 DEPRECATED_KEYWORDS = frozenset(DEPRECATED_ALIASES)
 CANONICAL_KEYWORDS = frozenset((KEYWORDS - DEPRECATED_KEYWORDS)
@@ -278,6 +279,17 @@ def _scan_line(tokens, s, line_no):
                 buf.append(s[i]); i += 1
             word = "".join(buf)
             src_word = word
+            if word in REMOVED_KEYWORDS:
+                fixed = {
+                    "func": "def", "loop": "while true", "local": "var",
+                    "let": "var", "then": "冒号或大括号块", "unless": "if not",
+                    "do": "while true 或 for in",
+                }[word]
+                raise ImporSyntaxError(
+                    "`%s` 是 v4.0.0 已删除的历史写法" % word,
+                    line_no, col0,
+                    hint="改用唯一写法：%s" % fixed,
+                )
             if word in KEYWORDS:
                 word_out, t = word, TOK_KEY
             elif legacy_cn_enabled() and word in CN_TO_EN:

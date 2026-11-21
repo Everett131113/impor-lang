@@ -48,7 +48,7 @@ class TestCompiledErrorStyle(unittest.TestCase):
         return r
 
     def test_compiled_div_zero_impor_style(self):
-        r = self._compile_and_run("""func div(a, b) {
+        r = self._compile_and_run("""def div(a, b) {
     return a / b
 }
 print(div(10, 0))
@@ -62,7 +62,7 @@ print(div(10, 0))
 
     def test_compiled_debug_env_shows_traceback(self):
         r = self._compile_and_run(
-            "func div(a, b) {\n    return a / b\n}\nprint(div(10, 0))\n",
+            "def div(a, b) {\n    return a / b\n}\nprint(div(10, 0))\n",
             env_extra={"IMPOR_DEBUG": "1"})
         self.assertIn("第2行 ZeroDivisionError", r.stderr)
         self.assertIn("Traceback", r.stderr)              # IMPOR_DEBUG=1 显示完整栈

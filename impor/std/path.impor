@@ -2,9 +2,9 @@
 // 使用：import std.path  →  std.path.join("docs", "a.md")
 // 只用 strcut / len 等基础内建，不依赖宿主字符串方法。
 
-func _last_index(s, ch) {
+def _last_index(s, ch) {
     var i = 0
-    var found = -1
+    var found =-1
     while i < len(s) {
         if strcut(s, i, i + 1) == ch {
             found = i
@@ -14,7 +14,7 @@ func _last_index(s, ch) {
     return found
 }
 
-func norm(p) {
+def norm(p) {
     var s = to_str(p)
     var out = ""
     var i = 0
@@ -33,7 +33,7 @@ func norm(p) {
     return out
 }
 
-func is_abs(p) {
+def is_abs(p) {
     var s = norm(p)
     if strcut(s, 0, 1) == "/" {
         return true
@@ -44,7 +44,7 @@ func is_abs(p) {
     return false
 }
 
-func join(a, b) {
+def join(a, b) {
     var left = norm(a)
     var right = norm(b)
     if right == "" {
@@ -59,7 +59,7 @@ func join(a, b) {
     return left + "/" + right
 }
 
-func basename(p) {
+def basename(p) {
     var s = norm(p)
     var idx = _last_index(s, "/")
     if idx < 0 {
@@ -68,7 +68,7 @@ func basename(p) {
     return strcut(s, idx + 1, len(s))
 }
 
-func dirname(p) {
+def dirname(p) {
     var s = norm(p)
     var idx = _last_index(s, "/")
     if idx < 0 {
@@ -80,7 +80,7 @@ func dirname(p) {
     return strcut(s, 0, idx)
 }
 
-func ext(p) {
+def ext(p) {
     var name = basename(p)
     var idx = _last_index(name, ".")
     if idx < 0 {
@@ -89,7 +89,7 @@ func ext(p) {
     return strcut(name, idx, len(name))
 }
 
-func stem(p) {
+def stem(p) {
     var name = basename(p)
     var e = ext(p)
     if e == "" {

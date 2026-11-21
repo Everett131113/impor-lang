@@ -1,5 +1,5 @@
 important<<DAY<<english("English"):
-func sum_to(n)
+def sum_to(n)
     if n <= 1
         return 1
     return n + sum_to(n - 1)

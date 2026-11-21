@@ -53,9 +53,9 @@ LESSONS = [
     },
     {
         "id": 6, "title": "函数", "goal": "定义函数、传参与返回",
-        "teach": "func 定义函数；return 返回值；调用时按位置传参。",
+        "teach": "def 定义函数；return 返回值；调用时按位置传参。",
         "starter": '# TODO: 定义 square(x)，返回 x*x，并输出 square(7)\n',
-        "answer": 'func square(x)\n    return x * x\nprint("平方:", square(7))\n',
+        "answer": 'def square(x)\n    return x * x\nprint("平方:", square(7))\n',
         "expect": "平方: 49",
     },
     {
@@ -90,14 +90,14 @@ LESSONS = [
         "id": 11, "title": "异常处理", "goal": "抛出与捕获自定义异常",
         "teach": "exception 定义异常，raise 抛出，try / catch / finally 捕获与收尾。",
         "starter": 'exception ScoreError\n# TODO: 抛出并捕获，输出 捕获异常\n',
-        "answer": 'exception ScoreError\nfunc check(score)\n    if score > 100\n        raise ScoreError("非法成绩")\n    return score\n\ntry\n    check(120)\ncatch ScoreError e\n    print("捕获异常:", e.msg)\nfinally\n    print("检查结束")\n',
+        "answer": 'exception ScoreError\ndef check(score)\n    if score > 100\n        raise ScoreError("非法成绩")\n    return score\n\ntry\n    check(120)\ncatch ScoreError e\n    print("捕获异常:", e.msg)\nfinally\n    print("检查结束")\n',
         "expect": "捕获异常: 非法成绩\n检查结束",
     },
     {
         "id": 12, "title": "闭包与高阶函数", "goal": "返回函数并在调用之间保留状态",
         "teach": "外层函数的局部变量会被内层函数捕获；make_counter 每次调用都保留自己的计数。",
-        "starter": 'func make_counter()\n    var n = 0\n    # TODO: 返回一个每次 +1 的函数\n',
-        "answer": 'func make_counter()\n    var n = 0\n    func next()\n        set n = n + 1\n        return n\n    return next\n\nvar c = make_counter()\nprint(c())\nprint(c())\n',
+        "starter": 'def make_counter()\n    var n = 0\n    # TODO: 返回一个每次 +1 的函数\n',
+        "answer": 'def make_counter()\n    var n = 0\n    def next()\n        set n = n + 1\n        return n\n    return next\n\nvar c = make_counter()\nprint(c())\nprint(c())\n',
         "expect": "1\n2",
     },
 ]

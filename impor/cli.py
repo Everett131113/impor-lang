@@ -52,6 +52,45 @@ EXIT_RUNTIME = 1
 EXIT_SYNTAX = 2
 EXIT_USAGE = 3
 
+
+# ---- v4.1：64 位工具链自动发现 ----
+# 内置 tcc 只能出 i386，64 位宿主（64 位 Python / 64 位 C++）无法加载。
+# 这里按“环境变量 → PATH → 常见安装位置”的顺序找 x86_64 gcc，找到就用它出 64 位库。
+_GCC64_HINTS = (
+    r"C:\Program Files (x86)\Dev-Cpp\MinGW64\bin\gcc.exe",
+    r"C:\msys64\mingw64\bin\gcc.exe",
+    r"C:\TDM-GCC-64\bin\gcc.exe",
+    r"C:\mingw64\bin\gcc.exe",
+)
+
+
+def _gcc_is_x64(cc):
+    """gcc -dumpmachine 里带 x86_64 才算 64 位，避免误用 32 位 MinGW。"""
+    import subprocess
+    try:
+        p = subprocess.run([cc, "-dumpmachine"], capture_output=True, text=True, timeout=20)
+        return "x86_64" in (p.stdout or "").lower()
+    except Exception:
+        return False
+
+
+def find_gcc64():
+    """返回可用的 x86_64 gcc 路径；找不到返回 None。"""
+    env = os.environ.get("IMPOR_CC")
+    if env and os.path.isfile(env):
+        return env if _gcc_is_x64(env) else None
+    found = shutil.which("gcc") or shutil.which("x86_64-w64-mingw32-gcc")
+    if found and _gcc_is_x64(found):
+        return found
+    import glob
+    for path in _GCC64_HINTS:
+        if os.path.isfile(path) and _gcc_is_x64(path):
+            return path
+    for path in glob.glob(r"C:\Program Files\mingw-w64*\*\bin\gcc.exe"):
+        if _gcc_is_x64(path):
+            return path
+    return None
+
 NEW_TEMPLATE = ('important<<DAY<<english("English"):\n'
                 '// Impor (I++) 脚本\n'
                 'var name = "世界"\n'
@@ -59,10 +98,10 @@ NEW_TEMPLATE = ('important<<DAY<<english("English"):\n'
 
 NEW_LIB_TEMPLATE = ('important<<DAY<<english("English"):\n'
                     '// Impor (I++) 库模块模板：函数默认导出，外部可 import\n'
-                    'func greet(name)\n'
+                    'def greet(name)\n'
                     '    return "你好, " + name\n'
                     '\n'
-                    'func add(a, b)\n'
+                    'def add(a, b)\n'
                     '    return a + b\n')
 
 NEW_PKG_FILES = {
@@ -86,11 +125,11 @@ NEW_PKG_FILES = {
                                      'export greet\n'
                                      'export add\n'),
     "lib/{name}_lib/greet.impor": ('// {name} 库模块：greet\n'
-                                   'func greet(name)\n'
+                                   'def greet(name)\n'
                                    '    return "你好, " + name\n'
                                    'export greet\n'),
     "lib/{name}_lib/add.impor": ('// {name} 库模块：add\n'
-                                 'func add(a, b)\n'
+                                 'def add(a, b)\n'
                                  '    return a + b\n'
                                  'export add\n'),
     "README.md": ('# {name}\n\n'
@@ -111,7 +150,7 @@ NEW_GAME_TEMPLATE = ('important<<DAY<<english("English"):\n'
                      'var vx = 3\n'
                      'var vy = 2\n'
                      '\n'
-                     'func step()\n'
+                     'def step()\n'
                      '    x += vx\n'
                      '    y += vy\n'
                      '    if x < 10 or x > 390\n'
@@ -196,6 +235,29 @@ def _type_gate(src, fname, stage=""):
     return False
 
 
+def _decl_gate(ast, src, fname, stage):
+    """v3.13：编译/转译前拦住“给未声明变量赋值”。
+
+    解释器运行时也会拦，但 Python/C 直译会把 `set q = 5` 变成隐式声明；
+    这里用同一份符号表在入口处先拒绝，保证三端语义一致。
+    """
+    try:
+        from .analysis import Analyzer
+        an = Analyzer(ast, src.splitlines(),
+                      script_dir=os.path.dirname(os.path.abspath(fname))).run()
+        bad = [i for i in an.issues if i.code == "undeclared-assign"]
+    except Exception as e:
+        _err(f"  [FAIL] 声明检查异常: {e}")
+        return False
+    if not bad:
+        return True
+    for tip in bad:
+        _err(f"  [FAIL] 声明 {fname}:{tip.line}:{tip.col} {tip.msg}")
+    if stage:
+        _err(f"{stage} 已中止：先声明变量，再赋值。")
+    return False
+
+
 def cmd_run(args):
     if not args:
         _err("run 需要脚本文件：impor run FILE [参数...]")
@@ -212,7 +274,7 @@ def cmd_run(args):
         return EXIT_SYNTAX
 
     try:
-        body = strip_header(src, warn=True)
+        body = strip_header(src)
     except ImporException as e:
         _err(render_diagnostic("运行错误", f"{e.name}: {e.msg}", e.lineno,
                                getattr(e, "col", 0) or 0, src.splitlines(),
@@ -242,6 +304,8 @@ def cmd_run(args):
         return EXIT_SYNTAX
 
     if not _type_gate(src, fname, "run"):
+        return EXIT_SYNTAX
+    if not _decl_gate(ast, body, fname, "run"):
         return EXIT_SYNTAX
 
     interp = Interpreter(log_cb=print, argv=script_args, filename=fname, fast_mode=True)
@@ -306,7 +370,7 @@ def cmd_run_dbg(args):
         return EXIT_SYNTAX
 
     try:
-        body = strip_header(src, warn=True)
+        body = strip_header(src)
         ast = parse_source(body)
     except ImporException as e:
         _err(render_diagnostic("运行错误", f"{e.name}: {e.msg}", e.lineno,
@@ -506,7 +570,7 @@ def cmd_build(args):
     fname = None
     out = None
     use_cache = True
-    fast = False
+    fast_mode = "auto"  # v4.1：默认先尝试数值快路径，超出子集自动回退
     lib = False
     c_source = False
     target = None
@@ -532,9 +596,9 @@ def cmd_build(args):
         elif a == "--cache":
             use_cache = True
         elif a in ("--fast", "--fast-native"):
-            fast = True
+            fast_mode = True
         elif a == "--no-fast":
-            fast = False
+            fast_mode = False
         elif a.startswith("-"):
             _err(f"未知参数 {a}")
             return EXIT_USAGE
@@ -567,16 +631,18 @@ def cmd_build(args):
     if target and not c_source:
         _err("--target 需要与 --lib --c-source 一起使用：先生成源码包，再调用目标平台编译器")
         return EXIT_USAGE
-    if lib and fast:
+    if lib and fast_mode is True:
         _err("--lib 不支持 --fast：导出函数走完整 C 后端（装箱值模型）")
         return EXIT_USAGE
+    if lib or c_source:
+        fast_mode = False  # DLL / C 源码包固定走完整后端（要导出 Val 边界的函数）
 
     t0 = time.perf_counter()
     stats = {}
     tcc = _find_tcc()
     try:
         src = _read_source(fname)
-        body = strip_header(src, warn=True)
+        body = strip_header(src)
     except Exception as e:
         _err(_render_exc(e, ""))
         return EXIT_SYNTAX
@@ -585,7 +651,7 @@ def cmd_build(args):
         use_cache = False  # DLL 每次重建，避免头文件/导出集与缓存不一致
     if c_source:
         use_cache = False  # C 源码包每次都重新生成
-    cache_key = _build_cache_key(fname, src, out_abs, tcc, fast=fast)
+    cache_key = _build_cache_key(fname, src, out_abs, tcc, fast=fast_mode)
     cache = _read_build_cache()
     hit = cache.get("entries", {}).get(cache_key) if use_cache else None
     if hit and _cache_hit_valid(hit, out_abs):
@@ -599,10 +665,15 @@ def cmd_build(args):
     try:
         head_skip = len(src.splitlines()) - len(body.splitlines())
         ast = parse_source(body)
+        if not _decl_gate(ast, body, fname, "build"):
+            return EXIT_SYNTAX
         if not _type_gate(src, fname, "build"):
             return EXIT_SYNTAX
-        from .ctrans import UnsupportedFeature
-        if fast:
+        from .ctrans import UnsupportedFeature, _reject_const_mutation
+        # v4.1：const 只读是语义契约，必须在选后端之前挡住——
+        # 否则自动选到数值快路径时，cfast 不认识 const，会放行一次非法写入。
+        _reject_const_mutation(ast)
+        if fast_mode is True:
             from .cfast import c_fast_transpile, FastUnsupported
             try:
                 c_code = c_fast_transpile(ast)
@@ -614,11 +685,27 @@ def cmd_build(args):
                 )
                 return EXIT_USAGE
             stats["fast"] = True
-        else:
+        elif fast_mode is False:
             from .ctrans import c_transpile, UnsupportedFeature
             c_code = c_transpile(ast, source_name=fname, stats=stats,
                                   source_lines=src.splitlines(),
                                   emit_main=not c_source)
+            stats["fast"] = False
+        else:
+            # v4.1 auto：先试数值快路径，超出子集就静默回退完整后端。
+            # 两条路径都产出“能用的 exe”，差别只在整数精度与速度，
+            # 所以这里不报错，只把实际选中的后端写进构建摘要。
+            from .cfast import c_fast_transpile, FastUnsupported
+            try:
+                c_code = c_fast_transpile(ast)
+                stats["fast"] = True
+            except FastUnsupported as e:
+                from .ctrans import c_transpile, UnsupportedFeature
+                c_code = c_transpile(ast, source_name=fname, stats=stats,
+                                     source_lines=src.splitlines(),
+                                     emit_main=not c_source)
+                stats["fast"] = False
+                stats["fast_skip"] = (e.msg, e.lineno or 0, e.col or 0)
         if lib:
             from .cabi import CabiError, wrappers_text, header_text, def_text
             exports = stats.get("exports") or []
@@ -642,9 +729,10 @@ def cmd_build(args):
         _err(_render_exc(e, src.splitlines()))
         return EXIT_SYNTAX
     except UnsupportedFeature as e:
-        _err(f"build（C 后端，唯一发布路径）不支持：{e.msg}"
+        _err(f"build（C 后端，语法子集）不支持：{e.msg}"
              f"（第 {e.lineno} 行第 {e.col} 列）。\n"
-             f"  开发期可用 impor run {fname} 验证逻辑；发布产物只走 C 后端。")
+             f"  解释器是唯一语义定义：先用 impor run {fname} 验证逻辑；"
+             f"C 后端只支持可静态翻译的子集，不支持即编译期拒绝。")
         return EXIT_USAGE
     except ImporException as e:
         _err(_render_exc(e, src.splitlines()))
@@ -710,11 +798,39 @@ def cmd_build(args):
             if target == "win64":
                 cc = shutil.which("cl")
                 if not cc:
-                    _err("目标 win64 需要 MSVC 的 cl，但当前 PATH 中没有 cl。\n"
-                         "  请安装 Visual Studio Build Tools（含 C++ x64 工具链），"
-                         "或在 CI 中先执行 ilammy/msvc-dev-cmd@v1。\n"
-                         "  本命令不会静默退回 32 位 tcc。")
-                    return EXIT_USAGE
+                    gcc64 = find_gcc64()
+                    if not gcc64:
+                        _err("目标 win64 需要 64 位工具链，但既没有 MSVC 的 cl，也没找到 x86_64 gcc。\n"
+                             "  三条任选：安装 Visual Studio Build Tools（含 C++ x64）；\n"
+                             "  安装 MinGW-w64（Dev-Cpp 自带 C:\\Program Files (x86)\\Dev-Cpp\\MinGW64）；\n"
+                             "  或用 IMPOR_CC 指向已有的 x86_64 gcc.exe。\n"
+                             "  本命令不会静默退回 32 位 tcc。")
+                        return EXIT_USAGE
+                    lib_name = stem + ".dll"
+                    out_lib = os.path.abspath(os.path.join(out_dir, lib_name))
+                    cmd = [gcc64, "-shared", "-m64", "-std=gnu99", "-O2", stem + ".c", "-o", out_lib,
+                           "-Wl,--out-implib," + stem + ".lib", "-lm"]
+                    # TDM/MinGW 的 gcc 需要把自身 bin 放进 PATH，否则找不到 cc1/as/ld
+                    env_cc = os.environ.copy()
+                    env_cc["PATH"] = os.path.dirname(gcc64) + os.pathsep + env_cc.get("PATH", "")
+                    proc = subprocess.run(cmd, cwd=out_dir, text=True, env=env_cc,
+                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    if proc.returncode != 0:
+                        _err("MinGW x64 编译失败（退出码 %d）：\n%s" % (proc.returncode, proc.stdout[-2000:]))
+                        return EXIT_RUNTIME
+                    try:
+                        from .runtime import _pe_machine
+                        machine = _pe_machine(out_lib)
+                    except Exception:
+                        machine = None
+                    if machine != 0x8664:
+                        _err("MinGW 产物不是 x64 PE（Machine=%s）；拒绝把 32 位库当作 win64 交付。" % machine)
+                        return EXIT_RUNTIME
+                    print("目标 win64 编译成功：%s" % out_lib)
+                    print("  PE Machine=0x8664（x64；编译器 %s）" % os.path.basename(gcc64))
+                    print("  导出：%s" % ", ".join("impor_" + e["name"] for e in (cabi_info.get("exports") or [])))
+                    print("  耗时：%.2fs" % (time.perf_counter() - t0))
+                    return EXIT_OK
                 lib_name = stem + ".dll"
                 out_lib = os.path.abspath(os.path.join(out_dir, lib_name))
                 cmd = [cc, "/nologo", "/LD", stem + ".c", "/Fe:" + out_lib,
@@ -746,13 +862,28 @@ def cmd_build(args):
                     return EXIT_USAGE
                 lib_name = "lib" + stem + ".so"
                 out_lib = os.path.abspath(os.path.join(out_dir, lib_name))
-                cmd = [cc, "-shared", "-fPIC", "-m64", "-O2", stem + ".c", "-o", out_lib, "-lm", "-ldl"]
+                cmd = [cc, "-shared", "-fPIC", "-m64", "-std=gnu99", "-O2", stem + ".c", "-o", out_lib, "-lm", "-ldl"]
                 proc = subprocess.run(cmd, cwd=out_dir, text=True,
                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 if proc.returncode != 0:
                     _err("GCC x64 编译失败（退出码 %d）：\n%s" % (proc.returncode, proc.stdout[-2000:]))
                     return EXIT_RUNTIME
+                # 校验产物真的是 64 位 ELF（x86-64），避免把 32 位 .so 当 linux64 交付
+                try:
+                    with open(out_lib, "rb") as fh:
+                        head = fh.read(20)
+                    is_elf = head[:4] == b"\x7fELF"
+                    is_64 = head[4] == 2
+                    machine = int.from_bytes(head[18:20], "little")
+                except Exception:
+                    is_elf = is_64 = False
+                    machine = None
+                if not (is_elf and is_64 and machine == 62):
+                    _err("GCC 产物不是 x86-64 ELF（magic/class/machine 校验未通过，machine=%s）；"
+                         "拒绝把非 64 位库当作 linux64 交付。" % machine)
+                    return EXIT_RUNTIME
                 print("目标 linux64 编译成功：%s" % out_lib)
+                print("  ELF64 Machine=62（x86-64；编译器 %s）" % os.path.basename(cc))
                 print("  导出：%s" % ", ".join("impor_" + e["name"] for e in (cabi_info.get("exports") or [])))
                 print("  耗时：%.2fs" % (time.perf_counter() - t0))
                 return EXIT_OK
@@ -774,7 +905,7 @@ def cmd_build(args):
 
     if not tcc:
         _err("未找到 C 编译器 tcc。请将 tcc.exe 放入 impor/tcc/win32/ 或加入 PATH。"
-             "C 后端是唯一发布路径，不提供 Python 转译兜底。")
+             "C 后端是可选路径，不是语义定义；不提供 Python 转译兜底。")
         return EXIT_RUNTIME
 
     import tempfile
@@ -788,7 +919,7 @@ def cmd_build(args):
         cc_cmd = [tcc, cpath, "-o", out_abs]
         if lib:
             cc_cmd.insert(1, "-shared")
-        if fast:
+        if stats.get("fast"):
             cc_cmd.insert(1, "-O2")
         r = subprocess.run(cc_cmd,
                            capture_output=True, text=True)
@@ -834,6 +965,12 @@ def cmd_build(args):
     print("构建成功：%s" % out_abs)
     print("  大小：%s（%d 字节）" % (_human_size(size), size))
     print("  耗时：%.2fs（转译 %.2fs / tcc %.2fs）" % (total, t_gen, t_compile))
+    if not lib and not c_source:
+        print("  后端：%s" % ("数值快路径（64 位整数，溢出会报错中止）"
+                            if stats.get("fast") else "完整 Val 值模型（任意精度整数）"))
+        if stats.get("fast_skip") and os.environ.get("IMPOR_BUILD_VERBOSE") == "1":
+            skip = stats["fast_skip"]
+            print("  未走快路径：%s（第 %d 行）" % (skip[0], skip[1]))
     if lib:
         cabi_info = stats.get("_cabi") or {}
         print("  模式：C ABI 共享库（DLL）")
@@ -842,8 +979,6 @@ def cmd_build(args):
         print("  导出：%s" % ", ".join(
             "impor_" + e["name"] for e in (cabi_info.get("exports") or [])))
         print("  说明：字符串返回值由 DLL 分配，调用方必须用 impor_free_str() 释放。")
-    elif fast:
-        print("  模式：原生数值快路径（long long，无装箱；仅整数子集）")
     if mods:
         print("  模块：%d 个（%s）" % (len(mods), ", ".join(mods)))
     else:
@@ -1062,8 +1197,10 @@ def cmd_compile(args):
     from .transpiler import transpile
     try:
         src = _read_source(fname)
-        body = strip_header(src, warn=True)
+        body = strip_header(src)
         ast = parse_source(body)
+        if not _decl_gate(ast, body, fname, "compile"):
+            return EXIT_SYNTAX
         if not _type_gate(src, fname, "compile"):
             return EXIT_SYNTAX
         py_code = transpile(ast, source_name=fname, src_lines=src.splitlines())
@@ -1109,7 +1246,8 @@ def _try_pyinstaller(py_file):
 def cmd_check(args):
     """impor check FILE：聚合静态检查——语法 + 导入 + lint + 格式化检查。
 
-    逐项输出 PASS/FAIL，任一失败返回非零退出码（可接入 CI）。
+    逐项输出 PASS/FAIL/WARN；只有 error 级问题返回非零退出码。
+    WARN（lint 警告、格式未达标）不阻断 CI，退出码仍为 0。
     """
     files = [a for a in args if not a.startswith("-")]
     if not files:
@@ -1119,16 +1257,22 @@ def cmd_check(args):
     for fname in files:
         print(f"== 检查 {fname} ==")
         # 1) 语法解析
+        src = ""
+        body = ""
         try:
             src = _read_source(fname)
-            body = strip_header(src, warn=True)
+            body = strip_header(src)
             ast = parse_source(body)
+        except FileNotFoundError:
+            _err(f"  [FAIL] 文件不存在: {fname}")
+            had_error = True
+            continue
         except SyntaxError as e:
             _err(_render_exc(e, src.splitlines()))
             had_error = True
             continue
         except Exception as e:
-            _err(_render_exc(e, src.splitlines()))
+            _err(_render_exc(e, src.splitlines()) if src else f"  [FAIL] 读取失败: {e}")
             had_error = True
             continue
         print("  [PASS] 语法")
@@ -1161,7 +1305,7 @@ def cmd_check(args):
                 for iss in an.issues:
                     sev = {"error": "错误", "warning": "警告", "info": "提示"}[iss.severity]
                     print(f"  [WARN] lint {fname}:{iss.line}:{iss.col} [{sev}] {iss.msg}")
-                    if iss.severity in ("error", "warning"):
+                    if iss.severity == "error":
                         had_error = True
             else:
                 print("  [PASS] lint")
@@ -1189,7 +1333,6 @@ def cmd_check(args):
                 print("  [PASS] 格式")
             else:
                 print("  [WARN] 格式未达标（可用 impor fmt 自动修复）")
-                had_error = True
         except Exception as e:
             _err(f"  [FAIL] 格式检查异常: {e}")
             had_error = True
@@ -1620,7 +1763,7 @@ PKG_INIT_MAIN = ('important<<DAY<<english("English"):\n'
 
 PKG_INIT_LIB = ('important<<DAY<<english("English"):\n'
                 '// {name} 库模块\n'
-                'func greet()\n'
+                'def greet()\n'
                 '    return "你好，{name}！"\n'
                 'export greet\n')
 
@@ -1707,7 +1850,10 @@ def cmd_lint(args):
             had_error = True
             continue
         except SyntaxError as e:
-            _err(f"{fname}: 语法错误: {e}")
+            _err(render_diagnostic(
+                "语法错误", getattr(e, "msg", str(e)),
+                getattr(e, "lineno", 0) or 0, getattr(e, "col", 0) or 0,
+                src.splitlines(), fname, hint=getattr(e, "hint", None)))
             had_error = True
             continue
         except Exception as e:
@@ -2172,7 +2318,7 @@ def cmd_mem(args):
         _err(f"读取失败: {e}")
         return EXIT_SYNTAX
     try:
-        body = strip_header(src, warn=True)
+        body = strip_header(src)
         ast = parse_source(body, filename=fname)
     except ImporException as e:
         _err(_render_exc(e))
@@ -2216,8 +2362,8 @@ SUBCOMMAND_HELP = {
     "run-dbg": "impor run-dbg FILE [参数...]\n  交互式调试：n 步过 / s 步入 / o 步出 / c 继续 /\n"
                "  b 行号 [if 表达式] 条件断点 / d 行号 删除 / p 表达式 求值 / bt 栈 / l 局部变量 / q 退出。",
     "repl": "impor repl\n  启动交互式 REPL（历史持久化到 ~/.impor_history）。",
-    "compile": "impor compile FILE [-o OUT] [--exe]\n  开发兼容：Impor → Python（仅用于本地调试，不是发布路径）。发布请用 impor build。",
-    "build": "impor build FILE.impor [-o OUT.exe] [--lib [-o OUT.dll]] [--c-source -o DIR]\n  C 后端编译（唯一发布路径）：Impor → C → tcc。\n  默认产出独立 exe；--lib 产出 C ABI 共享库：OUT.dll + OUT.h + OUT.def。\n  --lib --c-source 产出 C 源码包：lib.c/lib.h/lib.def/build_msvc.bat/build_gcc.bat。\n  加 --target win64 / linux64 可直接调用 cl / gcc -m64 生成 64 位库；缺工具链明确报错，不静默降级。\n  内置 tcc 产出 32 位（i386）产物；64 位工程请用 --target 或 --c-source 以 cl 或 gcc -m64 自行编译。\n  字符串返回值用 impor_free_str() 释放；类型支持 int/float/bool/str/void/size_t/handle/ptr。",
+    "compile": "impor compile FILE [-o OUT] [--exe]\n  开发兼容：Impor → Python（仅用于本地调试，不是发布路径）。发布用 impor run / 便携版，或用 impor build 的 C 子集。",
+    "build": "impor build FILE.impor [-o OUT.exe] [--lib [-o OUT.dll]] [--c-source -o DIR]\n  C 后端编译（语法子集，可选路径）：Impor → C → tcc。\n  解释器是唯一语义定义；C 后端不支持即编译期拒绝，不静默降级。\n  默认产出独立 exe；--lib 产出 C ABI 共享库：OUT.dll + OUT.h + OUT.def。\n  --lib --c-source 产出 C 源码包：lib.c/lib.h/lib.def/build_msvc.bat/build_gcc.bat。\n  加 --target win64 / linux64 可直接调用 cl / gcc -m64 生成 64 位库；缺工具链明确报错，不静默降级。\n  内置 tcc 产出 32 位（i386）产物；64 位工程请用 --target 或 --c-source 以 cl 或 gcc -m64 自行编译。\n  字符串返回值用 impor_free_str() 释放；类型支持 int/float/bool/str/void/size_t/handle/ptr。",
     "check": "impor check FILE\n  语法检查（解析并报告错误，不执行）。",
     "test": "impor test [目录|文件] [--filter 关键字] [--no-isolate] [--keep]\n  运行单元测试：默认扫描 tests/ 下文件名含 test 的 .impor 文件，\n  每个文件在独立临时目录执行（IMPOR_TEST_TMP 可取路径）；\n  assert / expect 失败或运行异常计为失败；退出码 0 全部通过 / 1 有失败。",
     "new": "impor new NAME [--template script|lib|game]\n  生成项目模板（默认 script）。",

@@ -83,7 +83,7 @@ class TestTranspileImportSemantics(unittest.TestCase):
     def test_compile_import_pkg_sub_binds_top(self):
         files = {
             "mylib/__pkg__.impor": "from .greet import greet\nexport greet\n",
-            "mylib/greet.impor": "func greet(n)\n    return 'hi-' + n\nexport greet\n",
+            "mylib/greet.impor": "def greet(n)\n    return 'hi-' + n\nexport greet\n",
         }
         rc, out = self._compile_and_run(
             "import mylib\nprint(mylib.greet('X'))\n", files=files)
@@ -99,7 +99,7 @@ class TestTranspileImportSemantics(unittest.TestCase):
         # from . import x（纯相对）：绑定子模块，解释器/转译器行为一致
         files = {
             "mylib/__pkg__.impor": "from . import greet\nexport greet\n",
-            "mylib/greet.impor": "func greet(n)\n    return 'hi-' + n\nexport greet\n",
+            "mylib/greet.impor": "def greet(n)\n    return 'hi-' + n\nexport greet\n",
         }
         interp_rc, interp_out = None, None
         d = tempfile.mkdtemp()

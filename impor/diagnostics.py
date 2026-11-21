@@ -135,6 +135,7 @@ SYNTAX_CODES = {
 }
 
 _SYNTAX_CODE_RULES = [
+    (r"已删除的历史写法", "E2002"),
     (r"默认参数|变参|可变参数|缺省参数", "E2007"),
     (r"尚未实现|当前版本不支持|v3\.x 计划|需要块写法", "E2001"),
     (r"表达式缺失|缺少表达式|需要一个值或表达式", "E2003"),
@@ -157,10 +158,10 @@ ERROR_TITLES = {
     "E1008": ("NameError", "名字未定义", "print(nope)"),
     "E1009": ("ConstError", "修改了 const", "const A = 1\nA = 2"),
     "E1010": ("ImportError", "模块/名字导入失败", "import no_such_mod"),
-    "E1011": ("RecursionError", "递归过深", "func f()\n    return f()\nf()"),
+    "E1011": ("RecursionError", "递归过深", "def f()\n    return f()\nf()"),
     "E1012": ("OverflowError", "整数溢出", "var x = 9223372036854775807 + 1"),
     "E1013": ("MemoryError", "内存不足", "var a = list(1000000000)"),
-    "E1014": ("ContractError", "接口契约不满足", "interface S { func area() { return 0 } }\nclass A implements S { }"),
+    "E1014": ("ContractError", "接口契约不满足", "interface S { def area() { return 0 } }\nclass A implements S { }"),
     "E1015": ("ModuleNotFound", "模块文件不存在", "import no_such_mod"),
     "E1099": ("RuntimeError", "未分类运行错误", "print(1)"),
 }
@@ -216,6 +217,12 @@ def syntax_code(message):
 
 # (正则, 为什么, 修复)；按顺序匹配第一条命中的规则
 _RULES = [
+    (r"`print` 无括号|print 无括号",
+     "print 是内建函数，不是语句关键字；无括号写法在 v4.0.0 已删除。继续放行会被拆成两条无副作用表达式，表现为 rc=0、零输出。",
+     "改成唯一写法 print(表达式[, 表达式...])；例如 print(\"hello\") 或 print(x)。"),
+    (r"已删除的历史写法",
+     "这个写法属于 v3.x 的兼容层，v4.0.0 已在词法/语法层物理删除，不再降级为其他 AST。",
+     "按错误里的提示改成唯一写法：func → def、let/local → var、loop → while true、then → 冒号或大括号块、unless → if not、裸 print → print(...)。"),
     (r"尚未实现（v3\.x|当前版本不支持|不再静默接受",
      "这个保留字/语法还没有在当前发布线实现。Impor 选择明确拒绝，而不是静默忽略后继续执行。",
      "删除该写法，改用已实现的等价写法；不要依赖它当前会产生任何效果。"),
@@ -238,7 +245,7 @@ _RULES = [
      "同一代码块的缩进层级不一致（常见于空格与 Tab 混用）。",
      "同一代码块统一用 4 个空格缩进，并让同级语句左对齐。"),
     (r"未定义|NameError|未定义变量|找不到名字",
-     "Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。",
+     "Impor 不做隐式全局：名字必须先用 var / const / def / import 声明，之后才能使用。",
      "先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。"),
     (r"函数需要 .* 个参数|参数个数|CallError.*参数",
      "调用时传入的实参个数与函数定义不一致。",

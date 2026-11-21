@@ -534,7 +534,7 @@ else:
     def _smoke():
         app = QApplication.instance() or QApplication([])
         ed = CodeEditor()
-        ed.setPlainText("func a() {\n  print(1)\n  print(2)\n}")
+        ed.setPlainText("def a() {\n  print(1)\n  print(2)\n}")
         block = ed.document().findBlockByNumber(1)
         cursor = QTextCursor(block)
         cursor.setPosition(block.position() + 2)

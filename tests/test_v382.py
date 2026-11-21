@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""v3.8.2 回归：export func → .dll + .h → C demo 链接调用。"""
+"""v3.8.2 回归：export def → .dll + .h → C demo 链接调用。"""
 import os
 import shutil
 import subprocess
@@ -11,15 +11,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMPOR_PY = os.path.join(ROOT, "Impor.py")
 TCC = os.path.join(ROOT, "impor", "tcc", "win32", "tcc.exe")
 
-LIB_SRC = """export func add(a: int, b: int) -> int {
+LIB_SRC = """export def add(a: int, b: int) -> int {
     return a + b
 }
 
-export func greet(name: str) -> str {
+export def greet(name: str) -> str {
     return "Hello, " + name
 }
 
-export func half(x: float) -> float {
+export def half(x: float) -> float {
     return x / 2
 }
 """
@@ -81,7 +81,7 @@ class TestCAbi(unittest.TestCase):
     def test_untyped_export_is_rejected(self):
         bad = os.path.join(self.tmp, "bad.impor")
         with open(bad, "w", encoding="utf-8") as f:
-            f.write("export func f(a) -> int {\n    return 1\n}\n")
+            f.write("export def f(a) -> int {\n    return 1\n}\n")
         proc = _run([sys.executable, IMPOR_PY, "build", "--lib", bad], ROOT)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("显式标注类型", proc.stdout + proc.stderr)
@@ -89,7 +89,7 @@ class TestCAbi(unittest.TestCase):
     def test_no_export_is_rejected(self):
         bad = os.path.join(self.tmp, "none.impor")
         with open(bad, "w", encoding="utf-8") as f:
-            f.write("func f(a: int) -> int {\n    return a\n}\n")
+            f.write("def f(a: int) -> int {\n    return a\n}\n")
         proc = _run([sys.executable, IMPOR_PY, "build", "--lib", bad], ROOT)
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("没有可导出的函数", proc.stdout + proc.stderr)

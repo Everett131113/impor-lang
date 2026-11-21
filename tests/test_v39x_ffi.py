@@ -11,7 +11,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMPOR_PY = os.path.join(ROOT, "Impor.py")
 TCC = os.path.join(ROOT, "impor", "tcc", "win32", "tcc.exe")
 
-LIB_SRC = """export func add(a: int, b: int) -> int {
+LIB_SRC = """export def add(a: int, b: int) -> int {
     return a + b
 }
 """
@@ -156,7 +156,7 @@ class TestFfiCBackend(unittest.TestCase):
     def test_stdcall_and_i32_c_source(self):
         src = os.path.join(self.tmp, "stdcall.impor")
         with open(src, "w", encoding="utf-8") as f:
-            f.write('export func demo(x: int) -> int {\n'
+            f.write('export def demo(x: int) -> int {\n'
                     '    return ffi_call("lib.dll", "f", [x], "int", '
                     '["i32"], "stdcall")\n'
                     '}\n')

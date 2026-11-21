@@ -169,7 +169,7 @@ class TestCliDiagnostics(unittest.TestCase):
             os.unlink(p)
 
     def test_check_reports_why_and_fix(self):
-        p = _write("func f( {\n    return 1\n}\n")
+        p = _write("def f( {\n    return 1\n}\n")
         try:
             r = run_cli(p, cmd="check")
             self.assertNotEqual(r.returncode, 0)
@@ -232,7 +232,7 @@ class TestLspDiagnostics(unittest.TestCase):
     def test_unused_issue_has_targeted_fix(self):
         srv = LanguageServer(stdin=io.BytesIO(b""), stdout=io.BytesIO(),
                              workspace_root=".")
-        srv._update_doc(URI, "func main()\n    var unused_thing = 1\n    print('ok')\nmain()\n")
+        srv._update_doc(URI, "def main()\n    var unused_thing = 1\n    print('ok')\nmain()\n")
         frames = parse_frames(srv.stdout.getvalue())
         diags = [f for f in frames if f.get("method") == "textDocument/publishDiagnostics"]
         msgs = [d["message"] for d in diags[-1]["params"]["diagnostics"]]

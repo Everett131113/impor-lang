@@ -2,7 +2,7 @@ important<<DAY<<english("English"):
 // enum 枚举
 enum Color { RED, GREEN, BLUE }
 
-func name_of(c)
+def name_of(c)
     if c == Color.RED
         return "红色"
     if c == Color.GREEN

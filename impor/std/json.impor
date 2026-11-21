@@ -1,15 +1,15 @@
 // std/json.impor — JSON 解析与序列化
 // 使用：import std.json  →  std.json.parse(text)
 
-func parse(text) {
+def parse(text) {
     return json_decode(text)
 }
 
-func stringify(value) {
+def stringify(value) {
     return json_encode(value)
 }
 
-func try_parse(text) {
+def try_parse(text) {
     // 解析失败返回 null，不抛异常；调用方必须显式判空。
     try {
         return json_decode(text)

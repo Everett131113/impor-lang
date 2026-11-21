@@ -41,7 +41,7 @@ var gclos_seq = 0         # 闭包序号
 var gclosure_depth = 0    # 嵌套函数层数（只支持一层）
 
 # ---------- 工具 ----------
-func strfind(hay, needle)
+def strfind(hay, needle)
     var hl = len(hay)
     var nl = len(needle)
     var i = 0
@@ -51,12 +51,12 @@ func strfind(hay, needle)
         set i = i + 1
     return -1
 
-func is_digit(c)
+def is_digit(c)
     if c >= "0" and c <= "9"
         return true
     return false
 
-func is_alpha(c)
+def is_alpha(c)
     if c >= "a" and c <= "z"
         return true
     if c >= "A" and c <= "Z"
@@ -65,7 +65,7 @@ func is_alpha(c)
         return true
     return false
 
-func top_ind()
+def top_ind()
     # 缩进栈顶（最后一个 | 之前的数字）
     var s = gindstack
     var last = -1
@@ -80,7 +80,7 @@ func top_ind()
         return 0
     return to_num(strcut(s, prev + 1, last))
 
-func pop_ind()
+def pop_ind()
     # 弹出缩进栈顶一层
     var s = gindstack
     var last = -1
@@ -100,11 +100,11 @@ func pop_ind()
             set gindstack = strcut(s, 0, prev + 1)
     return true
 
-func push_ind(ind)
+def push_ind(ind)
     set gindstack = gindstack + to_str(ind) + "|"
     return true
 
-func top_sw()
+def top_sw()
     # 当前 switch 的基准缩进（支持嵌套 switch）
     var s = g_swinds
     var last = -1
@@ -121,11 +121,11 @@ func top_sw()
         return to_num(strcut(s, 0, last))
     return to_num(strcut(s, prev + 1, last))
 
-func push_sw(ind)
+def push_sw(ind)
     set g_swinds = g_swinds + to_str(ind) + "|"
     return true
 
-func pop_sw()
+def pop_sw()
     var v = top_sw()
     var s = g_swinds
     var last = -1
@@ -142,19 +142,19 @@ func pop_sw()
         set g_swinds = strcut(s, 0, prev + 1)
     return v
 
-func add_func(name, np)
+def add_func(name, np)
     # 登记函数（名字 + 参数个数），不重复
     if strfind(";" + gfuncs2, ";" + name + ";") < 0
         set gfuncs2 = gfuncs2 + name + ";" + to_str(np) + ";"
     return true
 
-func is_func(name)
+def is_func(name)
     # 精确判断 name 是否为函数（避免 total 命中 add_to_total）
     if strfind(";" + gfuncs2, ";" + name + ";") >= 0
         return true
     return false
 
-func param_idx(t)
+def param_idx(t)
     # 在 gparams 中找参数 t 的序号（0 起），找不到返回 -1
     var s = gparams
     var k = 0
@@ -171,7 +171,7 @@ func param_idx(t)
         set i = i + 1
     return -1
 
-func out(s)
+def out(s)
     # 输出到当前段：函数体内 → gfuncs，否则 → gout
     if ginfunc
         set gfuncs = gfuncs + s
@@ -179,7 +179,7 @@ func out(s)
         set gout = gout + s
     return true
 
-func cap_index(name)
+def cap_index(name)
     # 在 gcaps（"a|b|"）里找 name 的序号，找不到 -1
     var idx = 0
     var cur = ""
@@ -195,7 +195,7 @@ func cap_index(name)
         set i = i + 1
     return -1
 
-func env_ptrs(gl)
+def env_ptrs(gl)
     # 把外层局部名表转成 C 初始化列表：&l_a, &l_b,
     var s = ""
     var cur = ""
@@ -210,7 +210,7 @@ func env_ptrs(gl)
         set i = i + 1
     return s
 
-func env_count(gl)
+def env_count(gl)
     # 外层局部名数量
     var n = 0
     var cur = ""
@@ -225,7 +225,7 @@ func env_count(gl)
         set i = i + 1
     return n
 
-func call_expr(target, args, narg)
+def call_expr(target, args, narg)
     # 通过函数值调用：rt_call(target, 参数数组, 个数)
     if narg > 0
         set gargseq = gargseq + 1
@@ -233,14 +233,14 @@ func call_expr(target, args, narg)
         return "({ Val " + an + "[" + to_str(narg) + "] = {" + args + "}; rt_call(" + target + ", " + an + ", " + to_str(narg) + "); })"
     return "rt_call(" + target + ", 0, 0)"
 
-func var_ref(name)
+def var_ref(name)
     # 函数内局部统一装箱（Val*），读取时解引用；全局变量保持值
     if ginfunc and strfind("|" + glocals, "|" + name + "|") >= 0
         return "(*l_" + name + ")"
     return "g_" + name
 
 
-func list_at(s, idx)
+def list_at(s, idx)
     # 取 "a|b|c|" 中第 idx 个名字
     var k = 0
     var cur = ""
@@ -260,7 +260,7 @@ func list_at(s, idx)
 
 
 # ---------- 词法 ----------
-func scan()
+def scan()
     # ---- 多级缩进减少：逐层补发 DED ----
     if gded_pending
         pop_ind()
@@ -424,14 +424,14 @@ func scan()
     set gpos = gpos + 1
     return
 
-func expect_op(op)
+def expect_op(op)
     if gtok != op
         print("imporc.impor: 第", mi_line_at(gpos), "行: 期望 ", op, " 实际 ", gtok)
         set gfail = true
     scan()
 
 # ---------- C 字符串转义 ----------
-func esc_str(s)
+def esc_str(s)
     # s 含引号，剥离首尾引号并转义为 C 字符串字面量
     # 转义序列（\n \\ \" \t 等）原样保留为 C 的转义形式
     var n = len(s)
@@ -457,7 +457,7 @@ func esc_str(s)
     return out
 
 # ---------- 表达式（递归下降，返回 C 文本） ----------
-func parse_primary()
+def parse_primary()
     var t = gtok
     if t == "str"
         set t = "to_str"
@@ -791,13 +791,13 @@ func parse_primary()
     set gfail = true
     return ""
 
-func parse_unary()
+def parse_unary()
     if gtok == "-"
         scan()
         return "rt_neg(" + parse_unary() + ")"
     return parse_primary()
 
-func parse_mul()
+def parse_mul()
     var a = parse_unary()
     while 1
         if gtok == "*"
@@ -815,7 +815,7 @@ func parse_mul()
                     break
     return a
 
-func parse_add()
+def parse_add()
     var a = parse_mul()
     while 1
         if gtok == "+"
@@ -829,7 +829,7 @@ func parse_add()
                 break
     return a
 
-func parse_cmp()
+def parse_cmp()
     var a = parse_add()
     while 1
         if gtok == "==" or gtok == "!=" or gtok == "<" or gtok == ">" or gtok == "<=" or gtok == ">="
@@ -840,31 +840,31 @@ func parse_cmp()
             break
     return a
 
-func parse_and()
+def parse_and()
     var a = parse_cmp()
     while gtok == "and"
         scan()
         set a = "rt_and(" + a + ", " + parse_cmp() + ")"
     return a
 
-func parse_or()
+def parse_or()
     var a = parse_and()
     while gtok == "or"
         scan()
         set a = "rt_or(" + a + ", " + parse_and() + ")"
     return a
 
-func parse_expr()
+def parse_expr()
     return parse_or()
 
 # ---------- 语句转译 ----------
-func add_var(name)
+def add_var(name)
     # 收集全局变量（不重复）
     if strfind("|" + gvars, "|" + name + "|") < 0
         set gvars = gvars + name + "|"
     return true
 
-func gen_block()
+def gen_block()
     # 进入块：消费可选 IND，循环转译语句直到 DED / EOF
     # v3.8.3：同时接受单行/多行大括号块 { ... }，不再把 `{` 当成无法识别的语句。
     if gtok == "{" and gtype == 4
@@ -885,7 +885,7 @@ func gen_block()
         gen_stmt()
     return true
 
-func gen_block2()
+def gen_block2()
     # 块消费：{ ... } 大括号（type 4）或缩进块
     if gtok == "{" and gtype == 4
         scan()
@@ -899,7 +899,7 @@ func gen_block2()
         gen_block()
     return true
 
-func gen_stmt()
+def gen_stmt()
     # 期望当前 token 是一条语句关键字
     var t = gtok
     if gtype == 6
@@ -1143,7 +1143,7 @@ func gen_stmt()
         out("reg_class(&ci_" + stname + ");\n")
         return true
     if t == "class"
-        # class 类名[(基类)]:  缩进块内为方法(func/def)与字段(var)
+        # class 类名[(基类)]:  缩进块内为方法(def)与字段(var)
         scan()
         var clsname = gtok
         if gtype != 1
@@ -1166,7 +1166,7 @@ func gen_stmt()
         var fiedefs = ""
         set gcur_cls = clsname
         while gtype != 7 and gtype != 5 and not gfail
-            if gtok == "func" or gtok == "def"
+            if gtok == "def"
                 scan()
                 var mname = gtok
                 if gtype != 1
@@ -1228,7 +1228,7 @@ func gen_stmt()
         out("reg_class(&ci_" + clsname + ");\n")
         return true
     # ---------- v4.2：嵌套函数 / 闭包 ----------
-    if (t == "func" or t == "def") and ginfunc
+    if t == "def" and ginfunc
         if gmethod
             print("imporc.impor: 第", mi_line_at(gpos), "行: 方法内暂不支持嵌套函数")
             set gfail = true
@@ -1343,11 +1343,11 @@ func gen_stmt()
             add_var(glname)
             out("g_" + glname + " = " + glval + ";\n")
         return true
-    if t == "func" or t == "def"
+    if t == "def"
         scan()
         var fname = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: func 后需要函数名")
+            print("imporc.impor: 第", mi_line_at(gpos), "行: def 后需要函数名")
             set gfail = true
             return false
         scan()
@@ -1723,7 +1723,7 @@ func gen_stmt()
 var gargs = ""
 var gt2 = ""
 var gp2 = 0
-func next_arg()
+def next_arg()
     var n = len(gargs)
     while gp2 < n
         var c3 = strcut(gargs, gp2, gp2 + 1)
@@ -1756,9 +1756,9 @@ func next_arg()
     return true
 
 # ---- v4.2：编译期 import（单层模块）----
-# 口径：import mod / import mod as m；模块顶层 func/var 加前缀内联，
+# 口径：import mod / import mod as m；模块顶层 def/var 加前缀内联，
 # 再用 imporc_module 构造运行期模块值，属性/方法走 rt_getattr / rt_method。
-func mi_is_word(c)
+def mi_is_word(c)
     if c == ""
         return false
     if c >= "a" and c <= "z"
@@ -1771,7 +1771,7 @@ func mi_is_word(c)
         return true
     return false
 
-func mi_replace_word(s, old, rep)
+def mi_replace_word(s, old, rep)
     var n = len(s)
     var m = len(old)
     if m == 0
@@ -1797,7 +1797,7 @@ func mi_replace_word(s, old, rep)
             set i = i + 1
     return out
 
-func mi_trim(s)
+def mi_trim(s)
     var n = len(s)
     var a = 0
     while a < n
@@ -1815,7 +1815,7 @@ func mi_trim(s)
             break
     return strcut(s, a, b)
 
-func mi_dir_of(p)
+def mi_dir_of(p)
     var n = len(p)
     var i = n - 1
     while i >= 0
@@ -1825,7 +1825,7 @@ func mi_dir_of(p)
         set i = i - 1
     return ""
 
-func mi_sanitize(s)
+def mi_sanitize(s)
     var n = len(s)
     var i = 0
     var out = ""
@@ -1838,7 +1838,7 @@ func mi_sanitize(s)
         set i = i + 1
     return out
 
-func mi_replace_dots(s)
+def mi_replace_dots(s)
     var n = len(s)
     var i = 0
     var out = ""
@@ -1851,7 +1851,7 @@ func mi_replace_dots(s)
         set i = i + 1
     return out
 
-func mi_strip_header(src)
+def mi_strip_header(src)
     if strfind(src, "important") == 0
         var nl = strfind(src, "\n")
         if nl >= 0
@@ -1859,7 +1859,7 @@ func mi_strip_header(src)
         return ""
     return src
 
-func mi_strip_export(src)
+def mi_strip_export(src)
     var n = len(src)
     var i = 0
     var out = ""
@@ -1879,7 +1879,7 @@ func mi_strip_export(src)
             break
     return out
 
-func mi_export_symbols(src)
+def mi_export_symbols(src)
     var n = len(src)
     var i = 0
     var out = "|"
@@ -1912,7 +1912,7 @@ func mi_export_symbols(src)
             break
     return out
 
-func mi_decl_symbols(src)
+def mi_decl_symbols(src)
     var n = len(src)
     var i = 0
     var out = "|"
@@ -1925,8 +1925,8 @@ func mi_decl_symbols(src)
             set line = strcut(src, i, end)
         var t = mi_trim(line)
         var head = ""
-        if strfind(t, "func ") == 0
-            set head = strcut(t, 5, len(t))
+        if strfind(t, "def ") == 0
+            set head = strcut(t, 4, len(t))
         else
             if strfind(t, "var ") == 0
                 set head = strcut(t, 4, len(t))
@@ -1947,7 +1947,7 @@ func mi_decl_symbols(src)
             break
     return out
 
-func mi_mangle_symbols(src, syms, prefix)
+def mi_mangle_symbols(src, syms, prefix)
     var out = src
     var list = strcut(syms, 1, len(syms))
     var j = 0
@@ -1960,7 +1960,7 @@ func mi_mangle_symbols(src, syms, prefix)
         set j = j + bar + 1
     return out
 
-func mi_attrs_of(syms, prefix)
+def mi_attrs_of(syms, prefix)
     var out = "{"
     var list = strcut(syms, 1, len(syms))
     var j = 0
@@ -1977,7 +1977,7 @@ func mi_attrs_of(syms, prefix)
         set j = j + bar + 1
     return out + "}"
 
-func mi_indent_of(s)
+def mi_indent_of(s)
     var i = 0
     while i < len(s)
         var c = strcut(s, i, i + 1)
@@ -1987,7 +1987,7 @@ func mi_indent_of(s)
             break
     return strcut(s, 0, i)
 
-func mi_split_import(rest)
+def mi_split_import(rest)
     # 返回 "mod|alias"：支持 mod as alias，否则 alias 取最后一段
     var pos = strfind(rest, " as ")
     if pos >= 0
@@ -2005,7 +2005,7 @@ func mi_split_import(rest)
         set i = i - 1
     return mod2 + "|" + alias2
 
-func mi_line_at(pos)
+def mi_line_at(pos)
     var i = 0
     var line = 1
     var n = len(gsrc)
@@ -2015,7 +2015,7 @@ func mi_line_at(pos)
         set i = i + 1
     return line
 
-func mi_split_from(rest)
+def mi_split_from(rest)
     # from mod import a, b as c → "mod|a, b as c"；缺少 import 返回 ""
     var pos = strfind(rest, " import ")
     if pos < 0
@@ -2024,10 +2024,10 @@ func mi_split_from(rest)
     var names1 = mi_trim(strcut(rest, pos + 8, len(rest)))
     return mod1 + "|" + names1
 
-func mi_prefix_of(modname)
+def mi_prefix_of(modname)
     return "mi_" + mi_sanitize(modname) + "_"
 
-func mi_read_module(modname, script)
+def mi_read_module(modname, script)
     var rel = mi_replace_dots(modname) + ".impor"
     var mpath = mi_dir_of(script) + rel
     var msrc = fileread(mpath)
@@ -2036,7 +2036,7 @@ func mi_read_module(modname, script)
         set msrc = fileread(mpath)
     return msrc
 
-func mi_bind_from(names, syms, prefix)
+def mi_bind_from(names, syms, prefix)
     # 生成 var a = prefixa；支持 a as b 与 *（全部导出）
     var out = ""
     if names == "*"
@@ -2074,7 +2074,7 @@ func mi_bind_from(names, syms, prefix)
         set i = i + 1
     return out
 
-func mi_expand_imports(src, script)
+def mi_expand_imports(src, script)
     var n = len(src)
     var i = 0
     var out = ""
@@ -2203,7 +2203,7 @@ var goutname = "out2.exe"
 if len(gt2) > 0
     set gmode = gt2
     if gmode == "version" or gmode == "--version"
-        print("imporc (Impor 自举编译器) v3.12.0 · 子集模式")
+        print("imporc (Impor 自举编译器) v4.0.0 · 子集模式")
         exit(0)
     if gmode == "" or gmode == "help" or gmode == "--help"
         print("用法：imporc [run|build] <脚本> [-o 输出]  或  imporc version")
@@ -2281,7 +2281,7 @@ while gtype != 5
                     set cldepth = cldepth - 1
             scan()
     else
-        if gtok == "func" or gtok == "def"
+        if gtok == "def"
             scan()
             if gtype == 1
                 var fname = gtok
@@ -2386,3 +2386,5 @@ else
         if gmode == "run"
             var rc2 = system("\"" + goutname + "\"")
             exit(rc2)
+
+

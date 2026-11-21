@@ -3,7 +3,7 @@
 Impor (I++) LSP 语言服务器（impor lsp，stdio JSON-RPC）。
 
 能力：
-  - textDocument/publishDiagnostics：语法错误 + 未定义变量（Warning）+ 未使用变量/导入（Info）
+  - textDocument/publishDiagnostics：语法错误 + 未定义变量（Error）+ 未使用变量/导入（Info）
   - textDocument/definition：跳转定义（同一文件内全部声明位置）
   - textDocument/hover：符号说明（var / 函数签名 / 类 / 导入）
   - textDocument/documentSymbol：文档符号大纲

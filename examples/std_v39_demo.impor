@@ -16,7 +16,7 @@ print(std.text.index_of("hello", "ll"))
 print(std.text.count_sub("abababa", "aba"))
 print(std.text.split_lines("a\nb\nc"))
 
-func is_big(x) {
+def is_big(x) {
     return x > 3
 }
 print(std.collections.find([1, 5, 2], is_big))

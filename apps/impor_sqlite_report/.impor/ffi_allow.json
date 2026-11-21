@@ -1,0 +1,3 @@
+{
+  "allow": ["winsqlite3.dll", "sqlite3.dll", "libsqlite3.so", "libsqlite3.dylib"]
+}

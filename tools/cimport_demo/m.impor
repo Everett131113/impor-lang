@@ -1,8 +1,8 @@
 // m.impor
-func add(a, b) {
+def add(a, b) {
     return a + b
 }
-func unused_bad() {
+def unused_bad() {
     var s = "x"
     return s.upper()
 }

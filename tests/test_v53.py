@@ -79,10 +79,10 @@ def run_imporc(src):
 
 
 MOD_SRC = (
-    'func add(a, b) {\n'
+    'def add(a, b) {\n'
     '    return a + b\n'
     '}\n'
-    'func unused_bad() {\n'
+    'def unused_bad() {\n'
     '    var s = "x"\n'
     '    return s.upper()\n'
     '}\n'
@@ -169,7 +169,7 @@ class V53LanguageCore(unittest.TestCase):
 
     def test_imporc_nested_switch(self):
         src = (
-            'func f(x)\n'
+            'def f(x)\n'
             '    switch x\n'
             '        case 1\n'
             '            switch x\n'

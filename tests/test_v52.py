@@ -26,7 +26,7 @@ def _write(path, text):
 def _make_pkg(dirpath, name, version, requires=None):
     _write(os.path.join(dirpath, "impor.toml"),
            '[project]\nname = "%s"\nversion = "%s"\n' % (name, version))
-    _write(os.path.join(dirpath, "lib.impor"), 'func hello() {\n    return "%s"\n}\n' % name)
+    _write(os.path.join(dirpath, "lib.impor"), 'def hello() {\n    return "%s"\n}\n' % name)
     if requires:
         with io.open(os.path.join(dirpath, "impor.toml"), "a", encoding="utf-8") as f:
             f.write("\n[dependencies]\n")

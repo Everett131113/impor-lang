@@ -1,6 +1,6 @@
 important<<DAY<<english("English"):
 // 示例单元测试（v2.8 impor test）
-func add(a, b)
+def add(a, b)
     return a + b
 
 assert add(2, 3) == 5

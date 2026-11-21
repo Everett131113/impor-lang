@@ -261,10 +261,17 @@ def check_api():
     return rc == 0, (out + err).strip().splitlines()[-1]
 
 
-@check("compat_20", "3.11 的 20 个示例在 3.12 全部通过")
+@check("compat_20", "3.11 行为基线的 20 个示例在 4.0 全部通过")
 def check_compat():
     rc, out, err = run([PY, os.path.join(ROOT, "tools", "compat_check.py")])
     return rc == 0 and "20/20" in (out + err), (out + err).strip().splitlines()[-1]
+
+
+@check("fmt_clean", "全仓 .impor 已格式化（文件系统扫描，不依赖 Git）")
+def check_fmt_clean():
+    rc, out, err = run([PY, os.path.join(ROOT, "tools", "check_fmt_all.py")])
+    txt = (out + err).strip().splitlines()
+    return rc == 0, txt[-1] if txt else "rc=%s" % rc
 
 
 @check("keywords", "保留字静默接受 = 0")
@@ -300,7 +307,7 @@ def check_defer():
     try:
         p = os.path.join(tmp, "d.impor")
         write(p, """
-        func f() {
+        def f() {
             defer { print("defer-ok") }
             print("body")
         }

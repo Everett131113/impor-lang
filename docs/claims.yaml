@@ -16,6 +16,11 @@ claims:
     status: auto
     check: version
 
+  - id: fmt_clean
+    claim: "全仓 .impor 已格式化（文件系统扫描，不依赖 Git）"
+    status: auto
+    check: fmt_clean
+
   - id: quickstart_hello
     claim: "解压后双击示例 1，能看到「你好，Impor」"
     status: auto
@@ -72,12 +77,12 @@ claims:
     check: api_frozen
 
   - id: compat_20
-    claim: "3.11 的 20 个公开示例在 3.12 全部通过"
+    claim: "3.11 行为基线的 20 个公开示例在 4.0 全部通过"
     status: auto
     check: compat_20
 
   - id: keywords
-    claim: "65 个保留字没有一个是静默接受"
+    claim: "所有保留字都真正保留，没有一个是静默接受"
     status: auto
     check: keywords
 

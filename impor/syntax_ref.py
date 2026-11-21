@@ -37,7 +37,7 @@ _add("let", "声明局部变量（let 是 var 的别名，常用于较小作用�
      'let x = 3\nprint(x)',
      "`let x = 3` 创建变量 x；print 输出 3。和 var 的差别主要是写法，当前版本二者都可声明变量。")
 _add("local", "在函数内声明局部变量，不污染外层。", "local 名字 = 值",
-     'func f()\n    local n = 2\n    return n\nprint(f())',
+     'def f()\n    local n = 2\n    return n\nprint(f())',
      "函数 f 内 `local n = 2` 只在 f 内有效；调用 f() 返回 2，print 输出 2。")
 _add("set", "给已有变量或对象属性赋值。", "set 名字 = 值  /  set self.属性 = 值",
      'var a = 1\nset a = 2\nprint(a)',
@@ -125,7 +125,7 @@ _add("from", "从模块里只导入指定符号。", "from 模块名 import 符�
      "from mathx import sqrt\nprint(sqrt(25))",
      "只导入 sqrt，调用时不用写模块名前缀；sqrt(25) 输出 5。")
 _add("export", "把当前文件已有的函数/变量名字导出给其他文件（export 只写名字，不重新声明）。", "export 名字  /  export 名字1, 名字2",
-     'func hello()\n    return "hi"\nexport hello\nprint(hello())',
+     'def hello()\n    return "hi"\nexport hello\nprint(hello())',
      "先定义 hello，再用 `export hello` 标记导出；本文件内直接调用输出 hi，其他文件 import 后也能用。")
 _add("use", "把模块的全部导出符号直接注入当前作用域。", "use 模块名",
      "use mathx\nprint(sqrt(36))",
@@ -205,7 +205,7 @@ _add("await", "等待一个异步任务完成。", "await 异步调用",
 
 # ---------- 延迟清理 ----------
 _add("defer", "注册退出当前函数/模块时执行的清理块，按后进先出执行。", "defer {\n    语句\n}",
-     'func f()\n    defer { print("clean") }\n    print("body")\nf()',
+     'def f()\n    defer { print("clean") }\n    print("body")\nf()',
      "进入 f 后注册清理块；f 正常返回或异常退出时都会执行，输出 body 后输出 clean。C 后端暂不支持 defer。")
 
 # ---------- 结构与枚举 ----------
@@ -225,7 +225,7 @@ _add("implements", "声明类实现某个接口。", "class 类名 implements �
      'interface I\n    def f()\n        return 0\nclass C implements I\n    def f()\n        print("ok")\nvar c = new C()\nc.f()',
      "C 声明实现 I；实现后可以像普通类一样创建 c 并调用 c.f()，输出 ok。")
 _add("namespace", "定义命名空间/容器类（当前实现为类容器）。", "namespace 名字:\n    语句",
-     'namespace Util\n    func twice(x)\n        return x * 2\nprint(Util.twice(3))',
+     'namespace Util\n    def twice(x)\n        return x * 2\nprint(Util.twice(3))',
      "namespace Util 把 twice 收在 Util 下；Util.twice(3) 返回 6。")
 _add("sealed", "修饰类，表示密封类（当前主要作为标记保留）。", "sealed class 类名:",
      'sealed class FinalBox\n    var n = 1\nvar f = new FinalBox()\nprint(f.n)',

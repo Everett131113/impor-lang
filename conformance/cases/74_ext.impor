@@ -1,6 +1,6 @@
 important<<DAY<<english("English"):
-func label(x)
-    switch x
+def label(x)
+    match x
         case 2
             return "hit"
         default

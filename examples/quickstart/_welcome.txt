@@ -1,0 +1,2 @@
+如果看到“你好，Impor！”，说明环境正常。
+下一步：双击 examples\quickstart\1-你好.bat

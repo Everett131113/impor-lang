@@ -162,7 +162,8 @@ def _format_inline(text):
                 # ( [ ：前不留空格，后不留
                 if tok == "[" and prev in ("=", "==", "!=", "<", "<=", ">", ">=",
                                            "+", "-", "*", "/", "%", "+=", "-=",
-                                           "*=", "/=", "%=", ":"):
+                                           "*=", "/=", "%=", ":", "return", "in",
+                                           "not", "and", "or", "is"):
                     flush_space()  # v2.8 修复：赋值/二元运算符后的列表字面量保留空格
                 elif out and out[-1] == " ":
                     out.pop()
@@ -181,7 +182,7 @@ def _format_inline(text):
                 if out and out[-1] == " ":
                     out.pop()
                 out.append(tok)
-                pending_space = True
+                pending_space = False
             else:
                 flush_space()
                 out.append(tok)
@@ -203,7 +204,7 @@ def _format_inline(text):
 def _code_line_numbers(source):
     """返回 {行号(1起): 缩进层数}：仅代码行（含缩进块与大括号块）。
 
-    v3.8：原来只累计 INDENT/DEDENT，遇到 `func f() { ... }` 这类大括号块
+    v3.8：原来只累计 INDENT/DEDENT，遇到 `def f() { ... }` 这类大括号块
     时深度恒为 0，格式化结果会把函数体顶到行首。现在同时累计大括号：
       - 纯缩进块用 INDENT/DEDENT 深度；
       - 大括号块用 `{`/`}` 配对深度，并忽略块内原始空白造成的假缩进；
@@ -244,7 +245,13 @@ def _code_line_numbers(source):
         if continuation:
             result[line_no] = -1
         else:
-            depth = brace_base_indent + brace_depth if brace_depth > 0 else indent_depth
+            if brace_depth > 0:
+                # 大括号块内仍可能混用缩进子块（loop / if / while 无花括号），
+                # 必须把超出块头的 INDENT 深度叠加上去，否则子块会被拍平。
+                depth = (brace_base_indent + brace_depth
+                         + max(0, indent_depth - brace_base_indent - brace_depth))
+            else:
+                depth = indent_depth
             leading_close = 0
             for tok in sig:
                 if tok.type == TOK_OP and tok.value == "}":

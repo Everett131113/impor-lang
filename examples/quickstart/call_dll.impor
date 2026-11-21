@@ -4,6 +4,6 @@ if not fileexists(lib) {
     print("这台机器没有 winsqlite3.dll，跳过 DLL 示例。")
     exit(0)
 }
-var v = ffi_call(lib, "sqlite3_libversion_number", [], "int", [], "stdcall")
+var v = ffi_call(lib, "sqlite3_libversion_number",[], "int",[], "stdcall")
 print("SQLite 版本号：", v)
 print("DLL 调用成功。")

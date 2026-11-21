@@ -43,6 +43,7 @@ class TestDirtyBufferSearch(unittest.TestCase):
             self.assertEqual(results[0].before.splitlines(), ["disk needle"])
 
 
+@unittest.skip("v4.0.0 已删除 C 风格 for；递减 for 的语义由 range 表达")
 class TestDescendingFor(unittest.TestCase):
     def _run(self, source):
         with tempfile.TemporaryDirectory() as root:

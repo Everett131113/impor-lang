@@ -77,19 +77,37 @@ def run_imporc(case, workdir):
         shutil.copyfile(case, local_case)
     except OSError as exc:
         return "BUILD_FAIL", "", "copy case failed: %s" % exc
+    # imporc 从“当前目录”读 imporc_args.txt。放到全局仓库 cwd 会和并行任务
+    # 撞车（例如测试套件和 tools/support_matrix.py 同时跑），因此每个用例
+    # 用自己的临时目录当 cwd，参数文件天然隔离。
+    argfile = os.path.join(workdir, "imporc_args.txt")
     original = b""
     try:
-        with open(ARGFILE, "rb") as f:
+        with io.open(ARGFILE, "rb") as f:
             original = f.read()
     except OSError:
         pass
+    b = None
     try:
-        with io.open(ARGFILE, "w", encoding="utf-8", newline="\n") as f:
-            # imporc_args.txt 按空格切分参数；路径用双引号包裹，避免含空格的目录被截断
-            f.write('build "%s" -o "%s"' % (local_case, exe))
-        b = subprocess.run([IMPORC], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=TIMEOUT, cwd=ROOT)
+        # 新拷贝的文件偶尔被 Windows 安全软件锁住，imporc 的 fileread 会失败；
+        # 这是环境抖动，不是语义差异，重试几次即可。
+        for attempt in range(3):
+            with io.open(argfile, "w", encoding="utf-8", newline="\n") as f:
+                # imporc_args.txt 按空格切分参数；路径用双引号包裹，避免含空格的目录被截断
+                f.write('build "%s" -o "%s"' % (local_case, exe))
+            b = subprocess.run([IMPORC], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=TIMEOUT, cwd=workdir)
+            if os.path.isfile(exe):
+                break
+            err = (b.stdout or "") + (b.stderr or "")
+            if "fileread" not in err and "无法打开文件" not in err:
+                break
+            time.sleep(1.5)
     finally:
+        try:
+            os.remove(argfile)
+        except OSError:
+            pass
         # v3.0：恢复原参数文件，避免污染后续 imporc.cmd 调用
         try:
             with open(ARGFILE, "wb") as f:

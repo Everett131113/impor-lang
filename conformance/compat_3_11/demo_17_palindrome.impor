@@ -1,9 +1,9 @@
 important<<DAY<<english("English"):
 // 回文判断
-func is_palindrome(s)
+def is_palindrome(s)
     var i = 0
     var j = len(s) - 1
-    loop
+    while true
         if i >= j
             break
         if strcut(s, i, i + 1) != strcut(s, j, j + 1)

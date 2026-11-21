@@ -1,15 +1,15 @@
 important<<DAY<<english("English"):
 // 十进制转二进制
-func to_binary(n)
+def to_binary(n)
     if n == 0
         return "0"
     var out = ""
-    loop
+    while true
         set out = to_str(n % 2) + out
         set n = div(n, 2)
         if n == 0
             break
     return out
 
-for n in [3, 10, 42, 255]
+for n in[3, 10, 42, 255]
     print(n, "的二进制:", to_binary(n))

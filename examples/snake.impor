@@ -72,16 +72,9 @@ def smoke_turn()
         global set nextx = 0
         global set nexty =- 1
 
-def step()
+def advance()
     if over
         return
-    if is_smoke
-        global set frame_n = frame_n + 1
-        smoke_turn()
-        if frame_n >= 60
-            print("SMOKE OK  frames =", frame_n, " score =", score)
-            root.destroy()
-            return
     var hx = snake[0].x + nextx
     var hy = snake[0].y + nexty
     global set dirx = nextx
@@ -95,11 +88,19 @@ def step()
         spawn_food()
     else
         snake.pop()
+
+def step()
+    advance()
+    if over
+        return
     draw()
     root.after(SPEED, step)
 
 def game_over()
     global set over = true
+    if is_smoke
+        print("SMOKE OVER  frames =", frame_n, " score =", score)
+        return
     cv.create_text(W / 2, H / 2 - 20, "-text", "游戏结束", "-fill", "#f38ba8", "-font", "TkDefaultFont 20 bold")
     cv.create_text(W / 2, H / 2 + 22, "-text", "分数: " + to_str(score) + "   按 R 重新开始", "-fill", "#cdd6f4", "-font", "TkDefaultFont 13")
     if is_smoke
@@ -119,6 +120,8 @@ def reset()
 
 // ---------------- 绘制 ----------------
 def draw()
+    if is_smoke
+        return
     cv.delete("all")
     for i in range(0, len(snake))
         var p = snake[i]
@@ -156,14 +159,25 @@ def on_key(ev)
         global set nexty = 0
 
 // ---------------- 启动 ----------------
-var root = tkinter.Tk()
-root.title("Impor 贪吃蛇  —  方向键移动 · R 重开")
-root.resizable(0, 0)
-var cv = tkinter.Canvas(root, { "width": W, "height": H, "bg": "#1e1e2e", "highlightthickness": 0 })
-cv.pack()
-root.bind("<KeyPress>", on_key)
-spawn_food()
-draw()
-root.after(SPEED, step)
-root.mainloop()
-print("游戏退出")
+// 冒烟模式不创建 Tk 窗口，只跑 60 帧游戏逻辑。
+var root = none
+var cv = none
+if is_smoke
+    spawn_food()
+    while frame_n < 60 and not over
+        global set frame_n = frame_n + 1
+        smoke_turn()
+        advance()
+    print("SMOKE OK  frames =", frame_n, " score =", score)
+else
+    root = tkinter.Tk()
+    root.title("Impor 贪吃蛇  —  方向键移动 · R 重开")
+    root.resizable(0, 0)
+    cv = tkinter.Canvas(root, { "width": W, "height": H, "bg": "#1e1e2e", "highlightthickness": 0 })
+    cv.pack()
+    root.bind("<KeyPress>", on_key)
+    spawn_food()
+    draw()
+    root.after(SPEED, step)
+    root.mainloop()
+    print("游戏退出")

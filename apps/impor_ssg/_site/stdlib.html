@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>标准库：一个 import 就能用 · Impor</title>
+<style>
+:root { color-scheme: light dark; }
+body { margin: 0; font: 16px/1.7 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #0f1216; color: #e6e8eb; }
+header { position: sticky; top: 0; background: rgba(15,18,22,.92); border-bottom: 1px solid #242a31; backdrop-filter: blur(8px); }
+.wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+header .wrap { display: flex; align-items: center; gap: 18px; height: 56px; }
+header a { color: #9fb3c8; text-decoration: none; font-size: 14px; }
+header a:hover { color: #fff; }
+.brand { font-weight: 700; color: #e6e8eb; letter-spacing: .02em; }
+main { padding: 40px 0 72px; }
+h1 { font-size: 30px; line-height: 1.25; margin: 0 0 24px; }
+h2 { font-size: 20px; margin: 32px 0 12px; color: #dbe4ee; }
+p { margin: 0 0 14px; color: #c8d0d8; }
+li { margin: 4px 0; color: #c8d0d8; }
+code { background: #1b2129; border: 1px solid #2a323c; border-radius: 4px; padding: 1px 5px; font: 13px/1.5 Consolas, monospace; color: #ffd479; }
+pre { background: #161b21; border: 1px solid #2a323c; border-radius: 8px; padding: 16px; overflow: auto; }
+pre code { border: 0; background: none; padding: 0; color: #d7e0ea; }
+footer { border-top: 1px solid #242a31; padding: 20px 0 40px; color: #7f8b99; font-size: 13px; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><span class="brand">Impor (I++)</span> <a href="compat.html">compat</a> <a href="errors.html">errors</a> <a href="index.html">index</a> <a href="stdlib.html">stdlib</a></div></header>
+<main class="wrap"><h1>标准库：一个 import 就能用</h1>
+<p>3.12 新增六个模块，解释器和 C 后端同一套实现：</p>
+<li>`std.json`：parse / stringify / try_parse</li>
+<li>`std.fs`：read / write / exists / list / mkdir / move / size</li>
+<li>`std.path`：norm / join / basename / dirname / ext / stem</li>
+<li>`std.regex`：is_match / find_all / replace_all / contains</li>
+<li>`std.time`：readable / seconds / sleep_ms / elapsed</li>
+<li>`std.http`：get / get_json（用系统自带 curl，不装第三方包）</li>
+<p>例子：</p>
+<pre><code>import std.json as json
+var data = json.parse("[1,2]")
+print(json.stringify(data))
+</code></pre>
+<p>这些模块也能被 `impor build` 编进 exe，在没有 Python 的机器上跑。</p>
+</main>
+<footer><div class="wrap">这个站由 <code>apps/impor_ssg</code> 生成；生成器本身是 Impor 脚本。</div></footer>
+</body>
+</html>
