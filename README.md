@@ -1,6 +1,6 @@
 # Impor (I++)
 
-> CI 运行结论与截图见下方「CI 证据」一节。仓库当前为 private，shields / GitHub 徽章对外不可用，因此不在首屏放会 404 的徽章。
+> 本仓库已公开：CI 结论与运行截图见下方「CI 证据」一节，徽章可直接访问，不再有 404。
 
 **Impor**（读作 "I++"）是一个自制的、完整的编程语言：拥有词法分析、语法分析、AST、树遍历解释器、编译到 Python 的转译器、交互式 REPL、命令行工具和带语法高亮的图形化编辑器。
 
@@ -40,9 +40,9 @@ python Impor.py run examples/quickstart/hello.impor
 > 需要 64 位 DLL 时改用 `impor build --lib --c-source ... -o out/`，再用 `build_msvc.bat` 或 `build_gcc.bat` 编译（内置 tcc 只产 32 位）。
 > `lib.c` 是纯库源码，不含 `main`；`impor run`（64 位 Python）加载 32 位库会抛 `FFIArchError`，不再伪装成签名不匹配。
 
-## CI 证据（仓库当前为 private）
+## CI 证据
 
-本仓库目前是 **private**，因此匿名 `api.github.com` 与 shields 徽章会返回 404，外部无法直接点开验证。下面记录的是仓库主账号在 Actions 中看到的运行结果，截图已入档：
+本仓库已公开，匿名 `api.github.com` 与 shields 徽章可直接访问。下面记录的是仓库主账号在 Actions 中看到的运行结果，截图已入档：
 
 | 工作流 | 运行 | 结果 |
 |---|---|---|
