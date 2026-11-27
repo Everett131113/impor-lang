@@ -18,6 +18,10 @@ from tkinter import filedialog, messagebox, ttk
 
 from .editor_theme import THEME, DARK_THEME, LIGHT_THEME, HIGH_CONTRAST_THEME
 from .editor_widgets import round_rect, FlatButton, TabStrip, ActivityBar, Minimap, MiniScrollbar
+# 高亮 / 补全要认「视觉关键字」（硬关键字 + 有语义的软关键字，如 have）。
+# 显式 import，别依赖 editor.py 末尾往本模块 __dict__ 里注命名空间的桥接：
+# 那样单用 editor_pane 时 KEYWORDS 是 NameError。
+from .lexer import HIGHLIGHT_KEYWORDS
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -60,6 +64,7 @@ class EditorPane(tk.Frame):
         self._encoding = "UTF-8"
         self._newline = "LF"
         self._bom = False
+        self._ends_nl = True
         self._diff_undo = []
 
         self.breadcrumb = tk.Label(self, text="", bg=THEME["editor"], fg=THEME["muted"],
@@ -103,6 +108,12 @@ class EditorPane(tk.Frame):
         self._outline_job = None
         self._bracket_job = None
         self._completion_job = None
+        self._sem_dirty = False
+        self._sem_job = None
+        self._sem_pos_cache = {}
+        self._sem_cache_key = None
+        self._sem_map_cache = {}
+        self._sem_map_key = None
         # 输入时不再自动弹补全（打 p 弹 print）；保留 Ctrl+Space 手动补全。
         self.auto_complete = False
         self._param_job = None
@@ -322,6 +333,15 @@ class EditorPane(tk.Frame):
             if self._hl_job:
                 self.after_cancel(self._hl_job)
             self._hl_job = self.after(180, self.highlight)
+            # 语义着色依赖整份符号索引；输入过程中先沿用上一帧结果，
+            # 停下来后再重算一次，避免每个按键都把 UI 线程卡住。
+            self._sem_dirty = True
+            if self._sem_job:
+                try:
+                    self.after_cancel(self._sem_job)
+                except Exception:
+                    pass
+            self._sem_job = self.after(900, self._refresh_semantic)
             self._schedule_diagnostics()
             if getattr(self.app, "split_pane", None):
                 if self._sync_job:
@@ -515,7 +535,7 @@ class EditorPane(tk.Frame):
         return (m.group(1), len(m.group(1))) if m else ("", 0)
 
     def _symbols(self):
-        names = set(BUILTIN_NAMES) | set(BUILTIN_DOCS) | set(KEYWORDS)
+        names = set(BUILTIN_NAMES) | set(BUILTIN_DOCS) | set(HIGHLIGHT_KEYWORDS)
         src = self.text.get("1.0", "end-1c")
         for m in re.finditer(r"(?m)^\s*(?:func|def|class|var|const|let)\s+([A-Za-z_][A-Za-z0-9_]*|[一-龥]+)", src):
             names.add(m.group(1))
@@ -657,22 +677,26 @@ class EditorPane(tk.Frame):
         doc = BUILTIN_DOCS.get(word, "")
         sig = ""
         if not doc:
-            try:
-                syms = self.app.index.definition(word, prefer_path=self.path)
-            except Exception:
-                syms = []
-            for sym in syms:
-                text = (getattr(sym, "text", "") or "").strip()
-                m = re.search(r"(?:func|def)\s+" + re.escape(word) + r"\s*\(([^)]*)\)", text)
-                if m:
-                    sig = word + "(" + m.group(1) + ")"
-                    break
+            # 4.1：先只看当前文件（纯字符串匹配，微秒级）——键入 "fib(" 时
+            # 索引若在后台重建，旧写法会在 definition() 里等锁，界面直接冻住。
+            src = self.text.get("1.0", "end-1c")
+            m = re.search(r"(?m)^\s*(?:func|def)\s+" + re.escape(word) +
+                          r"\s*\(([^)]*)\)", src)
+            if m:
+                sig = word + "(" + m.group(1) + ")"
             if not sig:
-                src = self.text.get("1.0", "end-1c")
-                m = re.search(r"(?m)^\s*(?:func|def)\s+" + re.escape(word) +
-                              r"\s*\(([^)]*)\)", src)
-                if m:
-                    sig = word + "(" + m.group(1) + ")"
+                try:
+                    idx = self.app.index
+                    # probe：不等锁、不触发重建；索引忙时返回 [] 直接放弃提示
+                    syms = idx.probe(word, prefer_path=self.path) if hasattr(idx, "probe") else []
+                except Exception:
+                    syms = []
+                for sym in syms:
+                    text = (getattr(sym, "text", "") or "").strip()
+                    m = re.search(r"(?:func|def)\s+" + re.escape(word) + r"\s*\(([^)]*)\)", text)
+                    if m:
+                        sig = word + "(" + m.group(1) + ")"
+                        break
         if not sig and doc:
             m = re.search(r"\(([^)]*)\)", doc)
             sig = word + "(" + (m.group(1) if m else "") + ")"
@@ -975,16 +999,35 @@ class EditorPane(tk.Frame):
         if cache is not None:
             self._sem_map = cache.get(getattr(self, "_virtual_start", -1), {})
         else:
-            self._sem_map = (semantic_symbol_map(sem_src)
-                             if getattr(self.app, "semantic_highlight", True) else {})
-        self._sem_pos = {}
+            self._sem_map = dict(getattr(self, "_sem_map_cache", {}) or {})
+            if (getattr(self.app, "semantic_highlight", True)
+                    and not getattr(self, "_sem_dirty", False)
+                    and len(content) <= 200_000 and total_lines <= 1200):
+                sem_key = (len(content), hash(content))
+                if sem_key != getattr(self, "_sem_map_key", None):
+                    self._sem_map = semantic_symbol_map(sem_src)
+                    self._sem_map_cache = dict(self._sem_map)
+                    self._sem_map_key = sem_key
+            elif not getattr(self, "_sem_dirty", False):
+                # 大文件只做词法高亮，避免打开时整份解析。
+                self._sem_map = {}
+        self._sem_pos = dict(getattr(self, "_sem_pos_cache", {}) or {})
         if (not forced and not getattr(self, "_virtual_no_index", False)
                 and getattr(self.app, "semantic_highlight", True) and getattr(self, "path", "")
-                and len(content) <= 2_000_000):
-            try:
-                self._sem_pos = self.app.index.semantic_positions(self.path, content)
-            except Exception:
-                self._sem_pos = {}
+                and len(content) <= 200_000 and total_lines <= 1200
+                and not getattr(self, "_sem_dirty", False)):
+            key = (self.path, len(content), hash(content))
+            if key != getattr(self, "_sem_cache_key", None):
+                try:
+                    self._sem_pos = self.app.index.semantic_positions(self.path, content)
+                    self._sem_pos_cache = dict(self._sem_pos)
+                    self._sem_cache_key = key
+                except Exception:
+                    self._sem_pos = {}
+        elif not getattr(self, "_sem_dirty", False) and (
+                len(content) > 200_000 or total_lines > 1200):
+            # 超阈值文件不做整份语义分析，保留词法高亮即可。
+            self._sem_pos = {}
         for tag in ("kw", "kw2", "builtin", "string", "num", "comment", "doc", "func", "cls", "decl", "op",
                     "sem", "sem_var", "sem_param", "sem_field", "sem_module", "br0", "br1", "br2", "br3"):
             t.tag_remove(tag, tag_start, tag_end)
@@ -1062,7 +1105,7 @@ class EditorPane(tk.Frame):
                     m = re.match(r"[A-Za-z0-9_\u4e00-\u9fff]+", line[i:])
                     word = m.group(0)
                     j = i + len(word)
-                    if word in KEYWORDS or word == "struct":
+                    if word in HIGHLIGHT_KEYWORDS or word == "struct":
                         t.tag_add("kw2" if word in FLOW_WORDS else "kw", f"{ln}.{i}", f"{ln}.{j}")
                     elif word in BUILTIN_NAMES:
                         t.tag_add("builtin", f"{ln}.{i}", f"{ln}.{j}")
@@ -1115,6 +1158,15 @@ class EditorPane(tk.Frame):
         self._match_bracket()
         if getattr(self, "_mm_job", None) is None:
             self._mm_job = self.after(350, self._refresh_minimap)
+
+    def _refresh_semantic(self):
+        """输入停止后重算一次语义着色；输入期间不阻塞 UI。"""
+        self._sem_job = None
+        self._sem_dirty = False
+        try:
+            self.highlight()
+        except Exception:
+            pass
 
     def _refresh_minimap(self):
         self._mm_job = None

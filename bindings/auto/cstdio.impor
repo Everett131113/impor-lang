@@ -1,0 +1,282 @@
+# -*- coding: utf-8 -*-
+# 由 tools/bindgen.py 自动生成（Impor 4.7.0），勿手改。
+# 源头文件：stdio.h（gcc -E -P）
+# 目标库：msvcrt.dll
+# 统计：抽取 146 条原型，生成 33 个包装，跳过 113 条（可变参数 22、指针参数（FFI 不支持 ptr） 85、未映射类型 'va_list' 6）
+#
+# 只覆盖 Impor FFI 支持的形态（int/float/cstr/void，≤8 参数）。指针、结构体、
+# 回调、可变参数一律整条跳过——这是能力边界，不是 bug。需要那些形态的库，
+# 请写 C shim（参考 impor/bindings/http/impor_bind_http.c 的做法）后手写绑定。
+
+var __dll = "msvcrt.dll"
+var __lib = nil
+var __ready = false
+var __err = ""
+
+def _open() {
+    if __ready {
+        return true
+    }
+    var lib = nil
+    try {
+        set lib = ffi_open(__dll)
+    } catch e {
+        set __err = to_str(e)
+        return false
+    }
+    if lib == nil {
+        set __err = "ffi_open 返回空句柄"
+        return false
+    }
+    set __lib = lib
+    set __ready = true
+    return true
+}
+
+export def ready() {
+    return __ready
+}
+
+export def last_error() {
+    return __err
+}
+
+export def load(path) {
+    set __dll = to_str(path)
+    set __ready = false
+    set __err = ""
+    return _open()
+}
+
+export def __debugbreak() {
+    if !_open() {
+        return nil
+    }
+    ffi_call(__lib, "__debugbreak", [], "void", [])
+    return nil
+}
+
+export def _fcloseall() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_fcloseall", [], "int", [])
+}
+
+export def _fgetchar() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_fgetchar", [], "int", [])
+}
+
+export def _tempnam(a0, a1) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_tempnam", [a0, a1], "cstr", ["cstr", "cstr"])
+}
+
+export def _flushall() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_flushall", [], "int", [])
+}
+
+export def _fputchar(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_fputchar", [a0], "int", ["int"])
+}
+
+export def getchar() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "getchar", [], "int", [])
+}
+
+export def _getmaxstdio() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_getmaxstdio", [], "int", [])
+}
+
+export def gets(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "gets", [a0], "cstr", ["cstr"])
+}
+
+export def perror(a0) {
+    if !_open() {
+        return nil
+    }
+    ffi_call(__lib, "perror", [a0], "void", ["cstr"])
+    return nil
+}
+
+export def putchar(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "putchar", [a0], "int", ["int"])
+}
+
+export def puts(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "puts", [a0], "int", ["cstr"])
+}
+
+export def remove(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "remove", [a0], "int", ["cstr"])
+}
+
+export def rename(a0, a1) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "rename", [a0, a1], "int", ["cstr", "cstr"])
+}
+
+export def _unlink(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_unlink", [a0], "int", ["cstr"])
+}
+
+export def unlink(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "unlink", [a0], "int", ["cstr"])
+}
+
+export def _rmtmp() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_rmtmp", [], "int", [])
+}
+
+export def _setmaxstdio(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_setmaxstdio", [a0], "int", ["int"])
+}
+
+export def _set_output_format(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_set_output_format", [a0], "int", ["int"])
+}
+
+export def _get_output_format() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_get_output_format", [], "int", [])
+}
+
+export def tmpnam(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "tmpnam", [a0], "cstr", ["cstr"])
+}
+
+export def _set_printf_count_output(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_set_printf_count_output", [a0], "int", ["int"])
+}
+
+export def _get_printf_count_output() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_get_printf_count_output", [], "int", [])
+}
+
+export def _fgetwchar() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_fgetwchar", [], "int", [])
+}
+
+export def _fputwchar(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "_fputwchar", [a0], "int", ["int"])
+}
+
+export def getwchar() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "getwchar", [], "int", [])
+}
+
+export def putwchar(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "putwchar", [a0], "int", ["int"])
+}
+
+export def tempnam(a0, a1) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "tempnam", [a0, a1], "cstr", ["cstr", "cstr"])
+}
+
+export def fcloseall() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "fcloseall", [], "int", [])
+}
+
+export def fgetchar() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "fgetchar", [], "int", [])
+}
+
+export def flushall() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "flushall", [], "int", [])
+}
+
+export def fputchar(a0) {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "fputchar", [a0], "int", ["int"])
+}
+
+export def rmtmp() {
+    if !_open() {
+        return nil
+    }
+    return ffi_call(__lib, "rmtmp", [], "int", [])
+}

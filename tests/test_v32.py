@@ -62,9 +62,9 @@ print(is_prime(7))
 
     def test_use_collections_hof(self):
         out = run_impor("""use std.collections
-func dbl(x)
+def dbl(x)
     return x * 2
-func add(a, b)
+def add(a, b)
     return a + b
 print(map([1, 2, 3], dbl))
 print(reduce([1, 2, 3], add, 0))
@@ -108,7 +108,7 @@ class TestCheckAggregate(unittest.TestCase):
                 f.write("var a = 1\nprint(no_such_name)\n")
             r = cli(["check", p])
             joined = r.stdout + r.stderr
-            # lint 未定义变量（warning 级）→ 计入失败，退出码非 0
+            # 未定义变量是 error 级（运行必然 NameError）→ 退出码非 0
             self.assertIn("未定义变量", joined)
             self.assertNotEqual(r.returncode, 0)
 
@@ -121,8 +121,8 @@ class TestModuleFixes(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             mod = os.path.join(d, "privmod.impor")
             with io.open(mod, "w", encoding="utf-8") as f:
-                f.write("func helper(v)\n    if v < 0\n        return -v\n    return v\n\n"
-                        "func do_abs(v)\n    return helper(v)\n\nexport do_abs\n")
+                f.write("def helper(v)\n    if v < 0\n        return -v\n    return v\n\n"
+                        "def do_abs(v)\n    return helper(v)\n\nexport do_abs\n")
             out = run_impor("import privmod\nprint(privmod.do_abs(-5))\n", paths=[d])
             self.assertIn("5", str(out))
 
@@ -134,7 +134,7 @@ class TestModuleFixes(unittest.TestCase):
             with io.open(os.path.join(pkg, "__pkg__.impor"), "w", encoding="utf-8") as f:
                 f.write("from .greet import greet\nexport greet\n")
             with io.open(os.path.join(pkg, "greet.impor"), "w", encoding="utf-8") as f:
-                f.write("func greet(n)\n    return \"你好, \" + n\nexport greet\n")
+                f.write("def greet(n)\n    return \"你好, \" + n\nexport greet\n")
             out = run_impor("import mylib\nprint(mylib.greet(\"Impor\"))\n", paths=[d])
             self.assertIn("你好, Impor", str(out))
 

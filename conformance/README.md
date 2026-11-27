@@ -58,6 +58,7 @@ Windows 环境需要 `impor/tcc/win32/tcc.exe` 与 `impor/imporc.exe`（仓库�
 ## 限制
 
 - 用例刻意避开三后端的已知差异区：`try / catch`、自定义异常、复合赋值 `+=`（imporc 尚不支持）；`imporc` 的 `switch` 暂不支持**嵌套 switch**（`case` 体里再写 `switch`），嵌套场景请用解释器或 C 后端。
-- C 后端整数为 64 位有符号，溢出会报错；解释器为 Python 大整数。这是**已文档化的语义差异**，conformance 不覆盖溢出边界。
+- **整数在四条路径上统一为 int64**（v4.3.2 口径）：C 后端、数值快路径、默认解释器、`--int64` 自检模式越界一律报 `E1012`，不静默回绕。任意精度只剩一个入口：`impor run FILE.impor --big`（C 产物与自适应快路径不提供大整数）。conformance 的 100 个用例本身不覆盖溢出边界，溢出由 `tests/test_v4_backend_parity.py` 与 `run` 的 E1012 诊断锁定。
 - 浮点格式化由各自运行时决定，用例只使用能稳定一致的形式。
+- **类型注解错误是负向诊断，不进本 runner**（这里只比三端成功 stdout）；由 `tests/test_annotation_gate.py` 的 20 条正反用例锁定，见 `docs/类型注解边界.md`。
 - **路径含空格**：`imporc_args.txt` 按空格切分参数，脚本/输出路径必须用双引号包裹（`build "D:\My Dir\a.impor" -o "D:\My Dir\out.exe"`）。v3.3 起 imporc 支持引号；本 runner 已按此格式写入。

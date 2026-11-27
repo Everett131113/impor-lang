@@ -1,0 +1,8 @@
+# 内联用例 3：形参出现两次且实参是函数调用（不纯），必须跳过内联。
+def dbl(x : int) -> int {
+    return x + x
+}
+
+var xs = [1, 2, 3]
+var n : int = dbl(len(xs))
+print(n)

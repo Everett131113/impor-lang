@@ -44,7 +44,7 @@ class TestBuildAndError(unittest.TestCase):
         self.tmp = os.path.join(ROOT, "tests", "_v43_tmp")
         os.makedirs(self.tmp, exist_ok=True)
         with open(os.path.join(self.tmp, "mod.impor"), "w", encoding="utf-8", newline="\n") as f:
-            f.write("export add, base\n\nfunc add(a, b)\n    return a + b\n\nvar base = 10\n")
+            f.write("export add, base\n\ndef add(a, b)\n    return a + b\n\nvar base = 10\n")
         with open(os.path.join(self.tmp, "main.impor"), "w", encoding="utf-8", newline="\n") as f:
             f.write("from mod import add, base\nprint(add(1, base))\n")
 
@@ -65,7 +65,7 @@ class TestBuildAndError(unittest.TestCase):
         src = os.path.join(self.tmp, "err.impor")
         exe = os.path.join(self.tmp, "err.exe")
         with open(src, "w", encoding="utf-8", newline="\n") as f:
-            f.write("func f(x)\n    return 10 / x\nprint(f(0))\n")
+            f.write("def f(x)\n    return 10 / x\nprint(f(0))\n")
         rc, out = run_cli(["build", "tests/_v43_tmp/err.impor", "-o", exe])
         self.assertEqual(rc, 0, out)
         r = subprocess.run([exe], cwd=ROOT, capture_output=True, text=True,
@@ -83,13 +83,13 @@ class TestImporcImports(unittest.TestCase):
         try:
             os.makedirs(os.path.join(tmp, "pkg"), exist_ok=True)
             with open(os.path.join(tmp, "mod.impor"), "w", encoding="utf-8", newline="\n") as f:
-                f.write("export add, base\n\nfunc add(a, b)\n    return a + b\n\nvar base = 10\n")
+                f.write("export add, base\n\ndef add(a, b)\n    return a + b\n\nvar base = 10\n")
             with open(os.path.join(tmp, "pkg", "util.impor"), "w", encoding="utf-8", newline="\n") as f:
-                f.write("export twice\n\nfunc twice(x)\n    return x * 2\n")
+                f.write("export twice\n\ndef twice(x)\n    return x * 2\n")
             main = os.path.join(tmp, "imp_main.impor")
             with open(main, "w", encoding="utf-8", newline="\n") as f:
                 f.write("from mod import add, base\nimport pkg.util as u\n"
-                        "func calc(x)\n    import mod as m2\n"
+                        "def calc(x)\n    import mod as m2\n"
                         "    return add(x, base) + u.twice(x) + m2.base\n"
                         "print(calc(1))\n")
             exe = os.path.join(tmp, "imp_main.exe")

@@ -1,0 +1,34 @@
+# 图像绑定 demo（v4.3.2）
+# 运行：在 bindings/image 目录下，py -3 ..\..\Impor.py run demo.impor
+# 输入用仓库自带的 assets/impor_icon.png；输出写到 demo_out.png。
+
+import image_bind as img
+
+var shim = "impor_bind_image.dll"
+if !img.load(shim)
+    print("load 失败：", img.error())
+    exit(1)
+print("load: True")
+
+var src = "..\\..\\assets\\impor_icon.png"
+var h = img.open(src)
+if h <= 0
+    print("open 失败：", img.error())
+    exit(1)
+
+var w = img.width(h)
+var hh = img.height(h)
+print("size: ", w, "x", hh)
+print("center: ", img.red(h, w / 2, hh / 2), ",", img.green(h, w / 2, hh / 2), ",", img.blue(h, w / 2, hh / 2), ",", img.alpha(h, w / 2, hh / 2))
+
+var out = "demo_out.png"
+if img.save_png(h, out)
+    print("save_png: True")
+else
+    print("save_png: False ", img.error())
+
+# 回读刚写出的 PNG：尺寸必须一致，说明编码-解码闭环成立
+var h2 = img.open(out)
+print("reload: ", img.width(h2), "x", img.height(h2))
+print("roundtrip: ", img.width(h2) == w and img.height(h2) == hh)
+print("close: ", img.close(h2), " ", img.close(h))

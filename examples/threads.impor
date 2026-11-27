@@ -1,0 +1,35 @@
+// 线程 / 互斥锁 / 原子量（v4.2）
+// 3 个线程各做 200 次「原子自增 + mutex 保护的普通自增」，
+// 结果必须精确等于 600（普通自增若没锁就会小于 600）。
+
+var lock = mutex_new()
+var hits = atomic_new(0)
+var total = 0
+
+def work(n)
+    var i = 0
+    while i < n
+        atomic_add(hits, 1)
+        mutex_lock(lock)
+        set total = total + 1
+        mutex_unlock(lock)
+        i += 1
+    return n
+
+def job()
+    return work(200)
+
+var hs = []
+var k = 0
+while k < 3
+    set hs = arrappend(hs, thread_spawn(job))
+    k += 1
+
+var joined = 0
+for h in hs
+    set joined = joined + thread_join(h)
+
+print("joined:", joined)
+print("atomic:", atomic_load(hits))
+print("total:", total)
+print("cas:", atomic_cas(hits, 600, 601), atomic_load(hits))

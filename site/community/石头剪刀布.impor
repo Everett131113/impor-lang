@@ -10,7 +10,7 @@ while i < len(player)
     var c = moves[cpu[i]]
     if player[i] == cpu[i]
         print("第", i + 1, "局：", p, "对", c, "平局")
-    elseif (player[i] + 1) % 3 == cpu[i]
+    elif(player[i] + 1) % 3 == cpu[i]
         print("第", i + 1, "局：", p, "对", c, "你赢")
         score = score + 1
     else

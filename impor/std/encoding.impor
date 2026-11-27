@@ -1,0 +1,170 @@
+// std/encoding.impor — base64 / hex / URL 编码（纯 Impor，不用位运算以外的特性）
+// 注意：Impor 没有 `<<`/`>>` 运算符，这里用乘除 2 的幂等价实现。
+
+var B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+def base64_encode(s) {
+    var out = ""
+    var n = len(s)
+    var i = 0
+    while i + 2 < n {
+        var b0 = ord(s[i])
+        var b1 = ord(s[i + 1])
+        var b2 = ord(s[i + 2])
+        var v = b0 * 65536 + b1 * 256 + b2
+        out += B64[(int(v / 262144)) % 64]
+        out += B64[(int(v / 4096)) % 64]
+        out += B64[(int(v / 64)) % 64]
+        out += B64[v % 64]
+        set i = i + 3
+    }
+    var rest = n - i
+    if rest == 1 {
+        var v1 = ord(s[i]) * 65536
+        out += B64[(int(v1 / 262144)) % 64]
+        out += B64[(int(v1 / 4096)) % 64]
+        out += "=="
+    }
+    if rest == 2 {
+        var v2 = ord(s[i]) * 65536 + ord(s[i + 1]) * 256
+        out += B64[(int(v2 / 262144)) % 64]
+        out += B64[(int(v2 / 4096)) % 64]
+        out += B64[(int(v2 / 64)) % 64]
+        out += "="
+    }
+    return out
+}
+
+def _b64_index(ch) {
+    var i = 0
+    while i < 64 {
+        if B64[i] == ch {
+            return i
+        }
+        set i = i + 1
+    }
+    return - 1
+}
+
+def base64_decode(s) {
+    var clean = ""
+    var i = 0
+    while i < len(s) {
+        var ch = s[i]
+        if ch != "=" and ch != "\n" and ch != "\r" {
+            if _b64_index(ch) >= 0 {
+                clean += ch
+            }
+        }
+        set i = i + 1
+    }
+    var out = ""
+    var j = 0
+    while j + 3 < len(clean) {
+        var v = _b64_index(clean[j]) * 262144
+        set v = v + _b64_index(clean[j + 1]) * 4096
+        set v = v + _b64_index(clean[j + 2]) * 64
+        set v = v + _b64_index(clean[j + 3])
+        out += chr((int(v / 65536)) % 256)
+        out += chr((int(v / 256)) % 256)
+        out += chr(v % 256)
+        set j = j + 4
+    }
+    // 尾部 2~3 个字符（原串末尾带 = 补位）：补齐 0 再解出一个或两个字节
+    var rem = len(clean) - j
+    if rem >= 3 {
+        var w = _b64_index(clean[j]) * 262144 + _b64_index(clean[j + 1]) * 4096 + _b64_index(clean[j + 2]) * 64
+        out += chr(int(w / 65536) % 256)
+        out += chr(int(w / 256) % 256)
+    }
+    if rem == 2 {
+        var x = _b64_index(clean[j]) * 262144 + _b64_index(clean[j + 1]) * 4096
+        out += chr(int(x / 65536) % 256)
+    }
+    return out
+}
+
+def to_hex(s) {
+    var out = ""
+    var i = 0
+    while i < len(s) {
+        var b = ord(s[i])
+        out += _hex2(b)
+        set i = i + 1
+    }
+    return out
+}
+
+def _hex2(b) {
+    var d = "0123456789abcdef"
+    return d[(int(b / 16)) % 16] + d[b % 16]
+}
+
+def from_hex(h) {
+    var out = ""
+    var i = 0
+    while i + 1 < len(h) {
+        var hi = _hexval(h[i])
+        var lo = _hexval(h[i + 1])
+        if hi < 0 {
+            return ""
+        }
+        if lo < 0 {
+            return ""
+        }
+        out += chr(hi * 16 + lo)
+        set i = i + 2
+    }
+    return out
+}
+
+def _hexval(ch) {
+    var d = "0123456789abcdef"
+    var u = "0123456789ABCDEF"
+    var i = 0
+    while i < 16 {
+        if d[i] == ch {
+            return i
+        }
+        if u[i] == ch {
+            return i
+        }
+        set i = i + 1
+    }
+    return - 1
+}
+
+def url_encode(s) {
+    var out = ""
+    var i = 0
+    while i < len(s) {
+        var ch = s[i]
+        var b = ord(ch)
+        var safe = false
+        if b >= 48 and b <= 57 {
+            set safe = true
+        }
+        if b >= 65 and b <= 90 {
+            set safe = true
+        }
+        if b >= 97 and b <= 122 {
+            set safe = true
+        }
+        if ch == "-" or ch == "_" or ch == "." or ch == "~" {
+            set safe = true
+        }
+        if safe {
+            out += ch
+        } else {
+            out += "%" + _hex2(b)
+        }
+        set i = i + 1
+    }
+    return out
+}
+
+export base64_encode
+export base64_decode
+export to_hex
+export from_hex
+export url_encode

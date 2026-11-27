@@ -1,22 +1,22 @@
 important<<DAY<<english("English"):
 // 高阶函数：自己实现 map 与 filter
-func map(arr, f)
+def map(arr, f)
     var out = []
     for x in arr
         arrappend(out, f(x))
     return out
 
-func keep(arr, pred)
+def keep(arr, pred)
     var out = []
     for x in arr
         if pred(x)
             arrappend(out, x)
     return out
 
-func double(x)
+def double(x)
     return x * 2
 
-func is_even(x)
+def is_even(x)
     return x % 2 == 0
 
 var nums = [1, 2, 3, 4, 5]

@@ -1,0 +1,388 @@
+{
+  "rows": [
+    {
+      "case": "loop",
+      "title": "无限循环",
+      "engine": "impor_stable",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 1.44,
+      "stdout_tail": "",
+      "stderr_tail": "  文档： docs/errors.md#E1020\n调用栈（自顶向下）:\n -> <main>（第0行）",
+      "floor": 0.32,
+      "adjusted": 1.12
+    },
+    {
+      "case": "loop",
+      "title": "无限循环",
+      "engine": "impor_default",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.42,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.32,
+      "adjusted": 11.1
+    },
+    {
+      "case": "loop",
+      "title": "无限循环",
+      "engine": "python",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.14,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.09,
+      "adjusted": 11.05
+    },
+    {
+      "case": "loop",
+      "title": "无限循环",
+      "engine": "node",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.34,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.22,
+      "adjusted": 11.12
+    },
+    {
+      "case": "loop",
+      "title": "无限循环",
+      "engine": "c",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.52,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.25,
+      "adjusted": 11.27
+    },
+    {
+      "case": "recurse",
+      "title": "无限递归",
+      "engine": "impor_stable",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.35,
+      "stdout_tail": "",
+      "stderr_tail": "    f（第2行）\n    f（第2行）\n    f（第3行）",
+      "floor": 0.32,
+      "adjusted": 0.03
+    },
+    {
+      "case": "recurse",
+      "title": "无限递归",
+      "engine": "impor_default",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.38,
+      "stdout_tail": "",
+      "stderr_tail": "    f（第2行）\n    f（第2行）\n    f（第3行）",
+      "floor": 0.32,
+      "adjusted": 0.06
+    },
+    {
+      "case": "recurse",
+      "title": "无限递归",
+      "engine": "python",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.19,
+      "stdout_tail": "",
+      "stderr_tail": "    return f()\n  [Previous line repeated 996 more times]\nRecursionError: maximum recursion depth exceeded",
+      "floor": 0.09,
+      "adjusted": 0.1
+    },
+    {
+      "case": "recurse",
+      "title": "无限递归",
+      "engine": "node",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.2,
+      "stdout_tail": "",
+      "stderr_tail": "    at f (C:\\Users\\41482\\AppData\\Local\\Temp\\impor-stability-compare-im727il_\\recurse.js:1:21)\n\nNode.js v22.23.2",
+      "floor": 0.22,
+      "adjusted": 0.0
+    },
+    {
+      "case": "recurse",
+      "title": "无限递归",
+      "engine": "c",
+      "rc": 3221225725,
+      "kind": "crash",
+      "elapsed": 0.28,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.25,
+      "adjusted": 0.03
+    },
+    {
+      "case": "alloc",
+      "title": "一次要 100M 元素",
+      "engine": "impor_stable",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.28,
+      "stdout_tail": "",
+      "stderr_tail": "  文档： docs/errors.md#E1024\n调用栈（自顶向下）:\n -> <main>（第0行）",
+      "floor": 0.32,
+      "adjusted": 0.0
+    },
+    {
+      "case": "alloc",
+      "title": "一次要 100M 元素",
+      "engine": "impor_default",
+      "rc": 0,
+      "kind": "completed",
+      "elapsed": 5.59,
+      "stdout_tail": "100000000",
+      "stderr_tail": "",
+      "floor": 0.32,
+      "adjusted": 5.27
+    },
+    {
+      "case": "alloc",
+      "title": "一次要 100M 元素",
+      "engine": "python",
+      "rc": 0,
+      "kind": "completed",
+      "elapsed": 0.95,
+      "stdout_tail": "100000000",
+      "stderr_tail": "",
+      "floor": 0.09,
+      "adjusted": 0.86
+    },
+    {
+      "case": "alloc",
+      "title": "一次要 100M 元素",
+      "engine": "node",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.54,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.22,
+      "adjusted": 11.32
+    },
+    {
+      "case": "alloc",
+      "title": "一次要 100M 元素",
+      "engine": "c",
+      "rc": 0,
+      "kind": "completed",
+      "elapsed": 0.25,
+      "stdout_tail": "100000000",
+      "stderr_tail": "",
+      "floor": 0.25,
+      "adjusted": 0.0
+    },
+    {
+      "case": "flood",
+      "title": "无上限刷屏",
+      "engine": "impor_stable",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.46,
+      "stdout_tail": "这一行会被无限打印\n这一行会被无限打印",
+      "stderr_tail": "  文档： docs/errors.md#E1023\n调用栈（自顶向下）:\n -> <main>（第0行）",
+      "floor": 0.32,
+      "adjusted": 0.14
+    },
+    {
+      "case": "flood",
+      "title": "无上限刷屏",
+      "engine": "impor_default",
+      "rc": 1,
+      "kind": "output",
+      "elapsed": 0.6,
+      "stdout_tail": "这一行会被无限打印\n这一行会被无限�",
+      "stderr_tail": "  文档： docs/errors.md#E1099\n调用栈（自顶向下）:\n -> <main>（第0行）",
+      "floor": 0.32,
+      "adjusted": 0.28
+    },
+    {
+      "case": "flood",
+      "title": "无上限刷屏",
+      "engine": "python",
+      "rc": 1,
+      "kind": "output",
+      "elapsed": 0.33,
+      "stdout_tail": "这一行会被无限打印\n这一行会被无限�",
+      "stderr_tail": "    print(\"这一行会被无限打印\")\n    ~~~~~^^^^^^^^^^^^^^^^^^^^^^\nOSError: [Errno 22] Invalid argument",
+      "floor": 0.09,
+      "adjusted": 0.24
+    },
+    {
+      "case": "flood",
+      "title": "无上限刷屏",
+      "engine": "node",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.43,
+      "stdout_tail": "这一行会被无限打印\n这�",
+      "stderr_tail": "",
+      "floor": 0.22,
+      "adjusted": 11.21
+    },
+    {
+      "case": "flood",
+      "title": "无上限刷屏",
+      "engine": "c",
+      "rc": 1,
+      "kind": "hang",
+      "elapsed": 11.56,
+      "stdout_tail": "flood-line\nfloo",
+      "stderr_tail": "",
+      "floor": 0.25,
+      "adjusted": 11.31
+    },
+    {
+      "case": "divzero",
+      "title": "除零",
+      "engine": "impor_stable",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.28,
+      "stdout_tail": "",
+      "stderr_tail": "  文档： docs/errors.md#E1001\n调用栈（自顶向下）:\n -> <main>（第0行）",
+      "floor": 0.32,
+      "adjusted": 0.0
+    },
+    {
+      "case": "divzero",
+      "title": "除零",
+      "engine": "impor_default",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.3,
+      "stdout_tail": "",
+      "stderr_tail": "  文档： docs/errors.md#E1001\n调用栈（自顶向下）:\n -> <main>（第0行）",
+      "floor": 0.32,
+      "adjusted": 0.0
+    },
+    {
+      "case": "divzero",
+      "title": "除零",
+      "engine": "python",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.13,
+      "stdout_tail": "",
+      "stderr_tail": "    print(1 / 0)\n          ~~^~~\nZeroDivisionError: division by zero",
+      "floor": 0.09,
+      "adjusted": 0.04
+    },
+    {
+      "case": "divzero",
+      "title": "除零",
+      "engine": "node",
+      "rc": 1,
+      "kind": "contained",
+      "elapsed": 0.19,
+      "stdout_tail": "",
+      "stderr_tail": "    at node:internal/main/run_main_module:36:49\n\nNode.js v22.23.2",
+      "floor": 0.22,
+      "adjusted": 0.0
+    },
+    {
+      "case": "divzero",
+      "title": "除零",
+      "engine": "c",
+      "rc": 3221225620,
+      "kind": "crash",
+      "elapsed": 0.25,
+      "stdout_tail": "",
+      "stderr_tail": "",
+      "floor": 0.25,
+      "adjusted": 0.0
+    }
+  ],
+  "table": {
+    "c": {
+      "loop": "hang",
+      "recurse": "crash",
+      "alloc": "completed",
+      "flood": "hang",
+      "divzero": "crash"
+    },
+    "impor_default": {
+      "loop": "hang",
+      "recurse": "contained",
+      "alloc": "completed",
+      "flood": "output",
+      "divzero": "contained"
+    },
+    "impor_stable": {
+      "loop": "contained",
+      "recurse": "contained",
+      "alloc": "contained",
+      "flood": "contained",
+      "divzero": "contained"
+    },
+    "node": {
+      "loop": "hang",
+      "recurse": "contained",
+      "alloc": "hang",
+      "flood": "hang",
+      "divzero": "contained"
+    },
+    "python": {
+      "loop": "hang",
+      "recurse": "contained",
+      "alloc": "completed",
+      "flood": "output",
+      "divzero": "contained"
+    }
+  },
+  "workdir": "C:\\Users\\41482\\AppData\\Local\\Temp\\impor-stability-compare-im727il_",
+  "timeout": 10.0,
+  "floors": {
+    "impor_stable": 0.32,
+    "impor_default": 0.32,
+    "python": 0.09,
+    "node": 0.22,
+    "c": 0.25
+  },
+  "bench": {
+    "impor_stable": {
+      "seconds": 1.37,
+      "completed": true,
+      "output": [
+        "2666646666700000"
+      ]
+    },
+    "impor_default": {
+      "seconds": 1.16,
+      "completed": true,
+      "output": [
+        "2666646666700000"
+      ]
+    },
+    "python": {
+      "seconds": 0.12,
+      "completed": true,
+      "output": [
+        "2666646666700000"
+      ]
+    },
+    "node": {
+      "seconds": 0.2,
+      "completed": true,
+      "output": [
+        "2666646666700000"
+      ]
+    },
+    "c": {
+      "seconds": 0.05,
+      "completed": true,
+      "output": [
+        "2666646666700000"
+      ]
+    }
+  },
+  "generated": "2026-11-21 20:27:38"
+}

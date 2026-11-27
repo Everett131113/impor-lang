@@ -1,0 +1,9 @@
+// 整数：int64 全宽 + 取模符号口径 + 循环累加
+var big = 9223372036854775807
+print(big)
+var h = 0
+for i in range(5)
+    h = h + i % 3
+print(h)
+# EXPECT: 9223372036854775807
+# EXPECT: 4

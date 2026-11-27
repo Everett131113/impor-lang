@@ -1,0 +1,57 @@
+// std/template.impor — 极简模板渲染：把 ${key} 换成 data[key]
+// 缺失键保持原样并可选抛错，避免"静默渲染成空串"。
+
+def has_key(d, k) {
+    for x in d {
+        if x == k {
+            return true
+        }
+    }
+    return false
+}
+
+def render(tpl, data) {
+    return render_strict(tpl, data, false)
+}
+
+def render_strict(tpl, data, fail_on_missing) {
+    var out = ""
+    var i = 0
+    while i < len(tpl) {
+        if i + 1 < len(tpl) and tpl[i] == "$" and tpl[i + 1] == "{" {
+            var end = strfind(tpl, "}")
+            var close =-1
+            var j = i + 2
+            while j < len(tpl) {
+                if tpl[j] == "}" {
+                    set close = j
+                    set j = len(tpl)
+                } else {
+                    set j = j + 1
+                }
+            }
+            if close < 0 {
+                out += tpl[i]
+                set i = i + 1
+            } else {
+                var key = strcut(tpl, i + 2, close)
+                if has_key(data, key) {
+                    out += str(data[key])
+                } else {
+                    if fail_on_missing {
+                        return ""
+                    }
+                    out += strcut(tpl, i, close + 1)
+                }
+                set i = close + 1
+            }
+        } else {
+            out += tpl[i]
+            set i = i + 1
+        }
+    }
+    return out
+}
+
+export render
+export render_strict

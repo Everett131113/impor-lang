@@ -37,7 +37,7 @@ for i in [1, 2] print(i)
 """), ["indent"])
 
     def test_brace_function_implicit_return(self):
-        self.assertEqual(run_impor("""func add(a, b) { a + b }
+        self.assertEqual(run_impor("""def add(a, b) { a + b }
 print(add(2, 3))
 """), ["5"])
 
@@ -52,7 +52,7 @@ while i < 3 { print(i) set i = i + 1 }
 """), ["0", "1", "2"])
 
     def test_brace_match_with_else(self):
-        src = """func score(x) {
+        src = """def score(x) {
     match x {
         case 1 { return "一" }
         case 2 { return "二" }
@@ -70,7 +70,7 @@ try { raise Oops("boom") } catch Oops e { print(e.msg) } finally { print("fin") 
 """), ["boom", "fin"])
 
     def test_brace_class_methods(self):
-        self.assertEqual(run_impor("""class Dog { var name = "旺财" func speak() { print(self.name) } }
+        self.assertEqual(run_impor("""class Dog { var name = "旺财" def speak() { print(self.name) } }
 var d = new Dog()
 d.speak()
 """), ["旺财"])
@@ -106,7 +106,7 @@ class TestSourcePositions(unittest.TestCase):
             Parser(tokenize("if true {")).program()
 
     def test_ast_nodes_carry_col(self):
-        ast = parse_source("func f() { 1 + 2 }")
+        ast = parse_source("def f() { 1 + 2 }")
         stmt = ast.stmts[0]
         self.assertTrue(hasattr(stmt, "col"))
         self.assertTrue(hasattr(stmt, "file"))  # v2.10 AST 基类位置字段 file
@@ -158,15 +158,15 @@ class TestScopeSemantics(unittest.TestCase):
 
     def test_var_local_does_not_leak(self):
         self.assertEqual(run_impor("""var g = 1
-func f() { var g = 99 set g = g + 1 print(g) }
+def f() { var g = 99 set g = g + 1 print(g) }
 f()
 print(g)
 """), ["100", "1"])
 
     def test_set_updates_outer_in_closure(self):
-        self.assertEqual(run_impor("""func make_counter() {
+        self.assertEqual(run_impor("""def make_counter() {
     var n = 0
-    func inc() { set n = n + 1 return n }
+    def inc() { set n = n + 1 return n }
     return inc
 }
 var c = make_counter()
@@ -176,9 +176,9 @@ print(c())
 """), ["1", "2", "3"])
 
     def test_nonlocal_set(self):
-        self.assertEqual(run_impor("""func outer() {
+        self.assertEqual(run_impor("""def outer() {
     var x = 1
-    func inner() { nonlocal set x = x + 5 }
+    def inner() { nonlocal set x = x + 5 }
     inner()
     print(x)
 }
@@ -186,7 +186,7 @@ outer()
 """), ["6"])
 
     def test_instance_fields_isolated(self):
-        self.assertEqual(run_impor("""class Counter { var n = 0 func bump() { set self.n = self.n + 1 return self.n } }
+        self.assertEqual(run_impor("""class Counter { var n = 0 def bump() { set self.n = self.n + 1 return self.n } }
 var a = new Counter()
 var b = new Counter()
 a.bump()

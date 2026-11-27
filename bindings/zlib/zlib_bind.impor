@@ -1,0 +1,38 @@
+# Impor 绑定：zlib（v4.3.1）
+# 用法：impor_bind_zlib.dll 与本文件同目录；ffi_allow.json 已登记该 DLL。
+# CRC32 / 压缩 / 解压都通过十六进制字符串进出，Impor 侧不接触指针。
+
+var __lib = nil
+var __loaded = false
+
+export def load(shim_path, native_path)
+    if __loaded {
+        return true
+    }
+    set __lib = ffi_open(shim_path)
+    set __loaded = ffi_call(__lib, "impor_zlib_load",[native_path], "int",["cstr"]) == 1
+    return __loaded
+
+export def version()
+    if !__loaded {
+        return ""
+    }
+    return ffi_call(__lib, "impor_zlib_version",[], "cstr",[])
+
+export def crc32(text)
+    if !__loaded {
+        return - 1
+    }
+    return ffi_call(__lib, "impor_zlib_crc32",[text], "int",["cstr"])
+
+export def compress(text)
+    if !__loaded {
+        return ""
+    }
+    return ffi_call(__lib, "impor_zlib_compress",[text], "cstr",["cstr"])
+
+export def uncompress(hex)
+    if !__loaded {
+        return ""
+    }
+    return ffi_call(__lib, "impor_zlib_uncompress",[hex], "cstr",["cstr"])

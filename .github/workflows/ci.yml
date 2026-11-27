@@ -1,10 +1,10 @@
-# Impor (I++) CI 工作流（v3.11.0）
+# Impor (I++) CI 工作流（v4.7.1）
 #
 # 平台边界（如实声明，不静默跳过）：
-#   - Windows：完整套件（单元测试 / 模糊测试 / conformance / 基准）。
-#   - Linux：解释器冒烟（run 多个示例 + 格式 / 静态检查 + 语法零警告）。
-#     C 后端依赖随包的 win32 tcc.exe，Linux 当前不提供 CLI 编译；
-#     Linux 的 C ABI 由 c-abi-x64.yml 的 gcc 格单独验证。
+#   - Windows：完整套件（单元测试 / 模糊测试 / conformance / 基准 / C 后端）。
+#   - Linux：解释器冒烟 + **C 后端构建与运行**（4.7.1 起 c_runtime.c 的 POSIX 分支
+#     已就位，`impor build --no-fast --cc gcc` 可直接产出 ELF；`--static` 走 musl）。
+#   - macOS：解释器冒烟 + C 后端构建（clang；mac 不支持 -static，脚本会降级提示）。
 #
 # 用法：把本文件放到仓库 .github/workflows/ci.yml 即可。
 name: CI
@@ -32,6 +32,9 @@ jobs:
             suite: smoke
           - os: ubuntu-latest
             python-version: "3.12"
+            suite: smoke
+          - os: macos-latest
+            python-version: "3.11"
             suite: smoke
     runs-on: ${{ matrix.os }}
     env:
@@ -91,6 +94,48 @@ jobs:
 
       - name: 格式检查
         run: python Impor.py check-fmt examples/snake.impor
+
+      - name: 全仓格式门禁（冻结 fixture 与自举生成物除外）
+        run: python tools/check_fmt_all.py
+
+      - name: 版本单一真源（VERSION 与全部派生物一致）
+        run: python tools/version_sync.py --check
+
+      - name: 版本约束求解（^/~/多段合取/回溯/交集）
+        run: python -m impor.versionsolve
+
+      - name: 包索引质量线（索引哈希 / 求解 / 篡改检测）
+        run: python tools/pkg_index.py selftest
+
+      - name: POSIX 可移植性静态审计（Windows API 必须在保护块内）
+        run: python tools/check_posix_port.py
+
+      - name: Linux C 后端（完整后端构建 + 运行）
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc musl-tools
+          python Impor.py build examples/hello.impor --no-fast --cc gcc -o hello_linux
+          ./hello_linux
+          tools/build_posix.sh examples/hello.impor --static -o hello_static
+          file hello_static || true
+
+      - name: macOS C 后端（clang）
+        if: matrix.os == 'macos-latest'
+        run: |
+          python Impor.py build examples/hello.impor --no-fast --cc clang -o hello_mac
+          ./hello_mac
+
+      - name: 渐进类型检查（semantic 层，全仓递归）
+        run: python Impor.py check-types .
+
+      - name: IR 覆盖对拍（解释器 vs IR→C，缺 gcc 则 SKIP）
+        if: matrix.suite == 'full'
+        run: python tools/verify_ir_coverage.py
+
+      - name: 抖动门禁（同一产物重复跑比 rc/stdout，缺 gcc 则 SKIP）
+        if: matrix.suite == 'full'
+        run: python tools/jitter.py examples/grade.impor --runs 10
 
       - name: 静态检查
         run: python Impor.py lint examples/snake.impor

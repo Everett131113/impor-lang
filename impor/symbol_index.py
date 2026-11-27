@@ -48,12 +48,28 @@ class ProjectIndex:
         self._texts = {}
         self._loaded = False
         self._lock = threading.RLock()
+        # 4.1：重建闸门。只有拿到闸门的线程才做全量扫描，其余调用立即返回，
+        # 避免「后台重建 + UI 查询」在同一把锁上排队把界面拖死。
+        self._gate = threading.Lock()
+        # 每个文件自己引用到的名字，删文件时只清理这些，不再遍历全表。
+        self._refs_by_file = {}
 
     # ---------- 构建 ----------
+    @property
+    def busy(self):
+        """索引正在重建或还没建好；UI 线程应据此跳过昂贵查询。"""
+        return self._gate.locked() or not self._loaded
+
     def refresh(self, force=False):
         # 3.2.2：索引可在后台线程重建，读操作仍拿到一致快照。
-        with self._lock:
-            return self._refresh(force)
+        # 4.1：重建不可重入排队——已有重建在跑时立即返回，绝不让调用方等锁。
+        if not self._gate.acquire(blocking=False):
+            return False
+        try:
+            with self._lock:
+                return self._refresh(force)
+        finally:
+            self._gate.release()
 
     def _refresh(self, force=False):
         files = []
@@ -108,10 +124,20 @@ class ProjectIndex:
         self._texts.pop(path, None)
         for sym in self.by_file.pop(path, []):
             lst = self.by_name.get(sym.name, [])
-            self.by_name[sym.name] = [s for s in lst if s.path != path]
-        for name in list(self.refs):
-            self.refs[name] = [r for r in self.refs[name] if r[0] != path]
-            if not self.refs[name]:
+            rest = [s for s in lst if s.path != path]
+            if rest:
+                self.by_name[sym.name] = rest
+            else:
+                self.by_name.pop(sym.name, None)
+        # 4.1：只清理这个文件真正引用过的名字（旧版遍历全部 refs 是 O(文件×名字)）
+        for name in self._refs_by_file.pop(path, ()):
+            lst = self.refs.get(name)
+            if not lst:
+                continue
+            rest = [r for r in lst if r[0] != path]
+            if rest:
+                self.refs[name] = rest
+            else:
                 self.refs.pop(name, None)
 
     @staticmethod
@@ -154,11 +180,16 @@ class ProjectIndex:
             syms = self._line_symbols(path, lines, head)
         else:
             syms = ast_syms
+        names = set()
         for ln, raw in enumerate(lines, 1):
             if ln <= head:
                 continue
             for tm in _TOKEN.finditer(self._code_part(raw)):
-                self.refs.setdefault(tm.group(0), []).append((path, ln, tm.start()))
+                name = tm.group(0)
+                self.refs.setdefault(name, []).append((path, ln, tm.start()))
+                names.add(name)
+        if names:
+            self._refs_by_file[path] = names
         self.by_file[path] = syms
 
     def _ast_symbols(self, path, text, lines, head):
@@ -376,14 +407,32 @@ class ProjectIndex:
                 return list(self.by_file.get(os.path.abspath(path), []))
             return [s for lst in self.by_file.values() for s in lst]
 
+    def _definition_locked(self, name, prefer_path=None):
+        syms = list(self.by_name.get(name, []))
+        if prefer_path:
+            p = os.path.abspath(prefer_path)
+            syms.sort(key=lambda s: 0 if s.path == p else 1)
+        return syms
+
     def definition(self, name, prefer_path=None):
         with self._lock:
             self.ensure()
-            syms = list(self.by_name.get(name, []))
-            if prefer_path:
-                p = os.path.abspath(prefer_path)
-                syms.sort(key=lambda s: 0 if s.path == p else 1)
-            return syms
+            return self._definition_locked(name, prefer_path)
+
+    def probe(self, name, prefer_path=None):
+        """UI 线程专用查询：不等锁、不触发全量重建。
+
+        索引正在重建或还没建好时返回 []，由调用方回退到「只查当前文件」；
+        绝不能让键入/悬停这条热路径阻塞在后台扫描的锁上（4.1 修复卡死）。
+        """
+        if self._gate.locked() or not self._loaded:
+            return []
+        if not self._lock.acquire(blocking=False):
+            return []
+        try:
+            return self._definition_locked(name, prefer_path)
+        finally:
+            self._lock.release()
 
     def references(self, name):
         with self._lock:
@@ -468,16 +517,41 @@ class ProjectIndex:
         by_scope = {}
         for s in syms:
             by_scope.setdefault((s.name, s.scope), []).append(s)
+        # 先一次性算出每行所属作用域。原实现对每个引用调用 scope_at_line，
+        # 每次都要重扫全部符号与行；千行文件会退化成十几秒，直接卡死 UI。
+        lines = text.split("\n")
+        scope_by_line = {}
+        scope_start = {}
+        for s in syms:
+            if s.kind not in ("func", "class", "exception", "struct"):
+                continue
+            start = max(1, int(s.line or 1))
+            base = len(lines[start - 1]) - len(lines[start - 1].lstrip(" \t")) \
+                if start <= len(lines) else 0
+            end = len(lines)
+            for i in range(start, len(lines)):
+                raw = lines[i]
+                if raw.strip() and (len(raw) - len(raw.lstrip(" \t"))) <= base:
+                    end = i
+                    break
+            label = s.scope + "." + s.name
+            for ln in range(start, min(end, len(lines)) + 1):
+                if start >= scope_start.get(ln, 0):
+                    scope_start[ln] = start
+                    scope_by_line[ln] = label
         out = {}
+        by_name = {}
+        for s in syms:
+            by_name.setdefault(s.name, []).append(s)
         for name, refs in tmp.refs.items():
             for p, line, col in refs:
                 if p != path:
                     continue
-                scope = tmp.scope_at_line(path, line)
+                scope = scope_by_line.get(line, "<module>")
                 cands = by_scope.get((name, scope)) or []
                 if not cands:
                     # 变量在嵌套块中声明但作用域仍是函数；再按同行最近声明兜底
-                    cands = [s for s in syms if s.name == name and s.line <= line]
+                    cands = [s for s in by_name.get(name, ()) if s.line <= line]
                 if not cands:
                     continue
                 s = min(cands, key=lambda x: abs(x.line - line))

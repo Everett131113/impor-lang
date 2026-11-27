@@ -14,6 +14,35 @@ _LOG = os.path.join(tempfile.gettempdir(), "impor_swallowed.log")
 _MAX = 256 * 1024
 
 
+def swallowed_log_path():
+    """当前被吞异常日志路径（诊断面板与 issue 报告都指向这里）。"""
+    return _LOG
+
+
+def swallowed_tail(limit=120):
+    """返回最近 limit 行原文；先读轮转文件 .1 的末尾补齐，再读当前文件。"""
+    out = []
+    for p in (_LOG + ".1", _LOG):
+        try:
+            if not os.path.exists(p):
+                continue
+            with open(p, encoding="utf-8", errors="replace") as f:
+                out.extend([ln.rstrip("\n") for ln in f.readlines()])
+        except OSError:
+            continue
+    return out[-limit:] if limit else out
+
+
+def swallowed_counts():
+    """按 area 汇总条数，用于诊断面板「哪里最常吞异常」一眼看出来。"""
+    counts = {}
+    for line in swallowed_tail(0):
+        parts = line.split(" ")
+        if len(parts) >= 4:
+            counts[parts[2]] = counts.get(parts[2], 0) + 1
+    return counts
+
+
 def note_swallowed(area, exc=None):
     if os.environ.get("IMPOR_TRACE_SWALLOW", "1") == "0":
         return

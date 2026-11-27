@@ -90,6 +90,49 @@ jobs:
           done
           echo "导出符号齐全：impor_add / impor_sub / impor_mul / impor_greet"
 
+  linux64-runtime:
+    name: Linux x64 产物 + 三种宿主实跑 (ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: --target linux64 生成 .so（examples/cabi_demo/logic.impor）
+        run: python Impor.py build examples/cabi_demo/logic.impor --lib --c-source -o out/linux --target linux64
+
+      - name: 校验 ELF 位宽与导出符号
+        run: |
+          file out/linux/liblogic.so
+          readelf -h out/linux/liblogic.so | grep -q 'X86-64'
+          for s in impor_add impor_fib impor_greet impor_free_str impor_runtime_shutdown; do
+            nm -D --defined-only out/linux/liblogic.so | grep -Eq " T $s$"
+          done
+          echo "导出符号齐全：impor_add / impor_fib / impor_greet / impor_free_str / impor_runtime_shutdown"
+
+      - name: C 宿主（链接导入库直接调用，退出码必须为 0）
+        run: |
+          cd out/linux
+          gcc -O2 -I. ../../examples/cabi_demo/host_c.c -L. -llogic -o host_c
+          LD_LIBRARY_PATH=. ./host_c
+          echo "C 宿主退出码：$?"
+
+      - name: C 宿主（dlopen → 调用 → dlclose → 退出，退出码必须为 0）
+        run: |
+          cd out/linux
+          gcc -O2 ../../examples/cabi_demo/host_c_dyn.c -o host_c_dyn -ldl
+          LD_LIBRARY_PATH=. ./host_c_dyn ./liblogic.so
+          echo "C 动态宿主退出码：$?"
+
+      - name: Python 宿主（ctypes）
+        run: |
+          cd out/linux
+          python ../../examples/cabi_demo/host_python.py ./liblogic.so
+          echo "Python 宿主退出码：$?"
+
   win32:
     name: TCC win32 (windows-latest)
     runs-on: windows-latest

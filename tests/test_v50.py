@@ -47,7 +47,7 @@ class TestFmtWrap(unittest.TestCase):
 
     def test_wrap_idempotent_and_semantics(self):
         src = (
-            "func calc(a, b)\n"
+            "def calc(a, b)\n"
             "    return a + b\n"
             "var arr = [1111111111, 2222222222, 3333333333, 4444444444]\n"
             "print(calc(arr[0], arr[1]))\n"
@@ -82,7 +82,7 @@ class TestLintV39(unittest.TestCase):
     def test_enum_exhaustive(self):
         src = (
             "enum Color { RED = 10, GREEN = 20, BLUE = 30 }\n"
-            "func pick(c)\n"
+            "def pick(c)\n"
             "    match c\n"
             "        case Color.RED\n"
             "            return 1\n"
@@ -96,7 +96,7 @@ class TestLintV39(unittest.TestCase):
 
     def test_lint_config_threshold(self):
         src = (
-            "func f(x)\n"
+            "def f(x)\n"
             "    var a = 1 + 1\n"
             "    var b = 2 + 2\n"
             "    var c = 3 + 3\n"
@@ -113,7 +113,7 @@ class TestLintV39(unittest.TestCase):
     def test_lint_fix(self):
         p = _write(self.tmp, "fix.impor",
                    "import std.text\n"
-                   "func f(a)\n"
+                   "def f(a)\n"
                    "    var unused = 1\n"
                    "    return a\n"
                    "print(f(2))\n")
@@ -165,7 +165,7 @@ class TestLspFormatting(unittest.TestCase):
         from impor.lsp import LanguageServer
         srv = LanguageServer(stdin=io.BytesIO(), stdout=io.BytesIO())
         uri = "file:///C:/Users/41482/Doubao/chats/2026-11-01/new-chat/ImporLang/examples/lsp_fmt.impor"
-        srv.docs[uri] = "func f(a,b)\n    var x=1+2\n    return x\n"
+        srv.docs[uri] = "def f(a,b)\n    var x=1+2\n    return x\n"
         got = {}
         srv._reply = lambda mid, result: got.update({"id": mid, "result": result})
         srv._on_formatting(1, {"textDocument": {"uri": uri},

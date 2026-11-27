@@ -120,7 +120,7 @@ else:
 
         def __init__(self, document):
             super().__init__(document)
-            from .lexer import KEYWORDS
+            from .lexer import KEYWORDS, HIGHLIGHT_KEYWORDS
             self.keyword_fmt = QTextCharFormat()
             self.keyword_fmt.setForeground(QColor("#ffb86c"))
             self.keyword_fmt.setFontWeight(QFont.Weight.Bold)
@@ -130,8 +130,9 @@ else:
             self.comment_fmt.setForeground(QColor("#6b7d8f"))
             self.number_fmt = QTextCharFormat()
             self.number_fmt.setForeground(QColor("#82aaff"))
-            kw = set(KEYWORDS) | {"match", "defer", "let", "async", "await", "this",
-                                  "static", "readonly", "fn", "repeat"}
+            kw = set(HIGHLIGHT_KEYWORDS) | {"match", "defer", "let", "async", "await",
+                                            "this", "static", "readonly", "fn", "repeat",
+                                            "have"}
             self.keyword_re = re.compile(r"\b(" + "|".join(sorted(kw, key=len, reverse=True)) + r")\b")
             self.string_re = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
             self.comment_re = re.compile(r"//.*")
@@ -534,7 +535,7 @@ else:
     def _smoke():
         app = QApplication.instance() or QApplication([])
         ed = CodeEditor()
-        ed.setPlainText("func a() {\n  print(1)\n  print(2)\n}")
+        ed.setPlainText("def a() {\n  print(1)\n  print(2)\n}")
         block = ed.document().findBlockByNumber(1)
         cursor = QTextCursor(block)
         cursor.setPosition(block.position() + 2)

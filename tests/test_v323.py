@@ -21,7 +21,7 @@ class TestSemanticSymbols(unittest.TestCase):
     def test_kinds_and_precedence(self):
         src = """import math
 from os import path as p
-func add(a, b):
+def add(a, b):
     var total = a + b
     return total
 class Box:
@@ -44,14 +44,14 @@ for item in [1, 2]:
         self.assertEqual(table["item"][0], "var")
 
     def test_unknown_member_not_declared(self):
-        table = semantic_symbol_map("func f(obj):\n    return obj.field\n")
+        table = semantic_symbol_map("def f(obj):\n    return obj.field\n")
         self.assertNotIn("field", table)
         self.assertEqual(table["obj"][0], "param")
 
 
 class TestAsyncDiagnostics(unittest.TestCase):
     def test_collect_reports_syntax_error(self):
-        issues, error = DummyPane()._collect_lint("func add(a, b) {", "bad.impor")
+        issues, error = DummyPane()._collect_lint("def add(a, b) {", "bad.impor")
         self.assertTrue(error)
         self.assertEqual(issues, [])
 

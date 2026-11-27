@@ -1,0 +1,41 @@
+// std/random.impor — 随机数工具（复用内置 randi / randstr / seed）
+// 使用：use std.random  或  import std.random
+//
+// 说明：randi(a, b) 是闭区间 [a, b]。需要可复现序列就先用 seed(n) 固定种子。
+
+def between(lo, hi) {
+    return randi(lo, hi)
+}
+
+def choice(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    return lst[randi(0, len(lst) - 1)]
+}
+
+// 打乱后返回新列表（不修改入参）
+def shuffled(lst) {
+    return shuffle(arrdup(lst))
+}
+
+def pick(lst, n) {
+    var pool = shuffle(arrdup(lst))
+    var out = []
+    var i = 0
+    while i < n and i < len(pool) {
+        arrappend(out, pool[i])
+        i += 1
+    }
+    return out
+}
+
+def token(n) {
+    return randstr(n)
+}
+
+export between
+export choice
+export shuffled
+export pick
+export token

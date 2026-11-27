@@ -1,0 +1,86 @@
+// std/pool.impor — 线程池（v4.3）
+// 用法：import std.pool as pool  →  var p = pool.new_pool(4)
+//        pool.submit(p, job)      // job 必须无参
+//        pool.shutdown(p)         // 关闭队列 + join 全部 worker，返回每个 worker 处理数
+//
+// 语义（三端一致）：N 个常驻 worker 从内部任务通道取 job，取到就调用。
+// - p 是整数句柄（第几个池），不是 dict：C 后端把闭包捕获的容器按值复制，
+//   直接把通道 dict 传进 worker 会看到快照。这里统一走模块级注册表。
+// - 任务按「谁先取到谁执行」分派，不保证公平：一个 worker 吃掉全部任务是正常现象。
+// - shutdown 之后的 submit 返回 false；shutdown 幂等（再次调用返回空数组）。
+
+import std.channel as chan
+
+var _chans = []
+var _threads = []
+
+def new_pool(n) {
+    var c = chan.make(0)
+    set _chans = arrappend(_chans, c)
+    var kid = len(_chans)
+    var hs = []
+    var i = 0
+    while i < n {
+        set hs = arrappend(hs, thread_spawn(make_worker(kid)))
+        set i = i + 1
+    }
+    set _threads = arrappend(_threads, hs)
+    return kid
+}
+
+def make_worker(kid) {
+    def worker() {
+        return work(kid)
+    }
+    return worker
+}
+
+def work(kid) {
+    var jobs = _chans[kid - 1]
+    var done = 0
+    while true {
+        var job = chan.recv(jobs)
+        if chan.is_empty(job) {
+            return done
+        }
+        job()
+        set done = done + 1
+    }
+    return done
+}
+
+def submit(p, job) {
+    if p < 1 or p > len(_chans) {
+        return false
+    }
+    return chan.send(_chans[p - 1], job)
+}
+
+def pending(p) {
+    if p < 1 or p > len(_chans) {
+        return 0
+    }
+    return chan.size(_chans[p - 1])
+}
+
+def shutdown(p) {
+    if p < 1 or p > len(_threads) {
+        return[]
+    }
+    var hs = _threads[p - 1]
+    if len(hs) == 0 {
+        return[]
+    }
+    chan.close(_chans[p - 1])
+    var counts = []
+    for h in hs {
+        set counts = arrappend(counts, thread_join(h))
+    }
+    set _threads[p - 1] = []
+    return counts
+}
+
+export new_pool
+export submit
+export pending
+export shutdown

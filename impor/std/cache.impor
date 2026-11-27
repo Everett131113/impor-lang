@@ -1,0 +1,81 @@
+// std/cache.impor — 有容量上限的字典缓存（FIFO 淘汰，不是 LRU）
+// 口径：不承诺线程安全；多线程请自己加 mutex 包一层。
+
+def has_key(d, k) {
+    for x in d {
+        if x == k {
+            return true
+        }
+    }
+    return false
+}
+
+def new_cache(cap) {
+    return { "cap": cap, "data": { }, "order": [] }
+}
+
+def put(c, k, v) {
+    var d = c["data"]
+    if not has_key(d, k) {
+        arrappend(c["order"], k)
+    }
+    d[k] = v
+    while len(c["order"]) > c["cap"] {
+        var oldest = c["order"][0]
+        var rest = []
+        var i = 1
+        while i < len(c["order"]) {
+            arrappend(rest, c["order"][i])
+            set i = i + 1
+        }
+        set c["order"] = rest
+        if has_key(d, oldest) {
+            d[oldest] = null
+        }
+    }
+    return true
+}
+
+def get(c, k, fallback) {
+    var d = c["data"]
+    if has_key(d, k) {
+        var v = d[k]
+        if v != null {
+            return v
+        }
+    }
+    return fallback
+}
+
+def has(c, k) {
+    var d = c["data"]
+    if has_key(d, k) {
+        return d[k] != null
+    }
+    return false
+}
+
+def drop(c, k) {
+    var d = c["data"]
+    if has_key(d, k) {
+        d[k] = null
+    }
+    return true
+}
+
+def size(c) {
+    var n = 0
+    for k in c["data"] {
+        if c["data"][k] != null {
+            set n = n + 1
+        }
+    }
+    return n
+}
+
+export new_cache
+export put
+export get
+export has
+export drop
+export size

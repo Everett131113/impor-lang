@@ -3,7 +3,7 @@
 Impor (I++) LSP 语言服务器（impor lsp，stdio JSON-RPC）。
 
 能力：
-  - textDocument/publishDiagnostics：语法错误 + 未定义变量（Warning）+ 未使用变量/导入（Info）
+  - textDocument/publishDiagnostics：语法错误 + 未定义变量（Error）+ 未使用变量/导入（Info）
   - textDocument/definition：跳转定义（同一文件内全部声明位置）
   - textDocument/hover：符号说明（var / 函数签名 / 类 / 导入）
   - textDocument/documentSymbol：文档符号大纲
@@ -21,7 +21,7 @@ import os
 import re
 import sys
 
-from .lexer import BUILTIN_NAMES, KEYWORDS, CANONICAL_KEYWORDS, tokenize
+from .lexer import BUILTIN_NAMES, KEYWORDS, CANONICAL_KEYWORDS, HIGHLIGHT_KEYWORDS, tokenize
 from .parser import Parser
 from .interpreter import ImporException, strip_header
 from .diagnostics import parse_position, explain, issue_fix
@@ -418,7 +418,8 @@ class LanguageServer:
                           "detail": detail.strip()})
             seen.add(name)
         # v3.7.2：补全只推主写法，deprecated 别名不再出现。
-        for name in sorted(CANONICAL_KEYWORDS):
+        # 4.9.1：软关键字 have 有语义（类型判定），一并进补全。
+        for name in sorted(CANONICAL_KEYWORDS | frozenset({"have"})):
             if name not in seen:
                 items.append({"label": name, "kind": 14, "detail": "关键字"})
         self._reply(msg_id, {"isIncomplete": False, "items": items})
@@ -644,7 +645,7 @@ class LanguageServer:
         data = []
         prev_line = prev_col = 0
         for ln, col, word in _code_words(lines):
-            if word in KEYWORDS:
+            if word in HIGHLIGHT_KEYWORDS:
                 ttype = "keyword"
             elif word in BUILTIN_NAMES:
                 ttype = "function"

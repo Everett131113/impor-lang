@@ -1,0 +1,7 @@
+// WASM 后端验证：字符串 print、函数调用、全局变量
+var a = 3
+def sq(x)
+    return x * x
+print("a =", a)
+print("sq(7) =", sq(7))
+print(a + sq(2))

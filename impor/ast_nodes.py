@@ -81,6 +81,19 @@ class BinOp(AST):
         self.lineno = lineno
         self.col = col
 
+class TypeTest(AST):
+    """4.9.1：`x have int` —— 运行期类型判定，结果是 bool。
+
+    语法放在比较层（`a have int == True` 读作 `(a have int) == True`）。
+    右侧只接受类型名：int / float / str / bool / list / dict / 任意类名。
+    """
+    def __init__(self, expr, type_name, lineno=0, col=0):
+        super().__init__()
+        self.expr = expr
+        self.type_name = type_name
+        self.lineno = lineno
+        self.col = col
+
 class Pipe(AST):
     """v2.9 管道运算符：x |> f(1)  ==  f(x, 1)；x |> f  ==  f(x)"""
     def __init__(self, l, r, lineno=0, col=0):
@@ -206,6 +219,9 @@ class Def(AST):
         self.visibility = ""
         self.is_async = False
         self.exported = False
+        # 4.2：泛型函数的类型参数名列表（`def max<T>(a: T)` → ["T"]）。
+        # 语义为声明期约束 + 运行期擦除（不做单态化，见 docs/语言规范.md §2.6）
+        self.type_params = []
 
 class Return(AST):
     def __init__(self, e, lineno=0, col=0):

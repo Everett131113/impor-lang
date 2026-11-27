@@ -1,23 +1,88 @@
-// std/json.impor — JSON 解析与序列化
-// 使用：import std.json  →  std.json.parse(text)
+// std/json.impor — JSON 解析与序列化（运行时内建 json_encode/json_decode 的封装）
+// 4.5：补齐字典/数组取值、键列表、校验，避免调用方各自判空。
 
-func parse(text) {
+def has_key(d, k) {
+    for x in d {
+        if x == k {
+            return true
+        }
+    }
+    return false
+}
+
+def parse(text) {
     return json_decode(text)
 }
 
-func stringify(value) {
+def stringify(value) {
     return json_encode(value)
 }
 
-func try_parse(text) {
+def try_parse(text) {
     // 解析失败返回 null，不抛异常；调用方必须显式判空。
     try {
         return json_decode(text)
-    } catch {
+    } catch e {
         return null
     }
+}
+
+def is_valid(text) {
+    var v = try_parse(text)
+    return v != null
+}
+
+def get(obj, key, fallback) {
+    if type_of(obj) == "dict" {
+        if has_key(obj, key) {
+            return obj[key]
+        }
+    }
+    return fallback
+}
+
+def keys_of(obj) {
+    var out = []
+    if type_of(obj) != "dict" {
+        return out
+    }
+    for k in obj {
+        arrappend(out, k)
+    }
+    return out
+}
+
+def has(obj, key) {
+    if type_of(obj) != "dict" {
+        return false
+    }
+    return has_key(obj, key)
+}
+
+def array_len(obj) {
+    if type_of(obj) == "list" {
+        return len(obj)
+    }
+    return 0
+}
+
+def merge(a, b) {
+    var out = { }
+    for k in a {
+        out[k] = a[k]
+    }
+    for k in b {
+        out[k] = b[k]
+    }
+    return out
 }
 
 export parse
 export stringify
 export try_parse
+export is_valid
+export get
+export keys_of
+export has
+export array_len
+export merge

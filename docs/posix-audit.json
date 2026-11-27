@@ -1,0 +1,131 @@
+{
+  "files": [
+    {
+      "file": "C:\\Users\\41482\\AppData\\Local\\Temp\\impor431p7\\impor\\c_runtime.c",
+      "lines": 3551,
+      "if_blocks": 50,
+      "win_blocks": 39,
+      "win_with_else": 31,
+      "win_without_else": [
+        {
+          "line": 46,
+          "cond": "defined(IMPOR_BUILD_DLL) && defined(_WIN32)",
+          "apis": []
+        },
+        {
+          "line": 136,
+          "cond": "defined(_WIN32)",
+          "apis": []
+        },
+        {
+          "line": 144,
+          "cond": "defined(_WIN32)",
+          "apis": []
+        },
+        {
+          "line": 1600,
+          "cond": "_WIN32",
+          "apis": [
+            "GetModuleFileNameW",
+            "WideCharToMultiByte"
+          ]
+        },
+        {
+          "line": 1634,
+          "cond": "_WIN32",
+          "apis": [
+            "MultiByteToWideChar",
+            "WideCharToMultiByte"
+          ]
+        },
+        {
+          "line": 2220,
+          "cond": "_WIN32",
+          "apis": [
+            "MultiByteToWideChar"
+          ]
+        },
+        {
+          "line": 2807,
+          "cond": "_WIN32",
+          "apis": []
+        },
+        {
+          "line": 2844,
+          "cond": "_WIN32",
+          "apis": []
+        }
+      ],
+      "naked": [],
+      "includes_outside_guard": [
+        {
+          "line": 3,
+          "include": "stdio.h",
+          "text": "#include <stdio.h>"
+        },
+        {
+          "line": 4,
+          "include": "stdlib.h",
+          "text": "#include <stdlib.h>"
+        },
+        {
+          "line": 5,
+          "include": "string.h",
+          "text": "#include <string.h>"
+        },
+        {
+          "line": 6,
+          "include": "math.h",
+          "text": "#include <math.h>"
+        },
+        {
+          "line": 7,
+          "include": "ctype.h",
+          "text": "#include <ctype.h>"
+        },
+        {
+          "line": 8,
+          "include": "time.h",
+          "text": "#include <time.h>"
+        },
+        {
+          "line": 9,
+          "include": "stdarg.h",
+          "text": "#include <stdarg.h>"
+        },
+        {
+          "line": 10,
+          "include": "stdint.h",
+          "text": "#include <stdint.h>"
+        },
+        {
+          "line": 11,
+          "include": "setjmp.h",
+          "text": "#include <setjmp.h>"
+        },
+        {
+          "line": 12,
+          "include": "limits.h",
+          "text": "#include <limits.h>"
+        },
+        {
+          "line": 13,
+          "include": "errno.h",
+          "text": "#include <errno.h>"
+        },
+        {
+          "line": 14,
+          "include": "sys/stat.h",
+          "text": "#include <sys/stat.h>"
+        }
+      ],
+      "verdict": {
+        "ok": true,
+        "fatal_count": 0,
+        "fatal": [],
+        "note": "静态审计通过：所有致命 Windows API 都在 _WIN32 保护块内",
+        "ci_required": true
+      }
+    }
+  ]
+}

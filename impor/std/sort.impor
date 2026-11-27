@@ -1,0 +1,74 @@
+// std/sort.impor — 排序与查找（纯 Impor 实现，不改动入参）
+// 使用：use std.sort  或  import std.sort → std.sort.sort(lst)
+//
+// 复杂度：插入排序 O(n^2)，适合千级以内；上万级请改用 C 侧算法或分批。
+// sort 只对「可比较的数字 / 同型字符串」排序，混型列表会得到确定但无意义的结果。
+
+def sort(lst) {
+    var out = arrdup(lst)
+    var n = len(out)
+    var i = 1
+    while i < n {
+        var key = out[i]
+        var j = i - 1
+        while j >= 0 and out[j] > key {
+            out[j + 1] = out[j]
+            j -= 1
+        }
+        out[j + 1] = key
+        i += 1
+    }
+    return out
+}
+
+// 自定义比较：before(a, b) 为真表示 a 应排在 b 前面。
+def sort_by(lst, before) {
+    var out = arrdup(lst)
+    var n = len(out)
+    var i = 1
+    while i < n {
+        var key = out[i]
+        var j = i - 1
+        while j >= 0 and before(key, out[j]) {
+            out[j + 1] = out[j]
+            j -= 1
+        }
+        out[j + 1] = key
+        i += 1
+    }
+    return out
+}
+
+// 已排序列表里二分查找；找到返回下标，找不到返回 -1。
+def search(lst, value) {
+    var lo = 0
+    var hi = len(lst) - 1
+    while lo <= hi {
+        var mid = div(lo + hi, 2)
+        if lst[mid] == value {
+            return mid
+        }
+        if lst[mid] < value {
+            lo = mid + 1
+        } else {
+            hi = mid - 1
+        }
+    }
+    return - 1
+}
+
+def is_sorted(lst) {
+    var i = 1
+    while i < len(lst) {
+        if lst[i - 1] > lst[i] {
+            return false
+        }
+        i += 1
+    }
+    return true
+}
+
+export sort
+export sort_by
+export search
+export is_sorted

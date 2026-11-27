@@ -18,9 +18,9 @@ from impor import cli
 from impor.interpreter import Interpreter, strip_header, parse_source
 
 CLOSURE_SRC = (
-    'func make_counter(start)\n'
+    'def make_counter(start)\n'
     '    var count = start\n'
-    '    func inc()\n'
+    '    def inc()\n'
     '        nonlocal set count = count + 1\n'
     '        return count\n'
     '    return inc\n'
@@ -28,9 +28,9 @@ CLOSURE_SRC = (
     'print("c1:", c1(), c1(), c1())\n'
     'var c2 = make_counter(100)\n'
     'print("c2:", c2())\n'
-    'func plus_one(x)\n'
+    'def plus_one(x)\n'
     '    return x + 1\n'
-    'func apply_twice(f, x)\n'
+    'def apply_twice(f, x)\n'
     '    return f(f(x))\n'
     'print("apply_twice(plus_one, 3) =", apply_twice(plus_one, 3))\n'
 )

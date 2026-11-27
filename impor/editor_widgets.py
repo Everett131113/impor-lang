@@ -8,6 +8,8 @@ import tkinter as tk
 import tkinter.font as tkfont
 
 from .editor_theme import THEME, DARK_THEME, LIGHT_THEME, HIGH_CONTRAST_THEME
+from .i18n import tr
+from .pathsafe import rel_quiet
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,7 +26,10 @@ class FlatButton(tk.Canvas):
     def __init__(self, master, text, command=None, kind="ghost", width=None,
                  height=30, padx=14):
         self._base_bg = master.cget("bg")
-        label = text
+        self._source_label = text
+        self._fixed_width = width
+        self._padx = padx
+        label = tr(text)
         w = width or max(58, len(label) * 12 + padx * 2)
         super().__init__(master, width=w, height=height, bg=self._base_bg,
                          highlightthickness=0, bd=0, cursor="hand2")
@@ -86,9 +91,16 @@ class FlatButton(tk.Canvas):
         self._active = bool(flag)
         self._render()
 
-    def set_text(self, text):
-        self.label = text
+    def set_text(self, text, translate=True):
+        self._source_label = text
+        self.label = tr(text) if translate else text
+        if self._fixed_width is None:
+            self.configure(width=max(58, len(self.label) * 12 + self._padx * 2))
         self._render()
+
+    def retranslate(self):
+        """语言切换后按原始中文标签重绘；宽度自适应时同步放宽。"""
+        self.set_text(self._source_label)
 
 class TabStrip(tk.Canvas):
     """自绘编辑器标签栏：活动标签顶部 accent 线、未保存圆点、关闭按钮、横向滚动。"""
@@ -174,7 +186,7 @@ class TabStrip(tk.Canvas):
         # 右侧：当前文件目录（淡色）
         pane = self.app.active_pane
         if pane is not None and pane.path:
-            rel = os.path.relpath(pane.path, ROOT_DIR)
+            rel = rel_quiet(pane.path, ROOT_DIR)
             if len(rel) > 42:
                 rel = "…" + rel[-41:]
             self.create_text(w - 12, h // 2, text=rel, anchor="e",

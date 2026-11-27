@@ -4,7 +4,1020 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本（主版本.次版本.修订号）。
 
-> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `3.12.0`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+> **版本口径（2026-11-16 起）**：对外发布只有当前 `VERSION` 一条线（现为 `4.0.1`），`VERSION` 与 `Impor.py` 的 `__version__` 为真源。`v6.0` / `v6.2` 是历史内部路线与性能标签，`7.3.0` 是已归档的历史实验包，都不作为安装包版本。详见 `docs/版本对齐与语法冻结-3.6.6.md`。
+
+## [未发布]
+
+### 5.6.0：纯自足原生 x64 AOT（自写机器码 + PE32+，零外部工具链）
+
+新增第五个执行后端，也是第一个**直接产出可双击运行原生 exe** 的真 AOT 后端：在三地址 IR
+之上自己把指令编码成 x86-64 机器码字节、自己生成 Windows PE32+ 可执行文件，全程不调用
+nasm / gcc / ld 等任何外部工具链。对标项目 XLang 的 x64 后端只生成汇编文本再调外部
+nasm/ld，自身不产生机器码字节与 PE；Impor 做到纯自足机器码 + PE 是真正的超越。
+
+**流水线（用户可感知）**
+- 指令编码器 `x64asm.py`：REX/ModR/M/SIB/立即数/位移编码与标签回填，覆盖算术、比较、
+  乘除、字节存取、LEA、栈与 RIP 相对调用。
+- PE32+ 链接器 `pe64.py`：自构 DOS/PE/COFF/可选头、节区、导入表与 IAT，回填 RIP 引用。
+- 原生后端 `native64.py`：标量类型推断，复用 OPTC 的 CFG/活跃/线性扫描分配，机器码发射
+  与整数转字符串等运行时例程；`impor native build FILE [-o OUT.exe]` 产出 exe，
+  `native run` 编译并立即执行。
+
+**能力边界（明确拒绝，不静默改语义、不写 crash.log）**
+- 支持标量过程式核心：int/bool/str/none、变量、算术/比较/逻辑、if/else、while、函数与
+  递归（含 6 参数与深 spill）、print；整数边界含 INT64_MIN/INT64_MAX 均正确。
+- 编译期 BackendError 干净拒绝：浮点（SSE/dtoa 列后续）、list/dict、索引/属性、class、
+  try/catch、import、闭包/内建调用、超过 6 个参数。
+
+**验证**
+- `tests/test_native64.py` 41 用例全绿：编码逐字节、PE 结构、类型推断、exe 真实运行、
+  与解释器逐字节对拍、拒绝路径。
+- 能力矩阵新增 Native64 列，六后端 11 探针无任何「错误」格。
+- 语言基线不变，无新增关键字、无语法糖。
+
+### 5.5.0：教科书优化编译器后端 OPTC（寄存器式，无语法糖）
+
+新增第四个执行后端，也是第一个**寄存器式、含完整中端分析**的自有后端：在三地址 IR 之上实现
+教科书（龙书 / Engineering a Compiler）标准后端流水线，全程不依赖外部编译器/汇编器。
+
+**流水线（用户可感知）**
+- 基本块划分 + 控制流图（CFG）：识别 leader、构建块间后继（跳转/分支/顺序落入）。
+- 活跃变量数据流分析：后向 gen/kill 不动点，求每个块的 live-in/live-out。
+- 线性扫描寄存器分配：6 个物理寄存器 R0..R5，参数从 R0 起传递；寄存器不足时溢出（spill）
+  到栈槽，栈槽编号唯一，使用前重载。
+- 寄存器式目标码 + 寄存器机执行：直接操作寄存器数组，而非栈式虚拟机。
+- `impor opt run FILE` 立即执行；`opt dump` 反汇编（含块/区间/溢出统计），`-o` 落盘。
+
+**能力边界（明确拒绝，不静默改语义）**
+- 支持标量过程式核心：int/float/bool/str/none、变量、算术/比较/逻辑、if/else、while、
+  函数与递归、print。
+- 编译期 BackendError 拒绝：list/dict、索引/切片、属性、class、try/catch、import、
+  闭包/lambda、异常、for-in、global 作用域、内建调用（len/int/str 等）、超过 6 个参数。
+- 整数仍为 int64，加减乘与一元负号越界报 `OverflowError [E1012]`，除零报运行时错误。
+
+**验证**
+- `tests/test_optc.py` 21 用例全绿（CFG/数据流方程/寄存器分配/溢出/对拍/拒绝）。
+- 进程级对拍：`impor opt run` 与 `impor run` 输出逐字节一致；`tests/test_vm.py` 12 用例仍全绿。
+- 能力矩阵新增 OPTC 列，11 探针无任何「错误」格；不支持项均为干净 BackendError（不写 crash.log）。
+- 语言基线不变，无新增关键字、无语法糖。
+
+### 5.4.0：NVM 执行提速 + 能力补齐路线图（无语法糖，不碰语言表面）
+
+本版只做内核与工程化，不新增关键字、不新增语法糖，语言表面与 5.3.0 完全一致。
+
+**NVM 性能优化（实测驱动，fib(28) 同一机器、Python 3.13）**
+- 热点分支重排：`_run` 分派链按实测 opcode 频率（LOAD_FAST/LOAD_CONST/BINARY 最高）重排，降低平均比较次数。
+- 内联 int64 溢出检查：消除热路径上高频的 `_i64` 方法调用，常见不溢出路径只做一次范围比较，`E1012` 语义不变。
+- 调用快速路径：单参数调用（递归最常见）免去切片与删除，无 cell 的函数走紧凑参数绑定。
+- 实测结果：NVM `fib(28)` 进程内从约 4.90s 降到约 3.58s（耗时降低约 27%），CLI `vm run` 从约 5.04s 降到约 3.73s；输出始终为 317811，`tests/test_vm.py` 12 用例全绿。
+
+**一次诚实的负收益记录**
+- 曾实现 peephole 超级指令（5 个融合 opcode，含跳转重映射），但实测在纯 Python VM 上重 handler 的 tuple 解包与重复检查成本超过省掉的循环开销（fib 反而变慢），经微基准确认方法分派同样为负收益后整体回退，保持轻量内联分派。
+
+**能力补齐路线图**
+- 新增 `docs/rfc/0007-nvm-coverage-roadmap.md`：按依赖与风险分阶段规划 import → 异常 → 类 → 并发，每阶段独立可发布、与解释器对拍验收，未完成项继续明确拒绝。
+
+**工程卫生**
+- 修复主开发工作树与发布物脱节：把 5.3.0（含 `nvm.py`、`test_vm.py`）回灌主开发工作树，覆盖前先备份；回灌后该工作树 12 用例全绿、`vm run` 正常。
+
+### 5.3.0：自有字节码后端 NVM（不依赖外部编译器，无语法糖）
+
+新增第三个执行后端，也是第一个**完全自有**的后端：C 后端依赖 gcc/tcc、WASM 依赖宿主，NVM 把 AST 编成栈式字节码（30 个操作码），由自带虚拟机直接执行，全程不调用外部编译器、不生成机器码、不做寄存器分配。
+
+**新增（用户可感知）**
+- `impor vm run FILE`：编译并立即执行；`compile`：产出 `.ibc` 字节码文件；`exec`：加载 `.ibc` 执行；`dump`：反汇编。
+- `.ibc` 为 JSON 字节码容器（magic `IMPOR-IBC`），可跨机器拷贝后用 `exec` 加载，输出与 `run` 一致。
+- 闭包用 Cell 盒子 + 两阶段作用域分析，支持 nonlocal 写回；`and`/`or` 真短路。
+
+**能力边界（明确拒绝，不静默改语义）**
+- 支持：变量、if/elif/else、while、for、break/continue、函数与递归、闭包、lambda、三元、字符串插值、list/dict 及常用内建。
+- 拒绝并提示改用 `impor run`：class、import、try/catch、raise/exception、match、defer、yield、await、have、new，以及全部并发内建（`thread_spawn`/`mutex_*`/`atomic_*` 等，编译期拒绝，不写 crash.log）。
+
+**整数语义对齐**
+- 默认与 `impor run` 同一 int64 口径：整数加减乘与一元负号越界即抛 `OverflowError [E1012]`，不静默回绕；`--big` 切换任意精度。
+
+**验证**
+- `tests/test_vm.py` 12 个用例全部通过（含与解释器的进程级逐字节对拍、`.ibc` 往返、递归深度保护、并发内建编译期拒绝）。
+- 能力矩阵新增 NVM 列：11 探针 8 支持 / 3 明确拒绝，零「错误」格；35 个过程式示例 31 通过，其余 4 个为 class/import 边界。
+- 语言基线不变：关键字 55、标准库模块 37、错误码 30，无新增语法糖。
+
+### 4.7.3：编辑器本身加固（崩溃兜底 / 进程树 / 编码保真 / 可验证 / 可观测）
+
+4.7.2 收口的是语言内核；这一版只碰**编辑器**，目标是「自身够硬」——
+出问题时能自己兜住、能自证、能留现场，而不是靠用户描述。
+
+#### ① 崩溃兜底：最多丢 3 秒，重开接回原路径
+
+以前只有 30 秒一次的自动保存，进程被强杀（任务管理器结束进程 / 断电）时，
+最后 30 秒的输入没有任何副本。现在：
+
+- 新增 `_recovery_tick()`：每 3 秒把所有 `_dirty` 标签写成 `recover_<id>.impor` +
+  `recover_<id>.json`（path / title / bom / ends_nl / newline / reason / ts），
+  **只写恢复目录，绝不碰用户原文件**；
+- 恢复目录固定在 `~/.impor/recovery`（不再跟着 workspace 走——workspace 可能是只读目录或网络盘，
+  写不进去就等于兜底静默失效）；
+- `restore_recovery()` 恢复时把**原文件路径、BOM、换行、末尾换行**一起接回，恢复后 Ctrl+S 直接存回原文件；
+- 关闭窗口时先落盘恢复副本，再问「仍要退出吗」，误点「是」也能还原。
+
+实测（`tests/test_editor_headless.py::TestCrashDrill`）：写脏标签 → 等副本落盘 →
+`psutil.Process(pid).kill()` 硬杀（不走 on_close）→ 重开带 `IMPOR_EDITOR_EXPECT_RESTORE=<标记>`
+必须找回正文并接回路径。**通过**。
+
+#### ② 进程树：Ctrl+C 真的停得掉整棵进程
+
+旧版 `_term_interrupt` 只 `proc.kill()` 父进程，脚本里拉起的子进程（`subprocess`、
+自举编译器、外部 gcc）会变成孤儿继续跑。现在走 `stability.kill_tree(pid)`：
+Windows 用 `taskkill /F /T /PID`，POSIX 用 `killpg`，失败才回退单杀，并把结果写进输出。
+
+实测（`TestKillTree`）：`python -c` 拉起一个 `sleep(300)` 子进程 → `kill_tree(父)` →
+父子在 1 秒内都不存活。**通过**。
+
+#### ③ 定时器链自愈：一次 tick 抛异常不再让整条链断掉
+
+Tk 的 `after` 回调抛异常只交给 `report_callback_exception`，**链本身不会重排**——
+自动保存、恢复副本、文件监视会就此永久失效且无提示。新增 `_after_safe(ms, fn)`：
+异常写 `note_swallowed` + `crash.log`，然后**保证重排**；所有 `after` 链（autosave / recovery）
+都改走它。
+
+实测（冒烟 `after-chain` 步骤）：注册一个第一次必抛异常的 tick，1.5 秒内必须被触发 ≥2 次。**通过**。
+
+#### ④ 编码保真：BOM + CRLF 文件保存后字节一致
+
+两个真缺陷：
+
+1. `editor_groups.open_new_tab(path=...)` 带路径打开时只当空标签建，不读盘也不识别编码 →
+   从该入口打开 CRLF+BOM 文件，保存一次就被静默改写成 LF + 无 BOM；
+2. Tk Text 的 `end` 天然带一个换行，`get_content()` 原样写盘 → **末尾没有换行的文件每存一次多一个空行**
+   （CRLF 下 +2 字节）；正文里若残留 `\r`，`newline="\r\n"` 会写成 `\r\r\n`（每行多 1 字节）。
+
+修法：打开时记录真实字节特征（bom / newline / `ends_nl`）；保存前 `_align_eol()` 归一
+`\r\n`→`\n`、`\r`→`\n`，再按 `ends_nl` 决定末尾是否补换行，最后由 `open(newline=...)` 统一生成换行。
+
+实测（冒烟 `encoding-roundtrip` 步骤）：写 `b"\xef\xbb\xbf" + "var a = 1\r\nprint(a)\r\n"` →
+打开 → `save_file()` → 保存前后字节必须完全相同（26 B → 26 B）。**通过**。
+
+#### ⑤ 跨盘路径：`relpath` 不再抛 ValueError
+
+`os.path.relpath` 在 C: 路径对 D: 基目录时会抛 `ValueError`。标签栏每次刷新都调用它，
+于是「保存后卡顿/异常」的真因是刷新标签时抛异常（`crash.log` 里能看到
+`path to mount 'C:', start on mount 'D:'`）。新增 `impor/pathsafe.py` 的 `rel_quiet(path, base)`：
+跨盘退化为 abspath 而不抛；8 个编辑器模块共 **35 处** `os.path.relpath` 全部替换。
+
+实测（`TestRelQuiet`）：`rel_quiet(r"C:\Users\x\a.impor", r"D:\ImporWork\impor471")` 返回绝对路径且不抛。**通过**。
+
+#### ⑥ 可验证 / 可观测
+
+- 新增无交互冒烟 `IMPOR_EDITOR_SMOKE=1`：不显示窗口，跑完即退出，返回码即结论。
+  六步：`new-tab → save-readback → recovery → encoding-roundtrip → after-chain → diagnostics`；
+- 新增回归文件 `tests/test_editor_headless.py`（10 项：换行对齐、跨盘路径、进程树、冒烟六步、强杀恢复、崩溃日志）；
+- 新增崩漏现场 `install_crash_hooks()`（`sys.excepthook` + `threading.excepthook` → `~/.impor/crash.log`，幂等）；
+- 新增诊断面板：命令面板「内部诊断（崩溃 / 被吞异常）」→ 被吞异常按 area 的次数排行 + 崩溃现场 + 最近 120 条记录 + 一键打开日志目录；
+- 关键路径补 `note_swallowed`：`editor.save` / `editor.save.audit` / `editor.save.tmp_cleanup` / `editor.autosave` / `editor.recovery.write` / `editor.recovery.restore` / `editor.after:*` / `editor.term.interrupt`。
+
+复跑命令：
+
+```powershell
+$env:IMPOR_EDITOR_SMOKE="1"; & "D:\编程软件\python3.11\python.exe" "Impor.py"   # 期望 SMOKE PASS + rc=0
+& "D:\编程软件\python3.11\python.exe" "tests\test_editor_headless.py" -v        # 期望 Ran 10 tests OK
+```
+
+### 4.7.2：Val 收紧到 16 字节 tagged union + 语言层内联 + 区间证明收益实测
+
+这一版处理 4.7.1 里明确标注「未做」的两项里能真正闭环的部分：**值表示**与**内联**，
+并把上一版没敢引用的性能数字用干净对照重测了一遍。
+
+#### ① Val 从 56 字节收紧到 16 字节（tagged union）
+
+```c
+/* 4.7.1 及以前 */  typedef struct { VType t; long long i; double f; char *s; Arr *a; Obj *o; Fn *fn; } Val;  /* 56 B */
+/* 4.7.2 */        typedef struct { VType t; union { long long i; double f; char *s; Arr *a; Obj *o; Fn *fn; }; } Val;  /* 16 B */
+```
+
+依据：一个 `Val` 在任一时刻只有一个类型，6 个指针槽天然互斥。改成匿名 union 后，
+`v.t` / `v.i` / `v.s` 这些写法**一字未改**，895 个字段访问点全部保持原样。
+
+**踩到并修掉的真缺陷**（写在这里防止重犯）：旧代码惯用「先把所有槽清零，再赋目标槽」：
+
+```c
+v.t = V_STR; v.i = 0; v.f = 0; v.s = strdup(s); v.a = NULL; v.o = NULL; v.fn = NULL;
+```
+
+在 7 槽结构下这是保险，在 union 下 `v.a = NULL` 会把刚写的 `v.s` **重新清零**（同一地址）。
+症状是字符串全部打印 `(null)`，而 `tag` 仍然正确 —— 极易误判成编码问题。共 23 处构造点，
+统一改成「只写 tag + 目标 payload」。
+
+**硬门禁**（防止以后又被悄悄改回去）：
+
+- 编译期：`typedef char val_size_must_be_16[(sizeof(Val) == 16) ? 1 : -1];`，两处定义各一条，谁加字段谁编译失败；
+- 源码期：`tools/check_val_layout.py` 检查两处 typedef 必须是 union、且同一条构造语句里 payload 槽最多 1 个。
+
+**实测（同机、同脚本、同 gcc -O3、只差 Val 布局）**：
+
+| 指标 | 4.7.1（56 字节） | 4.7.2（16 字节） | 变化 |
+| --- | --- | --- | --- |
+| `sum1e8` 运行 8 轮最小值 | 0.0457 s | 0.0452 s | -1.1%（在噪声内） |
+| 100 万元素数组峰值 RSS（psutil 采样） | **52.54 MB** | **18.44 MB** | **-64.9%（2.85×）** |
+| `sizeof(Val)` | 56 | 16 | -71.4% |
+
+结论口径要精确：**收益在内存与缓存，不在数值内循环的时间**。`sum1e8` 走的是标注单态化后的
+原生 `long long` 循环，Val 根本不进内循环，所以时间不变才是正确的；数组元素、栈帧、参数数组
+这类「Val 真正落内存」的地方，收益是 2.85×。
+
+#### ② 语言层一般内联（新 pass `impor/inline.py`）
+
+AST → AST 的 pass，接在 `link_modules` 与 `_reject_const_mutation` 之后、`CGen.gen_program` 之前，
+完整后端与 IR 后端共用。
+
+判据是白名单式的（详见 `docs/inline-rules.md`）：候选必须是「单 `return` 表达式 + 参数≤4 + 体积≤40 节点
++ 表达式中无 Call/副作用/控制流 + 不自递归」；调用点还要求「形参用 0 次则实参须纯、用 1 次可展开、
+用多次则实参须纯」。
+
+**报错位置判据（单独定死）**：内联进来的整棵子树，`lineno`/`col` 一律改写为**调用点**的。
+
+实测对照（`tests/inline/inl2.impor`，第 8 行 `var r: int = mul2(big)` 触发 E1012，函数体在第 4 行）：
+
+| 配置 | 报错行 | 调用栈 |
+| --- | --- | --- |
+| 内联开启 | **第 8 行**（`var r: int = mul2(big)`） | `<main>` |
+| `IMPOR_NO_INLINE=1` | 第 4 行（`return x * 2`） | `mul2（第8行）` |
+
+两者指向同一次调用：内联版落在用户真写的那一行，非内联版落在函数体并补一层调用点。**行号没有丢，只是少了一层栈。**
+
+其它实测：`inl1.impor`（`add1(twice(sq(i)))` 三层嵌套）实际展开 **2 处**（`IMPOR_INLINE_DEPTH=2` 限制了最外层），
+输出 `sum=19` 与手算一致；`inl3.impor`（`dbl(len(xs))`，形参用两次而实参是 Call）正确跳过、输出 `6`。
+
+开关：`IMPOR_NO_INLINE` / `IMPOR_INLINE_MAX_NODES` / `IMPOR_INLINE_DEPTH` / `IMPOR_INLINE_TRACE`。
+构建摘要新增一行 `内联：N 处单表达式小函数已在调用点展开（报错位置仍指向调用点）`。
+
+#### ③ 区间证明收益：补测（4.7.1 时因机器被占用未敢引用）
+
+同版本、同 Val 布局、同 gcc -O3，只切 `IMPOR_NO_RANGEPROOF`：
+
+| 配置 | `sum1e8` 8 轮最小值 |
+| --- | --- |
+| `IMPOR_NO_RANGEPROOF=1`（每步都查溢出） | 0.0648 s |
+| 默认（区间已证，免检） | **0.0410 s** |
+| 加速 | **1.58×（-36.7%）** |
+
+参考：纯 C `-O3` 同脚本 0.0446 s —— 即 Impor 在已证循环上已经略快于手写 C。
+
+#### ④ 修掉跨盘构建崩溃（真 bug，不是环境问题）
+
+源文件放在 `C:` 盘临时目录、而 `D:` 盘上有安装目录的 std 模块时，`impor build` 会直接抛
+`ValueError: path is on mount 'D:', start on mount 'C:'` —— 根因是模块指纹计算里的
+`os.path.relpath(cand, base)` 跨盘无意义。
+
+```python
+try:
+    rel = os.path.relpath(cand, base)
+except ValueError:
+    rel = os.path.abspath(cand)
+h.update(b"\0" + rel.encode("utf-8", "replace"))
+```
+
+它只在 Windows 多盘机器上复现，之前工作树一直在 `C:` 所以没暴露；这次工作树搬到 `D:` 立刻命中，
+`tools/verify_release.py` 的 `stdlib_c`（六个 std 模块在 C 后端可用）因此从 FAIL 转 OK。
+
+#### ⑤ 8 字节 NaN-boxing：仍未做，但已把障碍量化
+
+`docs/nanboxing-design.md` 记录了完整设计与实测规模（`tools/count_val_access.py` 可复现）：
+访问点 **895 个**（820 读 / 75 写，分布 t270/i74/f27/s175/a304/o30/fn15），以及真正的硬障碍 ——
+Impor 的整数是 **int64 全范围**（越界报 E1012），64 位载荷里没有空闲位放 tag，要么把整数限到 48/60 位、
+要么全 boxed、要么放弃 double 同构，三种都要付语义代价。这不是"加个位运算"能解决的，需要先在语言层做决策。
+
+### 4.7.1：自举 fixpoint 真正成立 + 语言层 TCO / 常量免检 + 包索引求解
+
+这一版的重心是「把 4.7.0 里"报告写着、实际没跑通"的那几项真正跑通，并把证据留在仓库里」。
+判据一律可复算：`tools/selfhost_fixpoint.py`、`impor/versionsolve.py`、`tools/pkg_index.py`、
+`tools/check_posix_port.py` 都能一条命令复现。
+
+#### ① 自举 fixpoint 成立（`tools/selfhost_fixpoint.py`）
+
+链路 A → B → C → D，主判据是**源码 fixpoint**（C.c 与 D.c 逐字节一致），二进制一致是加分项：
+
+| 环节 | 结果 |
+| --- | --- |
+| A 编译种子 → a.c | 340441 字节 |
+| B = gcc(a.c) | 1155131 字节 |
+| C.c = B 编种子 | 340441 字节 |
+| D.c = C 编种子 | 340441 字节 |
+| 源码 fixpoint（C.c == D.c） | ✅ 两侧 SHA256 相同；a.c 也是同一份 |
+| 二进制 fixpoint（同参编 C.c / D.c） | ✅ 只差 PE 时间戳与校验和（逐字节比对，无实质差异） |
+
+跑通之前卡住的四件事，全部是工具层面的真缺陷，已逐条修掉：
+
+1. **引导器必须用当前前端重建**。仓库里的 `bootstrap/imporc_py.exe` 是历史产物，内嵌的
+   `rt_system` 与当前 `impor/c_runtime.c` 不一致：同一份命令串下 `CreateProcessW` 直接返回
+   FALSE，连 `C:\Windows\System32\where.exe` 都启动不起来（种子只报一句 `rc= -1`）。
+   现在 `--seed` 默认走 `impor build bootstrap/imporc.impor`（Python 前端 + 当前运行时），
+   `--use-vendored` 才用旧二进制。
+2. **种子编自身会爆栈**：默认 1MB 栈 → `0xC00000FD`。重建后统一把 `SizeOfStackReserve`
+   补到 64MB（`patch_stack_exe`）。
+3. **`.bat` 不能用 `CreateProcessW` 启动**：种子调 `bootstrap\cc64.bat`，而 CreateProcess 只认 PE。
+   新增 `bootstrap/cc64stub.c`：编译成 PE、命名为 `cc64.bat`（CreateProcess 不检查扩展名），
+   gcc 路径经 `IMPOR_CC64_GCC` 传入、并把 gcc 的 bin 目录前置进子进程 PATH
+   （否则 `cc1.exe` 0xC0000135 静默失败）。
+4. **二进制比较必须同参且同源文件名**：第一版拿「种子自产的 C.exe」和「工具重链的 D.exe」比，
+   编译参数与源文件名都不同，白报 757272 字节差异；修正后只差时间戳/校验和。
+
+#### ② `system()` 在 Windows 上统一走 `cmd.exe /c`
+
+`rt_system` 原来是直调 `CreateProcessW`，只能启动 PE：`.bat` / `.cmd` / `echo` 这类 cmd 内建命令
+一律返回 `-1`。改为 `cmd.exe /c "<cmd>"` 后与 POSIX `system()` 语义对齐。实测探针（三条）：
+
+```
+echo hi-ok > sys_echo.txt   rc=0   文件已生成
+".\runme.bat" 7             rc=7   退出码透传，bat 内容生效
+runme.cmd 9                 rc=9   同上
+```
+
+#### ③ 语言层自尾递归 → while（`impor/monomorph.py`）
+
+`def f(...) { ... return f(...) }` 形式的自尾递归在单态化实例里直接生成
+「先算全部实参到 `__tail<i>`，再写回形参，然后 `continue`」的循环体，外层用 `while (1)` 包住。
+`IMPOR_NO_TAIL=1` 可关闭用于对照。**硬证据（都按 `-O0` 编，排除 gcc 自己的 sibling call）**：
+
+| 产物 | 结果 |
+| --- | --- |
+| TCO 版（`mono_tail=1`） | rc=0，0.24s，输出 `500000500000` / `465` |
+| 无 TCO 版（`mono_tail=0`） | rc=3221225725（`0xC00000FD` 栈溢出），8.31s 后崩溃 |
+
+顺带修掉两个自己引入的坑：常量特化 + 自递归会把形参内联成字面量 → 写回后不再被读 → `while(1)` 死循环，
+所以自递归函数不做常量特化；`IMPOR_NO_TAIL=1` 时 `stmt` 仍生成裸 `continue` 会编译失败，已按
+「外层是否真的建了 `while(1)`」判定。
+
+#### ④ `-O3` + `-flto`，失败自动回退
+
+`impor build` 在 gcc、非 `--lib`、`opt>0` 时追加 `-flto`；链接失败则去掉 `-flto` 重试一次并把
+`stats["lto"]="fallback"` 记进摘要 —— 不静默降级、也不因工具链不支持而整体失败。
+
+#### ⑤ 区间证明免检 + 常量特化（`impor/rangeproof.py`）
+
+整数区间抽象解释：算术点在 int64 范围内就不生成 `rt_ck_add/sub/mul`，只保留必要检查。
+`for i in range(...)` / `while i < 常量` + `i = i + 常量` 两种循环形状能给循环变量定区间。
+调用点全是字面量时按常量特化生成专用实例（`gp_sum_to_i64_k100000000`），体内
+`for (v_i = 0; v_i < 100000000LL; v_i += 1) { v_total = (v_total + v_i); }` 完全没有 `rt_ck_add`。
+通用实例仍保留检查作为对照，输出 `4999999950000000` 正确。
+**性能数字尚未在空闲机器重测**（当时的 76.2ms / 80.7ms / 145.2ms 受后台编译污染），本版不引用。
+
+#### ⑥ 包索引与版本约束求解（`impor/versionsolve.py` + `tools/pkg_index.py`）
+
+- 约束语法：`*` / 裸版本 / `>= <= == != > <` / `^`（major>0 → `<major+1.0.0`，major==0 → `<0.(minor+1).0`）
+  / `~` / 逗号或空格分隔的合取。`^`、`~` 后面没数字直接报错，不静默当「任意版本」。
+- 求解：DFS + 回溯、MRV（候选最少的先定）、每步记录 `pick`/`fail`，超 `MAX_NODES=200` 明确报错而不是假装能解。
+- `impor/pkgmgr.py` 的 `ver_satisfies` 委托新求解器；`_check_dep_conflicts` 从「字符串不同就冲突」
+  改成真区间交集（`>=1.0` 与 `>=1.0,<2.0` 不再误报）。
+- `tools/pkg_index.py index|verify|resolve|selftest`：索引 `*.zip` 内的 `impor.toml`，校验
+  sha256/size/身份/未索引孤儿文件。`SELFTEST PASS`：3 包 / 7 版本 → 求解 3 步 → 篡改包报哈希+大小
+  不符 → 新增未索引包被报出。质量线写在工具头：**索引不含签名，信任来自发布渠道**。
+- 遗留：`pkg install` / `lock` 主流程仍走旧路径，只切了冲突预判与约束语义。
+
+#### ⑦ 绑定生成器（`tools/bindgen.py`）
+
+从 C 头文件生成 Impor 绑定：`gcc -E -P` 预处理、去 `__attribute__/__declspec/_CRTIMP/__cdecl/WINAPI/inline`、
+深度扫描删函数体、按 `;` 分条匹配原型、类型映射 int/float/cstr/void/bool，跳过
+struct/union/enum、指针参数、函数指针、可变参、>8 参并记账。
+`impor/tcc/win32/include/stdio.h` → 36 个包装 / 跳过 110（指针 21、FILE 51、可变参 22、va_list 12、void 4），
+产物 `bindings/auto/cstdio.impor` `check-types` PASS；端到端 `puts("hello-from-bindgen")` 返回 0。
+
+#### ⑧ POSIX 可移植性审计（`tools/check_posix_port.py` + `tools/build_posix.sh`）
+
+去注释后按 `#if` 栈判断 `_WIN32` 块是否有 `#else`，并检测不在保护内的 Windows API 直调。
+`impor/c_runtime.c` 3551 行：50 个预处理块、39 个含 `_WIN32`（31 个有 `#else`）、
+**0 处无保护致命调用**，报告落 `docs/posix-audit.json`。另加 `--static` 与
+`tools/build_posix.sh`（Linux 优先 `musl-gcc`，macOS 用 clang 并明确降级提示）。
+**边界**：本机是 Windows，Linux/macOS 产物只能交给 CI 实编，本机无实跑证据。
+
+#### ⑨ 版本单一真源（`tools/version_sync.py`）
+
+`VERSION` 是唯一真源，派生点（`IR_VERSION`、`vscode-impor/package.json`、两份 baseline、
+`pack_release.py`、`bootstrap/imporc.impor` 注释与横幅、README 两处、`docs/claims.md`）
+由 `--set` 统一改写、`--check` 统一校验。顺手修掉 `tools/pack_release.py` 里写死的 `VER = "4.0.1"`。
+
+#### 明确未做（不写成"已完成"）
+
+- **NaN-boxing / tagged 值表示**：要重写 `Val` 表示、全部 C 生成与运行时，本版未动。
+- **语言层一般内联**：只做到 `-flto`（编译器层）+ 自尾递归转循环 + 常量特化。
+- **跨平台实编译**：静态审计通过、脚本与 CI 就绪，但本机无法实编 Linux/macOS 产物。
+- **区间证明性能复测**：数据受污染，未引用。
+- **`pkg install/lock` 主流程**：未切到新求解器。
+
+### 4.7.0：把「精致化」五项一起做完
+
+这一版不是加功能，而是把「粗糙但能交付」推向「精致且可信」：类型检查分层、单态化按标注定型、
+IR 上补三项优化、长循环性能、以及把验收脚本收进仓库。原则不变：**能实测的给数字，没做到的当场写"未做"**。
+
+#### ① 渐进类型检查（新增 `impor/semantic.py` + `impor check-types`）
+
+- `impor/typecheck.py` 从 3.8.1 起就在 run/build/compile 入口硬拦类型错误；本版在其上补三类
+  它没覆盖、且代价最低的检查，并**默认降为 WARN**，`--strict-types` 才升 ERROR：
+  - `arith-type`：算术两侧类型不可能成立（`"a" - 1`、`[1] * 2`、`str % int`）；
+  - `int-range`：整数字面量超出 int64（`2**63`），把 E1012 从运行期提前到解析后；
+  - `missing-return`：标注了返回类型、函数体却完全没有 `return`（且不是以 `raise` 结尾）。
+- 新增命令 `impor check-types FILE... [--json] [--strict-types]`（退出码 0 / 1 / 3），
+  与 `run/build/compile` 的入口门禁共用同一套代码；`--strict-types` 是全局开关（`--` 之后的脚本参数不受影响）。
+- 零破坏验证：全仓 **267 个 .impor 扫一遍，warn 0 / error 0**（`examples` / `tests` / `std` /
+  `benchmarks` / `conformance` / `bootstrap` / `tools`）。唯一条被拦下的是
+  `examples/c_abi/lib.impor` 的 `size_t * int`，属 C ABI 手柄类型的常规写法，已列入白名单。
+- **顺手修掉一个自己造出来的假类型**（这才是这一版最该修的东西）：第一版 `arith-type` 直接复用了
+  `typecheck._type_of` 的类型推断，而父类为了给出更友好的提示，会对**无返回标注的函数猜一个类型**
+  （按函数体 push 的顺序默认 `int`）。于是自举编译器 `bootstrap/imporc.impor` 里
+  `gen_stmt` 的 `ev`（`var ev = parse_expr()`，实际是字符串）被猜成 `int`，
+  `opfn + "(" + curp + ", " + ev + ")"` 一次报 **8 条 `arith-type` 假警告**。
+  修法：`semantic.py` 新增 `_strict_type`，只信「字面量 / 本函数带标注的变量 / 带返回标注的调用」，
+  推不出就返回 `?` 并跳过 —— 与模块头写的「只有确定成立才报」对齐。
+  修完：`bootstrap/imporc.impor` 8 条 → **0 条**，`%TEMP%` 的坏样本 3 条诊断（`arith-type` / `int-range` /
+  `missing-return`）原样保留。
+
+#### ② 单态化从「字面量定型」扩到「标注定型」
+
+- 4.6 只处理泛型 `def f<T>(a:T)`，且只有调用点写字面量才能定型，普通函数（`def sum_to(n:int)->int`）完全没机会。
+- 本版把**全部参数与返回是同一个标量标注**的函数也纳入候选：`def sum_to(n:int)->int` → `gp_sum_to_i64(long long)`。
+  判据近乎保守：标注重合、函数体整段落在原生子集内（否则直接跳过，回退擦除版），擦除版始终保留。
+- `_NativeGen` 新增 `for i in range(...)` 支持（含 `range(a,b)` / `range(a,b,step)`、负步长），
+  循环变量与累加器都声明在函数开头的原生类型里，循环体内不再出现 `Val`。
+- **语义守住了 E1012**：原生实例的 `+ - *` 改走 `rt_ck_add/sub/mul`（纯 `long long` 入参，非 `Val`），
+  溢出照常报错，与擦除版文案一致。`--no-int-ck` 可关闭逐运算检查换成裸 C 算术（默认**不关**）。
+  实测：`add1(INT64_MAX)` 在 mono 路径上报 `E1012` 并退出 1，不静默回绕。
+- 开关：`--no-mono` 整条关闭单态化（排查或对比用）；`--no-int-ck` 关闭原生实例的溢出检查。
+
+#### ③ IR 三项优化 pass（新增 `impor/irop.py`）
+
+- 在 IR 上（不是 AST）做，理由写在模块头：AST 的求值顺序里藏着副作用，IR 是显式三地址码，读写集合清楚。
+- 三项都是「可证明安全」的最小形态：
+  - **常量折叠**：`BINOP dst, op, Lit, Lit` → `CONST`；结果越 int64 或除零时不折叠，留给运行时 E1012；
+    `JUMP_IF_FALSE Lit, L` 按真值简化成删除或无条件跳转。
+  - **死代码消除**：只删「目的量全函数从未被读」的 `CONST` 与 `MOVE`（无副作用、不抛错）；
+    算术即使结果没人用也**不删**（可能抛溢出/除零，删了会改变错误行为）；顺带删「JUMP 到下一条 LABEL」。
+  - **循环不变量外提**：识别 `LABEL L ... JUMP L` 回边区间，把区间内「读循环内从未被写的名字」的 `LOAD`
+    与常量 `CONST` 提到循环前；只处理互不重叠的区间，避免嵌套后索引错位。
+- 求值器（`ir.evaluate`）与 IR→C（`cir.to_c`）走同一套优化，所以两边等价由三路对拍兜住。
+  `impor ir --stats` 现在多打一行：`折叠 N / 删死代码 N / 外提不变量 N / 简化跳转 N（指令 a → b）`。
+- 实测（`%TEMP%` 里两个专门用例）：`1 + 2 * 3` 折成 `CONST 7`（23→22 条）；
+  `for` 里读循环外 `base` 的 `LOAD` 外提 1 次，输出与解释器一致（50）。
+- 全量对拍：**一致 50 / 拒绝 6 / 构建失败 2 / 非确定跳过 2 / 不一致 0**（与 4.6.0 的 52/6/2 相比，
+  两个非确定用例——掷骰子与图标宽度——单列成 `nondet`，不再混进「不一致」，也不静默丢弃）。
+
+#### ④ 确定性门禁入库（新增 `tools/jitter.py` + `tools/verify_ir_coverage.py`）
+
+- 4.6 收尾时的四个真缺陷全靠 `%TEMP%` 临时脚本抓到，CI 一条都没覆盖。本版把两个脚本正式收进仓库：
+  - `tools/jitter.py FILE --runs 30`：同一个产物重复跑 N 次，比 `rc / stdout / stderr`，出现两种组合即失败；
+    支持 `--via build|ir`、`--cc auto|gcc|tcc`（优先 gcc，其次内置 tcc），缺编译器明确 SKIP。
+    实测 `examples/grade.impor` 20 次：**稳定（1 种组合）**。
+  - `tools/verify_ir_coverage.py`：`examples` 全量逐个「解释器（`--no-native`） vs `IR→C 产物」对拍，
+    不一致一律失败；拒绝/构建失败**只能减少不能新增**（与 `tools/ir_coverage_baseline.json` 比对）；
+    缺 gcc 时 SKIP 并打印原因，不静默算绿。
+- 顺手把「非确定用例」建成显式分类：`demo_38_dice`（时间随机种子）、`icon_demo`（终端宽度），
+  报告里单列 `nondet` 计数，不再污染不一致统计。
+
+#### ⑤ 定位口径（README 首屏）
+
+- 定位从「教学语言 + 小型工具 + 可发布玩具」改为「**可交付的小型教学语言**」（4.7.0 之前的口径已过时）。
+- 新增「**明确不竞争的维度**」表：生态 / 类型系统严格度 / 后端深度 / 性能极限，逐条写现状与不争的理由；
+  对应地写「竞争的维度」：构建与启动速度、诊断质量、便携交付、三端一致、可自举。
+- 原先那句「它没有真线程 / async、泛型、yield…」已不成立（4.5/4.6 已有泛型、atomic/channel、exception），本版删除。
+
+#### 未做到（明确记录）
+
+- **1e8 长循环压到 1.2× 这个目标，在保留 E1012 逐运算检查的前提下没有达成。**
+  实测（同一台机器、8 轮交替取最小值，`for` + `sum += i`，1e8）：
+  | 路径 | 时间 | 相对手写 C |
+  | --- | --- | --- |
+  | 手写 C（`gcc -O2`） | 43.7 ms | 1.00× |
+  | 4.6 擦除版（`--no-fast --no-mono`） | 296.7 ms | 6.8× |
+  | 4.7 原生实例 + E1012 检查（默认） | 71.8 ms | 1.64× |
+  | 4.7 原生实例 + `--no-int-ck` | 43.1 ms | **0.99×** |
+  结论：从 **6.8× 压到 1.64×**（默认档，仍保留溢出报错）；要 C 同级必须显式 `--no-int-ck` 放弃逐运算检查。
+  1e8 次溢出判定本身约 +25 ms，1.2× 在这个约束下物理上做不到 —— 这一点不掩饰。
+- 单态化的原生子集仍不含字符串拼接、内建调用（`print` 等）、`while` 里的非 `range` 迭代器；
+  命中不了就回退擦除版，行为不变但也拿不到收益。
+- IR 的三个 pass 都只做最小形态：不做跨分支的全局活跃分析、不做循环展开/向量化、外提只处理互不重叠的循环。
+
+### 4.6.0：把上一轮点名的三条短板补完 + 自举 E1013
+
+上一轮（4.5.0）对外承认了三条短板，这一版逐条兑现；顺手修掉自举链里既有的 `E1013`。
+原则还是那条：**能实测的给数字，没做到的当场写"未做"**。
+
+#### ① 泛型单态化（新增 `impor/monomorph.py`）
+
+- 之前的泛型是"声明期约束 + 运行期擦除"：`def max2 < T >(a : T, b : T) -> T` 生成的 C 里
+  只有 `static Val f_N(Val, Val)`，每次调用都走 `Val` 分派。
+- 现在按**调用点静态类型**生成专用实例：`max2(9, 2)` → `gp_max2_i64(long long, long long)`，
+  `max2(2.5, 3.5)` → `gp_max2_f64(double, double)`，`ident(7)` → `gp_ident_i64(long long)`。
+  实例函数体内部的算术/比较/逻辑**全部是原生 C 运算**，只在 `return` 处装箱一次。
+- **擦除版一律保留**作回退：实参不是字面量（静态类型不可知）、函数体含字符串拼接/内建调用/
+  打印/`for` 迭代器、或类型参数不是单个 `T` 时，仍调用原来的擦除版，行为与 4.5.0 完全一致。
+- 覆盖边界（未做，明确记录）：只认 `i64` / `f64` 两种实例；`str` 与自定义类型不单态化；
+  不做局部变量/返回值的类型推导（只按字面量定型）。
+- 实测（`-O2`，200 万次 `max2` 调用，同一台机器）：单态化命中 **0.35 s**，回退擦除版 **0.45 s**。
+
+#### ② 整数语义统一（新增 `impor check-int` + `docs/整数语义.md`）
+
+- 交付层只有一档语义：**int64**。`--big`（任意精度）降级为**仅解释器可用的调试档**：
+  `impor run FILE --big` 会先打一行 stderr 提示"这条路径不可移植"，`impor build FILE --big`
+  直接以 `EXIT_USAGE(3)` 拒绝，不再静默产出与解释器语义不同的产物。
+- 新增 `impor check-int FILE [--json]`：静态扫描字面量，判定"能否按 int64 交付"。
+  逐文件输出 PASS/FAIL，退出码 0/1/3；`--json` 给出 `version/files/literals/min/max/violations`。
+  一元负号按组合判定：`-9223372036854775808` 合法，`-9223372036854775809` 非法。
+- 四端 E1012 文案对齐：`c_runtime.c` 的 `rt_ck_add/sub/mul` 与 `rt_neg` 补上算子名
+  （"（加法）/（减法）/（乘法）/（取负）"），`rt_diag_why` / `rt_diag_fix` 与解释器逐字同文；
+  `cir._lit_c` 的超界常量也改成同一措辞。四端差异只剩外层头部与退出码，见 `docs/整数语义.md` §4。
+- 边界：`check-int` 只查**字面量**，运行时溢出仍由运行时报 E1012（例：`a * b` 的乘积越界）。
+
+#### ③ IR 补齐类 / 异常 / 模块导入（`impor ir` / `impor ir --build`）
+
+- **异常控制流**：IR 新增 `TRY_BEGIN / TRY_END / CATCH_BEGIN / CATCH_END / TRY_CLOSE / RAISE /
+  ERR_MATCH / RETHROW`；参考求值器加了 `try_stack`（`catch` 体内再抛交给外层，`finally` 保证执行）；
+  `cir` 用与 `ctrans` 同构的 `setjmp/longjmp` 模板生成 C。
+- **类模型**：`IRClass`（名字/父类/方法/字段初始化）+ `NEW / GETATTR / SETATTR / CALLMETHOD /
+  SUPERCALL` 五条指令；求值器有 `_Instance`（字段回落到属性），`cir` 生成方法 impl + `mw_*` 包装 +
+  `mt_*` 方法表 + `fi_*` 字段初始化 + `ci_*` 的 `ClassInfo`，并在 `main` 开头按声明顺序 `reg_class`。
+  `super().m()` 依据当前类的 `base` 链解析。
+- **模块导入**：IR 不再自己造模块系统，**复用 C 后端的 `clink.link_modules`** —— `use std.x` /
+  `import std.x` 在 AST 层面就拼平（依赖在前、按需裁剪），IR 只描述拼平后的单文件程序。
+  因此 `std_demo` / `std_v39_demo` / `demo_19_split_join` / `demo_21_word_frequency` 这类
+  "用标准库"的程序现在也能走 `impor ir --build`。
+- **并发内建明确拒绝**：`thread_spawn` / `mutex_*` / `cond_*` 在 IR 下降阶段直接报
+  `UnsupportedNode`（参考求值器是单线程、没有调度语义），不再生成会在 gcc 阶段炸掉的坏 C。
+- 仍未支持（明确拒绝，不静默降级）：嵌套 `def` / `lambda`（闭包对象没有 IR 表示）、
+  `match` / `defer` / `await` / `|>` / `exit` / `cls()`。
+- **验收**（`%TEMP%\irverify\verify_irpar.py`，66 个示例逐个 `--build` 后与解释器逐字节比对）：
+  **52 逐字节一致 / 6 显式拒绝 / 2 构建失败 / 0 不一致**（4.5.0 是 36 / 21 / 3 / 0）。
+  6 个拒绝是 `channels` / `closures` / `demo_30_closures` / `demo_26_struct_point` / `stdlib` / `struct`；
+  2 个构建失败是 `cn_demo` / `err_demo` 这种**故意演示错误**的示例（`E2002` / `E2003`）。
+
+#### ④ 自举 B→C 的 E1013（`MemoryError: 内存不足`，第 0 行）
+
+- 复现：`bootstrap/selfhost_check.py` 的 A→B 成功，B→C 报 `[E1013]`，调用栈只有 `<main>`。
+- **根因是内存天花板，不是坏指针**：给 B 加内存采样后确认它从 60MB 一路涨到 **2018MB**
+  后失败 —— B 是 tcc 产出的 **32 位** PE，用户地址空间只有 2GB。
+  增长来自 Impor 版编译器把输出 C 用 `gfuncs = gfuncs + 段` 累积，累计复制 O(n²)，
+  编译 104KB 的种子自身时峰值约 **2.01GB**（64 位实测值）。
+- **修法**：自举链全程改走 64 位 —— A 产出的 `out2.c` 用 64 位 gcc 编成 B；
+  种子内编译产物改走新增的 `bootstrap/cc64.bat`（优先 gcc，找不到才回退内置 tcc）。
+  同时把自举 exe 的 `SizeOfStackReserve` 提到 64MB（64 位产物默认 2MB，深递归会栈溢出）。
+- 附带说明：`impor/imporc.exe`（纯 C 引导器）本身不受影响，它的输出是流式的；
+  Python 版 `impor build` 也不受影响。**受影响的只有"Impor 版编译器编译自身"这条链**。
+- 未做（记录在案）：`gfuncs` 的 O(n²) 累积本身没有改成流式输出/rope，所以峰值仍在 2GB 量级；
+  32 位工具链下这条链依然会失败（现在会明确提示用 64 位 gcc，而不是崩一个 E1013）。
+
+#### ⑤ 顺带修掉：`try/catch` 在 gcc -O2 下约 46% 概率崩溃（既有缺陷）
+
+- **怎么掉出来的**：IR 对拍时同一脚本的解释器端偶发 `rc 1/0`（5 次里 1 次、20 次里 8 次）。
+  `--no-native` 跑 12 次全过 → 问题不在解释器，在 `impor run` 默认的原生产物。
+- **缩小**：`impor build examples/grade.impor` 的 exe 跑 20 次 **6 次 `0xC0000005`**，
+  stdout 停在 `try` 之前；同一份 C 用 `-O0` 编 20/20 通过、`-O2` 编 6/20 崩 → 与优化相关。
+- **定位**：注入日志后看到 `[ljmp] idx=0` 之后立即崩；`jmp_buf` 256 字节在保存时与跳转前
+  **逐字节相同**（没被踩坏）；gdb 停在 `ntdll!RtlVirtualUnwind2`。
+- **根因**：mingw-w64 在 x64 上把 `setjmp` 定义成
+  `_setjmp((BUF), __builtin_frame_address(0))` —— 第二个参数是 **SEH 链锚点**，
+  会被存进 `jmp_buf`；`-O2` 没有帧指针，这个地址在部分栈布局下指向会被后续调用覆盖的区域，
+  `longjmp` 之后由它恢复栈链就死在 ntdll。加 `-fno-omit-frame-pointer` 无效（仍 16/40 崩）。
+- **修法**：`c_runtime.c` 新增 `IMPOR_SETJMP(BUF)` 宏 —— mingw + x64 下展开成
+  `_setjmp((BUF), NULL)`（不安装 SEH 帧；纯 C 跳转不需要 SEH，与 mingw 32 位分支的
+  `_setjmp3(BUF, NULL)` 同源），tcc / MSVC / Linux 保持 `setjmp(BUF)`。
+  `ctrans._gen_try` 与 `cir` 的 `TRY_BEGIN` 都改走这个宏；`_tj` / `_rh` 同时补 `volatile`
+  （C99 §7.13.2.1：只有 volatile 自动变量保证 longjmp 后值不变）。
+- **验收**：ctrans 产物 `-O0` / `-O2` / `-O3` 各 **40/40**、`impor build` **40/40**、
+  `impor run` **20/20**、`impor ir --build` **20/20**，且每档 stdout 只有 1 种。
+- 说明：这是 4.1 异常功能落地起就存在的缺陷，4.5.0 同样存在；`backend_parity` 23 例里没有
+  「`-O2` + 顶层 `try` + 函数内 `raise`」这个组合，所以一直没被门禁抓住。
+
+### 4.5.0：三阶段一起推进 —— IR 下降后端 / 深度五层 / 宽度 20→37
+
+这一版把「深度」与「宽度」同批推进：先让 IR 能被独立后端下降（阶段1），
+再补三端一致性的深水区（阶段2），最后把标准库从 20 个模块扩到 37 个（阶段3）。
+原则不变：**能用实测数字说话的地方一律给数字，做不到的地方明确写"未做"**。
+
+#### 阶段1：IR → C 下降后端（`impor/cir.py`）
+
+- **新增 `impor/ir.py` 的独立消费者 `impor/cir.py`**：只接受 IR 的 22 条指令，机械映射到
+  `c_runtime.c` 的 `rt_*` API，**不遍历 AST**。因此它同时是一个 IR 校验器：任何
+  "AST 能编、IR 编不了"的语义空洞，都会在这里以 `CIRUnsupported` 暴露。
+- **新增 CLI**：`impor ir FILE --c` 打印下降后的 C 源码；`impor ir FILE --build OUT` 直接编成 exe；
+  失败退出码 `EXIT_BUILD = 4`。
+- **为支撑下降补的运行时助手**：`rt_pow_impor` / `rt_pos_impor` / `rt_setindex`（dict 与数组分派）/
+  `rt_iter_n` / `rt_iter_keys`（dict 按键迭代）/ `rt_iter_at`（字符串按码点、其余按下标）/ `rt_range3`（range 1~3 参数）。
+- **修掉的真实缺陷**（均从对拍里掉出来，不是预设）：
+  - 临时量重复声明（`redefinition of 't1'`）：`_declare_temps` 既登记又单独声明，改为 `_is_tmp()` 判定 + `setdefault`；
+  - `f_%d` 格式串被传成 str → TypeError；
+  - `range(a, b)` 报 `too many arguments`（`rt_range` 只收 1 参）；
+  - `v_arr(&v, a)` 签名不符；
+  - 一等函数包装器原型缺失（`fw_f_3 undeclared`）；
+  - 跨函数可见性：解释器里顶层 `var` 是模块级变量，下降时只有 `loop` 保持局部，顶层 `STORE` 全部提升为全局。
+- **验收（`%TEMP%\irverify\verify_irpar.py`，66 个示例逐个 build 后与解释器逐字节比对）**：
+  **36 个逐字节一致 / 21 个 IR 显式拒绝 / 3 个构建失败 / 0 个"编出来但结果不同"**。
+  21 个拒绝全部来自 `ir_lower.py` 的拒绝清单（类、异常、try、闭包、lambda、模块 import、AttrGet、SuperCall 等）；
+  3 个构建失败里 2 个是 `cn_demo` / `err_demo` 这种**故意演示错误**的示例。
+
+#### 阶段2：深度五层
+
+1. **Unicode 大小写（完成，diff=0）**：新增生成物 `impor/unicode_case.py`（`UPPER_MAP` / `LOWER_MAP`）与
+   生成器 `tools/gen_unicode_case.py`——**一份数据同时写 Python 表与 C 表**，C 侧二分查找 + UTF-8 解码/编码。
+   口径：ASCII / 拉丁-1 / 拉丁扩展 A-B / 希腊 / 西里尔 / 全角，只收 1:1 映射（不做 ß→SS、ﬁ→FI、土耳其 i）。
+   `builtin_upper` / `builtin_lower` 与 `rt_upper` / `rt_lower` 共用这套表。
+   验收：`upper("abc-äöü-ΑΒΓ-абв")` / `lower("ABC-ÄÖÜ-ΑΒΓ-АБВ")` / `upper("ß")` / `upper("Straße")` 三端逐字节一致。
+2. **码点原语 `ord` / `chr`（新增，见 RFC 0004）**：三端同语义（按 Unicode 码点，不按字节），
+   C 侧复用 `rt_uc_decode` / `rt_uc_encode`。
+3. **`strpad` 按码点补齐（修一致性缺陷）**：C 侧此前用 `strlen`（字节数）判断宽度，中文列宽会错，
+   导致 `std.table` 渲染出的表格两端不同。改为 `rt_u8len`（字符数）+ 支持多字节填充符。
+   验收：`std.table.render` 的中文表头两端输出**逐字节相同**。
+4. **内存泄漏检测（新增）**：`c_runtime.c` 增加 `g_rt_leak_live` 与 `rt_leak_report()`，
+   由 `rt_shutdown()` 调用；设 `IMPOR_LEAK_CHECK=1` 时向 stderr 打印
+   `[leaks] 分配 X 次 / 释放 Y 次 / 未释放 Z 块`。验收：同一 exe 开/关环境变量，只在开启时出现该行。
+5. **并发 `select`（补齐最后一格）**：`std.channel` 此前已是条件变量版（`mutex_new` / `cond_new` /
+   `cond_wait_ms`，`recv_timeout` 已在），4.5.0 补 `select(chans, ms)` 与 `select_now(chans)`：
+   返回 `[索引, 值]`，超时或全部关闭且排空返回 `[-1, empty()]`；实现用"每通道 `recv_timeout(1 ms)` 轮转"，
+   靠条件变量让出 CPU，不做自杀式忙等。
+6. **泛型单态化（未做，明确记录）**：C 后端仍按 `Val` 统一值模型，不为每个实例化点生成专用符号。
+   原因：单态化要先把 types 信息从 `semantic` 阶段带进 `cfast`/`ctrans`，属结构性改动，按 RFC 单独排期。
+
+#### 阶段3：宽度 20 → 37 个标准库模块
+
+- **新增 17 个模块**：`log` `config` `encoding`（base64/hex/URL）`template` `cli` `test` `bench` `metrics`
+  `uuid` `semver` `validate` `table` `units` `cache` `color` `process` `diff`；
+  并把此前的三个"壳模块"补实：`json`（+ `try_parse` / `is_valid` / `get` / `keys_of` / `has` / `merge`）、
+  `regex`（+ `is_match` / `find_first` / `find_all` / `count` / `replace_all`）、
+  `time`（+ `human` / `pad2` / `since`）。
+- **写法上踩到并绕开的三个真实限制**（都写进了模块注释）：Impor 的 `//` 是注释而非整除（索引用 `int(a / b)`）；
+  裸 `catch {` 不可用，必须 `catch e {`；C 后端不支持 `throw`，标准库里不抛异常，改用空串/退出码等哨兵返回值。
+- **验收**：23 个模块的解释器冒烟（每个 import + 调代表函数）**0 失败**；
+  代表性模块（`encoding` / `table` / `validate`）**build 后与解释器逐字节一致 3/3**；
+  base64 往返 `"a"…"abcdefg"` 6 个长度全部 `True`。
+- **新增文档**：`docs/能力矩阵.md`（特性 × 后端 × 平台，带 Tier 分级）、`docs/宽度预算.md`（宽度扩张的预算与排序）。
+
+#### 治理与口径
+
+- **`docs/生产化/README.md` 的过时状态已改**：原文写着"多线程、锁、原子、channel 未完成"与"现有 build 走 TinyCC"，
+  但 4.2/4.3 已交付并发全套、4.3.1 起默认优先 gcc64 —— **旧文档在贬低自己的实现**，这一版按实际状态重写。
+- API 基线刷新：55 关键字 / **124 内建**（+`ord` `chr`）/ **37 标准库模块** / 30 错误码，变更依据 `docs/rfc/0004-ord-chr.md`。
+
+### 4.4.0（工作区，未发版）：IR 分层 —— 借 xlang 的阶段化管线
+
+这一版不加语言特性，补的是**编译管线本身**：把「AST → 各后端各走一遍」换成
+「AST → 单一 IR → (dump / 参考求值 / 将来各后端下降)」，对齐 xlang 的 Lex → Parse → Semantic → IR → Lowing。
+
+- **新增 `impor/ir.py`**：22 条三地址码指令（`CONST/LOAD/STORE/MOVE/BINOP/UNOP/CALL/PRINT/LIST/DICT/INDEX/SLICE/SETINDEX/TOSTR/CONCAT/ITER/ITER_NEXT/LABEL/JUMP/JUMP_IF_FALSE/ASSERT/RETURN`）、`IRModule.render()` 文本序列化，以及**独立于解释器的参考求值器**（`Evaluator`：只共享 `builtins.py` 的纯函数内建，不共享 AST 遍历路径）。
+- **新增 `impor/ir_lower.py`**：AST → IR。支持 `var/set/+=`、`print`、`if/elif/else`、`while`（`break`/`continue`）、`for`（`range`/列表/字典）、顶层 `def`（递归/多参数/隐式返回）、算术与比较、短路 `and|or`、三元、字符串拼接与 `{expr}` 插值、列表/字典与下标读写、切片、`assert`、函数值传递。不支持的语法一律抛 `UnsupportedNode`（带 `文件:行:列` 与原因），**不静默降级**。
+- **新增 `impor ir` 子命令**：`impor ir FILE` 打印 IR；`-o` 落盘便于 diff（对应 xlang 的 `Ir.txt`）；`--run` 用参考求值器执行；`--stats` 输出函数/指令/标签与实际执行指令数。不支持的脚本退出码 2。
+- **对拍抓到并修掉一个真缺陷**：parser 已把 `&&`/`||` 归一成 `and`/`or`，但 `interpreter.visit_BinOp` 没有对应分支，`print(1 && 2)` 一直报 `OpError: 未知运算符 and`。现补上短路求值（`x != 0 && 1 / x > 1` 不会先炸除零），树遍历路径与 IR 求值器同语义。
+- **验收（本机实测）**：`tests.test_ir` **12/12**；`examples/demo_01…demo_40` 对拍 **27 个逐行一致 / 13 个显式拒绝 / 0 个不一致**；既有回归 `tests.test_impor + test_v431_sync + test_v42_generics` **200/200**；`tools/api_baseline.py` 一致（公开面未动：55 关键字 / 122 内建 / 20 模块 / 30 错误码）。
+- **明确没做**：四个后端（解释器 / pytrans / ctrans / cfast）**仍然各自 walk AST**，没有改成从 IR 下降；`imporc` 未接入；类/异常/导入/闭包/`AttrGet` 方法调用仍在拒绝清单里。替换内核属破坏性变更，需先写 RFC。详见 `docs/编译管线-IR-4.4.md`。
+
+### 4.3.2 patch8：三端一致性收口（std.text 崩 exe · 缺失内建 · 谎报口径 · 诊断与打包）
+
+这一版不新加语言特性，只修「同一份代码在解释器能跑、编成 exe 就崩」这一类问题，
+以及对外口径里与实际实现不符的几处说法。全部修复都有三路（解释器 / `compile` Python /
+`build` C 产物）实测对照。
+
+- **P0：`use std.text` 的程序编 exe 必崩（E1006）**。根因是 `impor/std/text.impor` 的
+  `split` 直接 `return s.split(sep)`——那是 Python 宿主方法，C 后端 `rt_method` 没有
+  字符串 `split` 分派，一进模块就抛 `AttributeError: 字符串无此方法`。`starts_with` /
+  `ends_with` 同理（写的是 Python 名 `.startswith` / `.endswith`，C 侧只认
+  `.starts_with` / `.ends_with`）。三处改成纯内建实现（`len` + 切片/`strcut` + 比较 +
+  `arrappend`），`examples/std_demo.impor` 的 C 产物由「第 65 行崩」变为完整跑完。
+- **P0：C 运行库补字符串 `split`**。除 std 库外，用户直接写 `s.split(",")` 在 exe 里
+  同样会崩。`c_runtime.c` 的 `rt_method` 现支持：带分隔符按分隔符切、不带参数按连续空白
+  切并丢空段、第二参数 `maxsplit`（与解释器/Python 语义一致），并新增
+  `.startswith` / `.endswith` 别名。实测中文串 `"你好，世界，Impor".split("，")` 三路输出
+  都是 `['你好', '世界', 'Impor']`。
+- **P1：`impor build` 横幅谎报「任意精度整数」**。横幅与快路径说明改为
+  `整数 int64 语义，溢出报 E1012` / `数值快路径（64 位整数，溢出报 E1012 并中止）`。
+  文案只在 `cli.py::_print_build_summary` 一处，`bench-spec` 复用同函数，一并生效。
+- **P1：溢出提示指向不存在的开关**。数值快路径的 `iovf()` 此前提示 `--no-fast` /
+  `--no-native`（前者只对 `build` 生效、后者并不会切到任意精度），按提示做仍然报错。
+  改为唯一真实可用的入口：`impor run 脚本.impor --big`。实测 `--no-native` 与 `--int64`
+  同样报 `E1012`，`--big` 输出 `9223372036854775808`。
+- **P1：`div` 在 `impor compile` 产物里缺失**。`div` 原本被登记在
+  `INTERPRETER_ONLY_BUILTINS`（注释理由是"依赖解释器状态"），但它是纯算术内建，
+  Python 转译产物 `from impor.runtime import *` 拿不到它。已移入 `RUNTIME_BUILTINS`
+  并在 `runtime.py` 补实现（除零抛 `DivisionByZero`、非数值抛 `TypeError`、结果按
+  floor：`div(-7, 2) = -4`）。转译产物与 C 产物现在同值。
+- **P1：`build_gcc.bat` 写裸 `gcc`**。本机 gcc（Dev-Cpp MinGW64）不在 PATH，生成的 bat
+  直接 `gcc ...` 会静默失败（rc=1、无输出）。`cli.py` 生成 bat 时改用 `find_gcc64()`
+  定位，脚本首行前置 `set "PATH=<gcc bin>;%PATH%"`，编译命令走带引号的绝对路径；
+  找不到 gcc 时仍回落裸 `gcc`，行为不比之前差。实测重新生成并 `cmd /c` 跑通（0x8664 DLL）。
+- **P2：`E1012` 没有专门的诊断条目**。`diagnostics.py` 的规则表只有泛化兜底，
+  `impor run` 溢出时给的是"检查写法"这类空话。新增规则（`OverflowError|整数溢出|E1012`）：
+  说明 int64 范围、说明"报错而非静默回绕"，修法指向 `--big` 并注明 C 产物不支持大整数。
+- **P2：conformance 抖动**。并发压测时出现过 99/100，单独重跑 100/100。两个根因：
+  ① `TIMEOUT=120` 在慢机/并发下会误判超时，提到 240（判定口径不变，失败仍计失败）；
+  ② runner 每个用例都读写**仓库根目录的全局** `imporc_args.txt`，两个进程同时跑会互相
+  覆盖——imporc 早已按 cwd 读参数，那套"备份/恢复"已是死代码，删除后每个用例只碰自己的
+  `tempfile.mkdtemp` 目录。
+- **P2：`std.http` 在「cwd ≠ 脚本目录」时不是回退 curl，而是崩 E1099**。`_maybe()` 用
+  `fileexists(path)`（按进程 cwd 解析）判断，再把这个相对路径交给 `ffi_open`（按脚本目录
+  解析）；两边口径不同就会出现「存在检查通过、加载却报原生库不存在」，本该走 curl 兜底的
+  调用直接抛异常。改成加载失败一律 `catch` 后返回 false（继续下一个候选 / 兜底）。
+  实测：脚本在 `%TEMP%\x\` 而 cwd 在仓库根时，修复前 `E1099`、修复后 `HTTP-OK`。
+  `tools/verify_release.py --check stdlib_http` 由 FAIL 转为 OK。
+- **P3：文档口径回到实现**。`docs/语言规范.md` 与 `conformance/README.md` 原写
+  "默认 `impor run` / `--no-native` 是 Python 任意精度"，与实现（解释器早已按 int64 拦截）
+  相反。改成四条路径统一 int64、任意精度只有 `impor run --big` 一个入口，并给出各路径
+  的退出码对照表。
+- **版本与自举**：`VERSION` / `impor/version.py` / `Impor.py` / VS Code 清单同步到
+  `4.3.2`（`tools/sync_version.py`）；用 `bootstrap/build_with_python.py --install` 重建
+  `impor/imporc.exe`，`imporc version` 现在自报 `v4.3.2`（此前停在 4.3.1，会让
+  `test_v38.test_version_mode` 红）。
+- **API 基线走 RFC 流程**：`div` 换面属公开面变更，按仓库规则先写
+  `docs/rfc/0003-div-runtime.md`（为什么不改不行、影响谁、验收、回滚），再
+  `tools/api_baseline.py --update --rfc …` 刷新。基线现在一致：55 关键字 / 122 内建 /
+  20 模块 / 30 错误码；内建总数未变（117 是旧基线的分组计数，div 只是换了分组）。
+- **验收（本机实测，Python 3.11.5）**：15 个示例三路对比 **15/15 逐字节一致**（4.3.1
+  时为 14/15，差的正是 `std_demo`）；`conformance/run_conformance.py` **100/100**；
+  `tests.test_v4_backend_parity` **23/23**；`tools/check_fmt_all.py` **220/220**；
+  `tools/verify_claims.py` **自动承诺 22/22**（`stdlib_http` 与 `api_frozen` 两项由红转绿）；
+  `build_gcc.bat` 重新生成后 `cmd /c` 实跑通过。
+- **明确没做**：C 后端的 `upper` / `lower` 只处理 ASCII（解释器按 Unicode 处理，中文与
+  带重音的拉丁字母会不同）；`--big` 只在解释器路径存在，C 产物没有大整数；`imporc`
+  自举子集本版未动（只重建、只对齐版本串）。分 TU 仍未做。
+- **一条不修的记录**：C 产物在 PowerShell 里 `2>&1` 合流时 stdout/stderr 顺序错乱，
+  经 `cmd /c "x.exe > f 2>&1"` 复测顺序正确，是 PowerShell 的合流缓冲伪影，不是产品缺陷。
+
+### 4.3.1 patch7：图像 / HTTP 绑定 · imporc 语法子集补齐 · 分 TU 仍未做
+
+这一版把 4.3.1 公开列出的「未做」往前推了四项，只留下分 TU 一项明确不做完不吹。
+
+- **图像绑定 + `std.image`（第 20 个 std 模块）**：本机没有 `stb_image.h`，改用 Windows 自带 **WIC**（`wincodec.h` / `ole32` / `windowscodecs`），不引入第三方源码。`bindings/image/impor_bind_image.c` 导出 `load/width/height/red/green/blue/alpha/save_png/close`，句柄压成 1..8 整数；`std.image` 提供 `configure/ready/load/size/pixel/save_png/close/error`，自动在 `bindings/image/`、`impor/bindings/image/`、`exedir()/bindings/image/` 找 DLL，**找不到时 `load()` 返回 0，不崩**。实测：1024×1024 PNG 读入、中心像素 `13,18,30,255`、PNG 另存再读回尺寸一致、`roundtrip: True`；解释器与 `impor build --no-cache` 的 C 产物输出一致。
+- **HTTP TLS 硬化**：`bindings/http/impor_bind_http.c` 走 WinHTTP；`WinHttpCrackUrl` 的 host/path 是原串切片，必须先复制再传（否则 12005 Invalid URL）；TLS 从 1.2 起、证书错误不忽略、`MAX_REDIRECTS=5`、响应上限 16 MB、只接受 `http(s)`。MinGW 4.8.1 的 `winhttp.h` 缺三个常量，已用 `#ifndef` 兜底（`TLS1_2` 是 `0x800`，写成 `0x8` 会 12175）。`std.http` 重写为「绑定优先 + `curl -sS -L --proto =https|=http --tlsv1.2 --max-redirs 5` 兜底」，新增 `get_status/request/configure/ready`；`get()` 保持原语义。实测 `https://example.com`：status 200 / body 577 字节 / 含 HTML；`ftp://` 被拒。
+- **跨后端修一个真缺陷**：C 运行时 `rt_strfind` 是三参，但 `ctrans.py` 对两参 `strfind` 生成两参调用，C 产物报 `too few arguments`；已在 `_gen_call` 补 `v_int(0)`。这次是 `std.http` 的 C 构建暴露出来的。
+- **imporc 的 4.3.1 语法子集（patch7）**：原子集不认多行字面量、`!`/`&&`/`||`、`nil`、`+=` 系列、泛型、嵌套 import、channel/pool。已补：
+  - 多行 dict/list/实参：`mi_skip_layout()` 吞排版记号；`mi_brace_to_indent` 用「块头白名单 + 字面量计数 `lits`」区分代码块 `{` 与字典 `{`，行首 `}` 只在 `depth>0` 时当块结束，避免把 `return { ... }` 的收尾 `}` 吃掉；dict/list 允许尾逗号。
+  - `!` 一元、`&&`/`||` 词法归一为 `and`/`or`、`nil`→`v_null()`、`+=/-=/*=//=/%` 复合赋值（变量/属性/下标三类左值）。
+  - 泛型声明运行期擦除：跳过 `<T>`、参数 `: T`、返回 `-> T`（词法补 `->`）。
+  - 并发/原子/数组/时间内建统一走 `bi_expr`（mutex/cond/atomic/thread/arrappend/arrfind/clock 等），不再发成 `g_xxx`。
+  - 被内联模块自己的 `import m as mm` 生成 `mm = imporc_module(...)` 绑定（`std.pool` 内的 `chan` 就是这样修好的）。
+  - **任意 cwd 可用**：`mi_read_module` 追加 `exe 安装目录/impor/<模块>` 与 `exe 安装目录/<模块>` 两个**绝对**搜索根。此前脚本与 cwd 都在临时目录时，`impor/` 相对路径不存在，报「找不到模块 std.channel / std.pool」；修后在 `%TEMP%\mx_test` 直接调用已安装的 `imporc.exe`，`build rc=0`、产物 `run rc=0`，输出与解释器一致。
+  - 验收：`examples/{channels,generics,closures,condvar,threads}.impor` 用 `impor/imporc.exe` 编译出的 exe 与解释器**逐行同输出**：channels `sent 20 / sum 210 / stats [20,20,0] / workers 4 / done 16`；generics 4 行；closures 4 行；condvar 6 行；threads 4 行。`bootstrap/imporc_py.exe` 920,576 → 969,728 字节（多次迭代后当前值），已安装到 `impor/imporc.exe`。
+  - `tools/support_matrix.py` 的 imporc 通过数由 **9/20 提升到 11/20**（channel / 条件变量两条由旧版「临时 cwd 找不到 std」转绿），总违例仍为已知基线 1 条。
+- **75 模块全量回归（一次性跑完）**：`py -3 -m unittest discover -s tests -p 'test_*.py' -v` 共 **871 项，26 failures + 14 errors + 23 skipped，1595 s**。失败集中在存量模块（v37/v42/v46/v49/v51/v53 等），本轮改动相关的 `test_v43_channel` / `test_v431_sync` / `test_v42_concurrency` / `test_v42_generics` / `test_v38` 未新增红；`test_v42_closure::test_imporc_backend` 仍红（imporc 闭包跨后端断言，属存量 imporc 子集差异）。**未逐条复核 40 条失败是否全部为存量**，这里只如实报总数与相关模块状态。
+- **未做（如实）**：**分 TU 编译 + `impor_rt.h`**。当前 `ctrans.gen_program` 把整份 `RUNTIME_C`（全部 `static` 函数/类型）拼进单一程序 TU，程序直接调用 static 符号；拆 TU 必须先导出运行时符号并生成完整头文件，属结构性改动。本轮没有动 `impor/cli.py:cmd_build` 的单文件 `cpath → gcc → 链接` 链路，仍是「整包缓存 + 单 TU」，不宣称模块级 `.o` 增量。
+
+### 4.3.1：语法坑收口 · 条件变量挂起 · 错误输出分道
+
+这一版是 4.3.0 的收口版：把「写起来会踩坑」的三处语法补平，把 channel 从轮询改成条件变量挂起，并把运行错误从 stdout 挪到 stderr（不再污染程序输出）。
+
+- **跨行字面量可用**：`{` 字典 / `[` 列表 / 调用实参三处都可以换行书写。根因是词法层 `paren_depth` 只统计 `(` 和 `[`，`{` 内的换行会留下 `NEWLINE/INDENT/DEDENT` 三种排版记号，旧解析器只跳前两种，于是报「E1099 表达式缺失」且错误位置显示成引用方的文件名。现在三处统一调 `_skip_layout()`，`examples/condvar.impor` 的多行 `{"a": 1, "b": [...]}` 四端都能跑。
+- **`!` / `&&` / `||` 三个符号别名**：解析期分别归一成 `not` / `and` / `or`，转译与 C 后端无需额外分支。同时修掉 `impor fmt` 的同源缺陷——旧实现只把 `||`、`&&` 当单字符运算符，格式化后会把 `||` 拆成 `| |`、`&&` 拆成 `& &`、`!false` 拆成 `! false`（能过 fmt 门禁但语义被改坏）；现在 `||`/`&&` 进二元运算符集合、`!` 按一元前缀紧贴操作数。
+- **转译端支持 `nil`**：`impor/transpiler.py` 的表达式分派补 `Null` 节点（输出 `None`），此前 `nil` 在解释器与 C 后端都能打印 `None`，只有 pytrans 报「无法编译的表达式节点 Null」。
+- **错误输出分道**：`c_runtime.c` 的 `rt_print_snippet` / `rt_trace_print` / `rt_report_error` / `rt_report_abort` 全部改走 `fprintf(stderr, ...)`，程序正常输出与运行错误不再混在同一个流里（`tests/test_fuzz` 由红转绿）。
+- **条件变量（5 个新内建，四端一致）**：`cond_new` / `cond_wait` / `cond_wait_ms` / `cond_notify` / `cond_notify_all`。语义按 C 口径：`cond_wait(cond, mutex)` 必须由已持锁线程调用，内部「释放锁 → 挂起 → 唤醒后重新持锁」；`cond_wait_ms` 返回 bool（true=被唤醒 / false=超时）；`notify` 无等待者时通知丢失（条件变量不是信号量）；句柄上限 64、跨种类不通用。Windows 64 位用 `CONDITION_VARIABLE` + `SleepConditionVariableCS`，POSIX 用 `pthread_cond_t`；**内置 tcc 32 位的旧 win32 头文件没有 `CONDITION_VARIABLE`，因此走 `__TINYC__` 分支退化为「代际计数 + `Sleep(1)` 轮询」**——语义不丢通知，唤醒粒度 1 ms，不宣称真阻塞。
+- **`std.sync`（第 19 个标准库模块）**：`make_lock/lock/unlock/try_lock` + `make_cond/wait/wait_ms/notify/notify_all` 的薄封装，接入 `impor/std/__pkg__.impor`。
+- **`std.channel` 改挂起版**：`make(cap)` 的通道 dict 增加 `cond`；`send` 在有界队列满时 `cond_wait`（关闭则返 false），`recv` 在空且未关闭时 `cond_wait`，取走后 `notify` 等空间的一方；`close` 做 `notify_all`；新增 `recv_timeout(c, ms)`（超时返回 `[false, empty()]`）。`try_recv` / `drain` / `stats` 保留。
+- **新增用例与门禁**：`examples/condvar.impor`（条件变量唤醒 + cap=1 生产消费 + `recv_timeout` + 多行字面量 + `!`/`&&`/`||` + `nil`，四端同输出 `wake: 1` / `sum: 10` / `timeout: False` / `dict: 4` / `nil: True None` / `logic: True`）；`tests/test_v431_sync.py` 7 项；`tools/support_matrix.py` 增「条件变量 / 阻塞通道（v4.3.1）」一行。实测：`check_fmt_all` **220/220 通过（跳 21）**、`api_baseline` 一致（**55 关键字 / 122 内建 / 19 模块 / 30 错误码**）、`test_v431_sync` **7/7**、`test_v43_channel + test_v42_concurrency + test_v401_std_modules + test_v34 + test_v42_generics` 合跑 **46/46**。
+- **`imporc` 版本串对齐**：用 `bootstrap/build_with_python.py --install` 重建 `impor/imporc.exe`，`imporc version` 现在输出 `imporc (Impor 自举编译器) v4.3.1 · 子集模式`（此前停在 v4.0.0，导致两个版本断言测试红）。
+- **第三方库绑定（2/3）**：新建 `bindings/` 目录约定（薄 C 层 + Impor 包装 + demo + `.impor/ffi_allow.json`）。SQLite3 与 zlib 两个绑定实测通过：sqlite3 运行时 `LoadLibraryW` 任意 `sqlite3.dll`（不必 import lib），句柄压成整数、结果集编成 JSON，`demo.impor` 建表/插 3 行/回读 `[[1, '甲', 91.5], [2, '乙', 78], [3, '丙', None]]`；zlib `crc32("abc")=891568578`、40 字节文本压缩到 63 字节且往返一致。图像绑定未做：本机没有 `stb_image.h`，也没有可用的 PNG 解码库。过程中踩到并修掉一个真问题：路径含中文时必须走 `LoadLibraryW`，`LoadLibraryA` 按 ANSI 解释会返回 126。
+- **构建缓存升级（增量编译的一半）**：缓存落到项目内 `.impor-cache/build-cache.json`，缓存键改为**递归依赖指纹**（入口文件 + 直接/间接 import 的模块 + 包目录 + 安装目录 `impor/std/*`，旧版只看第一层）。实测 `examples/condvar.impor`：首次 2.06 s、命中 **0.19 s**；改 `impor/std/sync.impor` 一行注释后缓存正确失效（重建 1.99 s）。
+- **`imporc` 模块搜索根**：自举编译器原来只在「脚本目录 / 当前目录」找模块，`examples/` 下 `import std.x` 直接 `fileread` 失败；现补「安装目录 `impor/` → 脚本目录 `../impor/`」两个搜索根，并用 `fileexists` 先判存在（`fileread` 失败会抛异常，旧写法根本走不到兜底分支）。为此在 `bootstrap/imporc.impor` 的表达式发射器里补了 `fileexists → rt_fileexists`：子集编译器原先把它当未知内建发成 `g_fileexists`，自编译 `imporc.impor` 时直接链接失败。同处还修回 `gen_block2()` 被错改的缩进（`if/else` 落到第 0 列），`tests.test_v38` 7 项（含 imporc A→B 自编译闭环）现已通过。**仍未支持**：`imporc` 的解析器不认 4.3.1 的多行字典字面量，所以 `std.channel` / `std.pool` / `std.sync` 在 imporc 下仍是编译期拒绝；泛型同样未同步。A→B→C→D 全链未跑。
+- **未做（如实列出）**：`bindings/image/`（缺 `stb_image.h`）、`std.image`、HTTP 客户端硬化（TLS）；分 TU 编译与 `impor_rt.h`；`imporc` 的多行字面量 / 泛型 / channel / pool 支持。四条短板的进度与验收见 `docs/路线图-补四块短板.md`。
+
+### 4.3.0：通道 / 线程池 · 标准库到 18 个模块 · 修两个 C 运行时缺陷
+
+这一版补的是 4.2 明确留下的那条短板——「有线程、锁、原子量，但没有 channel 和线程池」。做法是**不新增内建**，用纯 Impor 库实现 CSP 风格队列，再用它搭常驻 worker 池；顺带修掉两个只有并发路径才会踩到的 C 运行时缺陷。
+
+- **`std.channel`（通道）**：`make(cap)` / `send` / `recv` / `try_recv` / `drain` / `size` / `is_closed` / `close` / `stats`，另有 `empty()` / `is_empty(v)` 哨兵。`cap>0` 有界、满了发送方自旋；`cap<=0` 无界；空且未关闭时 `recv` 每 1 ms 轮询等待；关闭且排空返回 `empty()`。`send` 到已关闭通道返回 `false`，不抛异常。
+- **`std.pool`（线程池）**：`new_pool(n)` 起 n 个常驻 worker，`submit` / `pending` / `shutdown`（关闭队列 + join，返回每个 worker 处理数，幂等）。池句柄是**整数**而不是 dict：C 后端会把闭包捕获的容器按值复制，把通道 dict 直接传进线程只会看到创建时的快照（本轮踩到并改掉）。
+- **修掉两个 C 运行时真缺陷（不修则 channel 在 C 端必错/必崩）**：① `rt_dict_set` / `rt_arr_set` 原来是「先 `rt_val_free` 再 `rt_val_dup`」，当值本身就在槽里时（`d["k"] = arrappend(d["k"], v)`、`a[0] = a[0]`）会读已释放内存——表现为 `len` 变 0，偶发 `0xC0000005`；现改为**先 dup 再 free**。② `rt_concurrency.thread_spawn` 在编译产物路径上（`interp is None`）不克隆解释器执行上下文，而 std 模块函数是解释器 `Closure`，于是两个线程共用一个 `cur_env` 互相覆盖局部变量（表现为「变量 v 未定义」）；现在无参调用会自行向运行时取解释器并克隆。
+- **顺带修掉 `impor build` 的一处内部错误**：`impor/cfast.py` 的赋值扫描对「字符串插值」这类节点里存的裸 `str` 调用了 `vars()`，合法源码（`print("平方 = {n * n}")`）会直接抛 `TypeError: vars() argument must have __dict__ attribute`，且 4.2.0 包内同样复现（存量缺陷，非本版引入）。现只下钻 AST 节点与容器，`tests/test_v34.py::test_build_rich_semantics` 由红转绿。
+- **标准库 16 → 18 个模块**：`channel` / `pool` 两个都接入 `impor/std/__pkg__.impor`，`tools/api_baseline.json` 的 `std_modules` 同步到 18、`version` 升到 `4.3.0`；`VERSION` / `impor/version.py` / `vscode-impor` 等由 `tools/sync_version.py` 统一到 **4.3.0**。
+- **新增用例与门禁**：`examples/channels.impor`（生产 20 条求和 210 + 4 worker 分 16 个任务）；`tests/test_v43_channel.py` 9 项（解释器 / pytrans / gcc64 / tcc32 四端 + 关闭后 send、哨兵、try_recv+drain、有界阻塞、坏句柄）；`tools/support_matrix.py` 增「通道 / 线程池（v4.3）」一行。实测：`check_fmt_all` **218/218 通过（跳 21）**、`verify_claims` 自动验证 **22/22（100%）**、`support_matrix` **19 个用例 / 契约违例 1 条（仍是已基线的 int64 溢出 × 转译器，新增 0）**。
+- **口径（写进 §24.3，别夸大）**：这是**库级 CSP 队列 + 轮询等待**，不是 Go 运行时那种调度器级阻塞；任务分派不保证公平（实测出现过 `[40, 0, 0, 0]` 与 `[5, 5, 5, 25]`）；没有 `select`、没有通道超时参数、没有关闭广播；`yield` 有语法位但没有协程调度。
+- **未做（如实列出）**：不新增加载器/包管理器（第三方库生态仍未动）、不做 C 单态化与模板级抽象、不做增量编译/多模块并行编译。`imporc` 自举编译器仍未同步泛型与并发内建（能力矩阵里对 imporc 是「编译期拒绝」）。四条短板的可执行路线见 `docs/路线图-补四块短板.md`。
+
+### 4.2.0：泛型 · 线程/原子 · 标准库到 16 个模块
+
+这一版加的是语言本体的三样能力：**泛型**、**线程/互斥锁/原子量**、**标准库扩充**。三端（解释器 / `impor compile` 的 Python 转译 / `impor build` 的 C 后端）同一份源码实测输出逐字节相同；没做完的写在最后。
+
+- **泛型（声明期约束 + 运行期擦除）**：`def max2<T>(a: T, b: T) -> T` 语法可用，`export def` 与嵌套 `def` 同样支持。类型参数在静态检查里等价于「任意类型」，不做 C 的单态化、运行时零开销；唯一的检查收益在调用点——实参字面量类型绑到类型参数上，同一次调用同一个 `T` 绑成两种类型即报 `generic-mismatch`（`impor run max2(1,"a")` rc=2，提示「混型请先显式转换」）。`<T: int>` 约束、重复类型参数、未闭合 `>` 解析期报 E2002；不支持显式实例化 `f<int>(1)`（声明位之外 `<` 仍是比较运算符）。实测 `max2(9,2)` / `ident("hi")` / `ident(2.5)` → `9 / hi / 2.5`，解释器与 gcc 64 位产物（252,928 B / 1.54 s）一致。规范见 `docs/语言规范.md` §5.1。
+- **线程 / 互斥锁 / 原子量（三端都支持）**：新增 16 个运行时内建（`thread_spawn/join/alive/id`、`cpu_count`、`mutex_new/lock/unlock/trylock`、`atomic_new/load/store/add/sub/exchange/cas`），口径对齐 C：句柄是整数 id、跨种类不通用，`atomic_add/sub/exchange` 返回**旧值**，`atomic_cas` 返回 bool，`thread_join` 幂等返回线程函数结果。解释器侧每个线程一份独立执行上下文（`cur_env`/`call_stack` 线程局部，`Closure.__call__` 优先线程副本），C 侧 try/raise 的跳转栈、错误类型/信息、调用栈、当前行号全部线程局部（Windows TLS / POSIX `pthread_key`），`rt_note_alloc` 等共享登记表进自旋锁，`rt_shutdown` 先等未 join 线程收尾。实测 4 线程 × 2000 次原子自增 → `join: 2000`×4 / `8000` / `cas: True 8001`；8 线程 × 5000 次「mutex 保护自增 + 同量原子自增」→ `40000 / 40000`（gcc64 259,584 B、tcc32 139,776 B 与解释器一致）。**原子量在 C 侧用运行时锁实现，不是无锁**（32 位 tcc 下 64 位变量不保证 8 字节对齐，`Interlocked*64` 会踩对齐红线）；列表/字典/对象跨线程共享仍需自己用 mutex 包住。规范见 `docs/语言规范.md` §24。
+- **标准库 15 → 16 个模块并补齐 `std.csv` 的接线**：本轮新增 `std.sort`（`sort/sort_by/search/is_sorted`）、`std.random`（`between/choice/shuffled/pick/token`）、`std.stats`（`mean/median/variance/stddev/mode/percentile/sqrt`）、`std.thread`（`spawn/join/alive/current/cpus/map_parallel/range_parallel`）、`std.atomic`（`counter/load/store/add/sub/exchange/cas` + `lock/enter/leave/try_enter/with_lock`），全部纯 Impor 实现并接入 `impor/std/__pkg__.impor`。同时修掉一处真不一致：`std/csv.impor` 早在 4.0.1 写好并有测试，但 `__pkg__.impor` 一直没 import/export 它，`use std` 拿不到 `std.csv`——现已接线，`tools/api_baseline.json` 的 `std_modules` 从 15 补到 16。实测 `std1.impor`：`sort: [1, 2, 5, 5, 9] sorted? True`、`search 9 -> 4  search 7 -> -1`、`mean: 4.0 median: 4.0`、`stddev: 2.0`、`p50: 2.5`、`threaded count: 500 cpus: 8`，gcc64 产物 298,496 B / 2.76 s 一致。
+- **顺带修掉两个跨端一致性缺陷（不修就会让上面的"三端一致"是空话）**：① Python 转译完全没实现 `set x = ...` 的「就近更新」语义——`_scope_decls` 只处理 `global` / `nonlocal` / `+=`，漏了 `Assign(scope='update')`，导致 `set g = g + 1` 在转译产物里变成局部声明、报 `UnboundLocalError: cannot access local variable 'g'`；现按「外层函数局部 → `nonlocal`，模块全局 → `global`」补齐（`tests/test_v42_concurrency.py` 锁定）。② `impor fmt` 未覆盖新建的 `std/stats.impor`，`check_fmt_all` 曾报 211/212；格式化后 213/213。
+- **门禁与基线**：`tools/api_baseline.json` 升到 `version 4.2.0`、`builtins.runtime` 84 条（含 16 个并发内建）、`std_modules` 16 个、`keywords` 仍 55（本轮不新增保留字）；`VERSION` 与 `impor/version.py` 同步升到 `4.2.0`。`python tools/check_fmt_all.py` = **213/213 通过，跳过 21 个基线/生成文件**；`python tools/verify_claims.py` 自动验证 **22/22（100%）**（`api_frozen` / `fmt_clean` / `stdlib_*` / `c_abi` 全绿）。
+- **未做（如实列出）**：泛型不做约束求解（`<T: 可比>` 这类写不了）、不做单态化优化；无协程/channel/线程池、无线程取消；C 侧原子量非无锁实现，只有 8 线程 × 5000 次量级压测、没有长时间 GUP 压测；Linux 侧 `--target linux64` 只补了 `-pthread`，ubuntu 上 pthread 链接未在本机验证（本机无 WSL/docker/clang）；`imporc` 自举编译器未同步泛型与并发内建（能力矩阵里这两行对 imporc 是「编译期拒绝」）。另有一条**存量缺口**（非本版引入、本版复现）：Python 转译路径没有实装 int64 溢出拦截——`var a = 4611686018427387904` / `a * 3` 在解释器与 C 后端都报 E1012，转译产物直接打印 13835058055282163712。已在 `docs/能力矩阵基线.json` 登记为已知缺口，不冒充已修。
+
+### 4.0.1：整数语义统一、`pkg upgrade` 修复、标准库扩到 16 个模块
+
+这一版只收录「有实测数据支撑」的改动；没做完的写在最后，不冒充已完成。
+
+- **整数只有一种语义**：交付层默认 `int64`（`impor run`、`impor build`、REPL 一致），越界统一 `E1012`。此前默认走数值快路径（实为 int64）而 `--no-native` 是任意精度，同一份源码两个答案。新增 `--big`（等价 `--bignum`）恢复任意精度（只能走解释器树遍历，故同时关闭快路径），新增 `impor.toml` 的 `[project] int_mode = "int64" | "big"`（兼容 `[runtime]`）。实测 `print(9223372036854775807 + 1)`：默认 / `--no-native` / `--int64` 均 `rc=1 + E1012`，`--big` 输出 `9223372036854775808`。
+- **`pkg upgrade` 从必崩到可用**：`pkgmgr.upgrade` 调用了从未定义过的 `_installed_source()`，`impor pkg upgrade` 一直抛 `NameError`。补上该函数（从 `impor.lock` 读来源，`local/cache/project` 视为无远程来源），并在升级成功后刷新 `<proj>/lib/<name>/` 的 vendor 副本，CLI 打印「已同步刷新 N 份项目内 vendor 副本」。新增 `tests/test_v401_upgrade_vendor.py` 2 项，实测「已升级 upgprobe → 2.0.0 / 已刷新 vendor 副本」。
+- **`pkg search`（新）**：扫全局缓存目录与项目根 / `dist/` 下的 `*.zip`，逐行打印 `名字 版本 [cache|zip] 路径`，不联网。实测 3 个命中（`pkgy 1.0.0 [cache]`、`mylib 1.0.0 [zip]`、`mylib 1.1.0 [zip]`）。
+- **标准库 10 → 16 个模块**：新增 `std.random`、`std.sort`、`std.stats`、`std.csv`、`std.atomic`、`std.thread`，全部接入 `impor/std/__pkg__.impor` 的 import/export。`std` 现有 16 个模块 / 114 个导出函数。新增 `tests/test_v401_std_modules.py` 2 项（16 个模块全部可 `import`、新模块函数可调用），实测 `sort([3,1,2])→[1,2,3]`、`median([1,2,3,4])→2.5`、CSV 往返、`thread.cpus()` 正常。
+- **文档口径修正**：`docs/库-atlas-3.0.md` 与 `docs/库-atlas-3.1.md` 里「`std.atlas` / 700 个微库」是虚账，发布包内没有 `impor/std/atlas/`、也没有 `tests/atlas_700_smoke.impor`，源码里 atlas 字样命中 0。两篇已改为「撤回声明 + 真实清单」，`site/Impor官网.html` 的 6 处 700 宣称同步改写为 16 模块 / 114 函数。
+- **整数语义与整除的书面口径**：`docs/语言规范.md` 运算符节补 `div` / `%` 完整小节（向下取整、恒等式 `a == div(a,b)*b + a%b`、一元负号优先级警告：`-7 % 3` 解析成 `-(7%3) = -1`，不是 `2`）；单行 `if` 的 `else` 边界补说明（跨行 `else` 明确 `E2002`，不是静默错绑）。
+- **未做（如实列出）**：`yield` 仍是 `E2001` 硬拒绝（生成器需可挂起执行帧，本版未实现）；`runtime.py` 的静态内建清单尚未登记 `atomic_*` / `thread_*` / `mutex_*`，这些模块目前只在解释器路径可用；`test_conformance` 未跑出完整耗时数字；7 个存量测试模块（`test_fuzz` / `test_v34` / `test_v3615` / `test_v3616` / `test_v37` / `test_v373` / `test_v25` 的 usage 文本断言）仍红。
+
+### 自举编译器支持花括号块 · 命令行/语法表/官网页对齐（patch8b）
+
+四条都是从「拿去用」撞出来的，不是设计里的假设；改完全部实测复验，并重打 `patch8b` 包。
+
+- **`imporc` 认花括号块（新）**：此前 `if (x) { … }`、`def f(n) { … }`、`while (…) { … }` 一律在第 4 行闭合 `}` 上失败（`无法识别的语句 [ } ]`），而 4.0 的标准写法就是花括号——`imporc.impor:869` 的注释自称 v3.8.3 已支持，实际没有。修法：在词法之前把「花括号写法」整段归一化成缩进写法（`mi_brace_to_indent`），缩进 = 原行缩进 + 已开花括号层数×4，所以**保留文件自己的缩进风格**，纯缩进文件经 `mi_has_brace_style` 判否后原样返回、一行不改。`{` 换成块头、`}` 删行退层，`} else {` / `} else if (…) {` 正常衔接。
+- **诊断打真实脚本名**：40 处硬编码 `print("imporc.impor", ": 第" …)` 改为 `print(gname, …)`，`gname` 在读到 `gscript` 后赋值。现在报错写 `b2.impor : 第 4 行: …`，不再永远指 `imporc.impor`。
+- **`impor serve run <脚本>` 真的能跑**：`cmd_serve` 的参数循环把所有位置参数当「未知参数」吃掉，走完循环 `rest` 已空，`sub=="run"` 拿不到脚本，只能打印用法。修法：循环里收集位置参数，`run` 用第一个当脚本、其余当参数，只对以 `-` 开头且非 `--port/--bg/-h` 的开关报错。
+- **`impor syntax` 表对齐真源**：旧表 79 关键字 + 43 内建 = 122 条，其中 12 个是 4.0 已物理删除的历史写法（`func` / `loop` / `let/local` / `until` / `do` …），内建缺一半，连 `管道` 都回「没有找到语法条目」，与 README 首屏的 55 / 101 两套数字打架。修法：以 `tools/api_baseline.json` 为真源删除过期项、补齐缺失项（自动收录项文案如实写「说明待补」），新增别名 `管道/管道运算符/pipe → |>` 与手写 `|>` 条目；`exit` 既是关键字又是内建，字典键只能占一个身份、导致「内建 100 永远差 1」，现在给条目记 `extra_kinds` 显式双身份。实测 `impor syntax` = **55 关键字 + 101 内建 + 1 运算符 = 157 条**，与 README 首屏同一口径；`syntax 管道` 正常返回。
+- **官网页重写为 4.0.0**：公网托管页仍是 3.2.3 技术专题存档（`site/Impor官网.html` 里自己也写着「本页是 3.2.3 存档」），与本版事实对不上。新增 `site/Impor官网-4.0.0.html`：只放本版实测（跨语言同口径表）、四条修复记录与边界，单文件无外部依赖，可直接静态托管。**公网 tiiny.site 的替换需要该站账号，本机没有凭据，这一步留给持有账号的人上传。**
+- **顺手修掉两个静默 bug**（都在发布链上，不修就白改）：
+  - `bootstrap/build_with_python.py` 与 `bootstrap/selfhost_check.py` 的 8 MB 栈补丁对 **PE32+** 用了 `opt+0x30`——那是 `SectionAlignment`，不是 `SizeOfStackReserve`（PE32 与 PE32+ 都是 `opt+0x48`，只是宽度 4/8 字节）。写坏头部后产物报「不是有效的应用程序」/ `Access is denied.`，看起来像权限问题，实际是 exe 被改坏。已改回 `opt+0x48`，重建后 `stack: 0x020b 2097152 -> 8388608` 正常。
+  - `mi_brace_to_indent` 第一版把块头自己也缩进一级（先加深度再算缩进），顶层的 `if` 因此报「意外的缩进开始」；改为先按当前深度定本行缩进、再提升后续行深度。
+- **实测**：9 个用例全过——`b1`（`A` / `done`）、`b2`（`7`）、`b3` 与 `b4`（`55`）、`braces`（`75025`）、纯缩进 `fib(25)` 回归（`75025` 不变）、`c1`（def+嵌套 if，`55`）、`c2`（`while` + `if/else` 链，逐行 `0 1 two 3 4 end`）、`c3`（块内注释，`1`）。自举闭环 `bootstrap/selfhost_check.py`：A→B→C→D **三代产物逐字节一致**（`277298` / `267872` 字节，120 个函数）。三路一致性 `conformance/run_conformance.py`：**100/100**（解释器 / C 后端 / imporc 三路径 stdout 逐字节相同）。
+- **边界**：`imporc` 仍是过程式子集，管道 `|>` 与部分较新内建不在它的映射表里，遇到明确报错、不静默改语义；花括号归一化只处理「行尾 `{` + 行首 `}`」，同一行内 `{ … }` 写多个语句仍不支持。
+
+### 编辑器键入卡死修复：`fib()` 不再「未响应」（4.1）
+
+- **症状**：在编辑器里键入 `fib(` 或 `fib()`，窗口长时间「未响应」，同机必现。
+- **根因**：① 键入 `(` 触发的参数提示在 **UI 线程**调用 `index.definition()`，而后台工作区索引正在全量重建，两者争同一把 RLock，界面只能干等；② 旧版 `_drop_file` 删一个文件就遍历整张引用表（O(文件×名字)），把一次重建拖成数十秒。
+- **修复**：`ProjectIndex.refresh()` 改为单飞闸门——已有重建在跑时后来者**立即返回**，不再排队等锁；新增 `ProjectIndex.probe()` 供 UI 线程使用（不等锁、不触发重建、索引忙时返回空），`_show_param_hint` 改为「先查当前文件的正则，再用 probe 查项目索引」；`_drop_file` 只清理该文件自己引用过的名字（按文件维护 `_refs_by_file`），并顺手把 `by_name` 的空条目删掉。
+- **实测**：无头 Tk 模拟键入 `fib()`，单键处理 ≤2 ms；键入后空闲期 **46.7 s → 4.7 s**（探针自身含 4 s 固定等待，故实际约 0.7 s）；本工程全量索引 **0.69 s**（228 个 `.impor` / 782 个名字 / 948 条引用），增量刷新 0.07 s。
+- **回归**：新增 `tests/test_v41_editor_freeze.py` 6 项（并发 refresh 单飞、probe 跨线程不等锁、gate 忙时立即返回、删文件只清本文件引用）；索引 / LSP / 稳定性相关 **49 项 unittest 全过**。
+
+### 稳定模式 `--stable`：脚本级执行预算（4.0.0 加固）
+
+- **`impor run --stable`（新）**：给一次执行加五道闸门——语句条数、墙钟时间、内存 RSS、输出字节、单次分配元素数；越界以 `E1020`–`E1024` 退出，并带行号、`为什么`、`修复`。不开这一档时行为与之前完全一致（不计量、不改输出）。严格档 `--stable=strict` 供作业批改/在线运行台使用。
+- **单项放宽**：`--max-steps` / `--max-seconds` / `--max-memory` / `--max-output` / `--max-alloc`，或环境变量 `IMPOR_STABLE=1` + `IMPOR_LIMIT_*`。命令行覆盖环境变量，环境变量覆盖档位默认（三者都生效——只认 flag 会让额度静默失效，这条踩过坑并写进回归）。
+- **分配前预检**：`arrfill` / `list(n)` / `randstr` / `strpad` / `filelines` / `arrdup` / `arrrev` / `range` / 字符串与数组的 `*` 都在**真正分配之前**判定 `E1024`，不依赖 `MemoryError` 事后恢复。
+- **输出按 UTF-8 字节计**：先前按字符数统计，中文场景下 512 KB 额度实际写出 1.39 MB；改为字节后额度等于真实压力。
+- **父进程围栏 `run_isolated`**：子进程 + 采集线程 + 超时强杀，输出超限判定 `output-cap`，退出码 `0 ok / 1 script-error / 2 syntax / 3 circuit-breaker / 4 crash / 5 timeout / 6 output-cap`，编辑器与批量任务走这条。
+- **熔断后可继续**：额度按次重置（同一解释器可连跑第二个脚本），跨执行熔断计数单独累计；6 次反复熔断后 RSS 仍 < 600 MB。
+- **`impor stability`（新子命令）**：8 个敌意用例自检（死循环/卡死/刷屏/巨型分配/内存累积/无限递归/除零/大整数不误报），全过返回 0，`--json` 给机器读，`--limits` 打印两档额度。本机实测 **8/8 PASS**。
+- **崩溃留证**：CLI 未捕获异常写 `~/.impor/crash.log`（512 KB 轮转）；编辑器接管 Tk 回调异常与主循环兜底。
+- **顺手修掉既有缺陷**：`RecursionDeep` 此前没有错误码映射，递归深度报错落到 `E1099`；现为 `E1011`。
+- **顺手修掉既有缺陷（诊断一致性）**：`run` 默认走原生后端后，原生产物的运行错误只打「位置/为什么/修复/片段/调用栈」，缺「文档：`docs/errors.md#E1xxx`」一条，且片段排在修复之后，与解释器五段式不一致——`error_audit` 因此从 20/20 掉到 13/20（7 个运行错误用例全部判「文档锚点缺失」）。已在 `impor/c_runtime.c` 的 `rt_report_error` / `rt_report_abort` 补锚点行并把片段移到「为什么」之前，审计回到 **20/20**；回归 26 项仍 OK。
+- **实测对照**（`tools/stability_compare.py`，同一台机器、外部 10 s watchdog、五引擎同批敌意脚本）：Impor `--stable` **5/5 结构化熔断、0 挂起、0 原生崩溃**（最慢 0.97 s）；Python 1 例、Node 3 例、C 2 例只能被外部强杀，C 另在递归栈溢出与除零上原生崩溃（`0xC00000FD` / `0xC0000094`）。代价：同一段 20 万次循环负载，稳定档比默认档慢约 1.2–1.4 倍（两次实测）。详见 [`docs/稳定性对照-4.0.md`](docs/稳定性对照-4.0.md)。
+- **边界**：只保证失败可控，不保证永不失败；内存是 RSS 采样而非硬配额；解释器自身/FFI 的原生崩溃仍靠围栏与容器兜。设计与边界见 [`docs/稳定-4.0.md`](docs/稳定-4.0.md)。
+- **回归**：新增 `tests/test_v40_stability.py`（17 项）全过；`test_launcher` 白名单补 `stability`。
+
+### `impor serve` 常驻 + 完整 C 后端接管（patch8）
+
+- **`impor serve`（新子命令）**：`start [--bg] [--port N]` / `stop` / `status` / `run <脚本>`。常驻进程与客户端只用一行 JSON 往返（`{"script":…,"args":[…],"opt":2}` → `{"code":…,"out":…,"err":…,"tier":…,"ms":…}`），state 落在 `~/.impor/serve.json`。执行三档回退，`tier` 明确告诉调用方走了哪一档：`dll`（数值快路径产物以 DLL 形式在本进程内 `LoadLibrary` 调用）→ `full`（完整 C 后端产物 exe）→ `interp`（进程内解释器）。实测百万循环 **4.79 ms/请求**（19 次均值、同一条连接连发），对比启动器每次新起进程的 25.6 ms。
+- **`impor-serve-client.exe`（新）**：连 `127.0.0.1` 发一行 JSON，`-n N` 同连接连发并报均值——编辑器与批量任务用它，比每次起启动器省掉一次进程创建。
+- **完整 C 后端接管 `run` 与启动器的回落档（P3）**：`run` 的原生链从「快路径 → 解释器」变为「快路径 → 完整 `ctrans` 后端 → 解释器」。字符串、列表、`len`、函数、递归、异常脚本因此不再回落解释器：同一份 `g1.impor`（输出 `hi Impor 3 499999500000`）**8879 → 230.3 ms**（≈38×），启动器口径 **31.6 ms**。完整后端 24 例对拍 **24/24**。全新手写 C 字节码 VM 的方案被实测否掉（百万循环 17.2 ms，比编译产物 0.3 ms 慢 60 倍），所以复用已有后端。
+- **浮点 `%` 与 `repr` 与 Python 对齐**：新增 `rt_fmod_py`（Python 的浮点 `%` 结果符号跟随除数，C `fmod` 跟随被除数）；`rt_fmt_double` 改为「`%.20e` 取 21 位 + 十进制串第 p 位四舍五入 + `strtod` 往返校验 + Python 记法规则」的最短往返表示，`0.1+0.2` 不再打成 `0.3`、`1e16` 不再打成 `1e+016`。**代价**：`strtod` 被引用后静态链接多约 100 KB，`hello.impor` 产物 153,088 → 255,488 B，因此 vitals 的 exe 体积承诺由 **≤160 KB 改为 ≤320 KB**（`docs/claims.yaml` 与 `tools/verify_release.py` 同步）。
+- **修掉三个真缺陷**：① `range` 步长为 0 在完整后端是死循环（现在报错退出）；② 循环变量在 for 头部声明会遮蔽同名变量、循环后 `print(i)` 打 `None`（八个用例受影响，改为三界预求值 + 循环体首赋值）；③ **serve 的完整后端档每请求 726 ms**——根因不是缓存失效（`run-cache` 前后文件数差 0），而是无控制台的父进程 spawn 一个控制台子系统程序时 Windows 要为它新建 ConHost（实测 643–763 ms），加 `CREATE_NO_WINDOW` 后回到 **75.7 ms/请求**。
+- **挡住一个回归**：完整后端直接接管带 `use std.*` 的脚本会破坏语义（`demo_19_split_join` 报 `E1006`，`compat_20` 掉到 20/22）。`_native_run` 增加 `_has_module_import(ast)` 门，命中 import 就跳过完整后端、回落解释器。
+- **门禁**：unittest 五套 **35 tests OK**；快路径对拍 24/24；完整后端对拍 24/24；`check_fmt_all` 207/207；`verify_claims` 22/22；`error_audit` 20/20。新增 `tests/test_v43_serve_and_full.py`（4 项）。
+- **边界**：serve 的 `dll` 档只覆盖数值快路径能编的脚本，字符串脚本走 `full` 档（75.7 ms，含一次产物进程创建）；随机浮点 fuzz 324 例仍有约 5 例末位不同（两串 round-trip 到同一 double，属显示层）；完整后端仍不覆盖 `import`。详见 [`docs/性能报告-v6.7.md`](docs/性能报告-v6.7.md)。
+
+### `run` 默认原生 + DLL 启动器（patch7）
+
+- **`impor run` 默认即原生**：不再需要记 `--native`。能静态编译的脚本先编成产物再执行（按源码指纹缓存在 `~/.impor/run-cache`），子集外脚本静默回落解释器；`--no-native`（或 `IMPOR_RUN_NATIVE=0`）才强制解释器。默认路径不打印任何 `[native]` 提示，输出与解释器逐字节一致。实测百万循环 **2132.4 → 207.4 ms**（10.3×）；`fib(25)` 187.1 → 192.4 ms、`print(1+2)` 174 → 177 ms——小脚本上产物进程创建（≈18 ms）与省下的 AST 遍历几乎抵平，收益只在长循环上。
+- **`impor build --dll`（新）**：产出启动器专用 DLL（入口 `impor_entry`，`__declspec(dllexport)`，结尾 `fflush(stdout)`）；`--dll` 与 `--lib` / `--c-source` 互斥，内置 tcc 明确报错（32 位 DLL 无法被 64 位启动器加载）。
+- **`impor-fast.exe` 改为本进程内调 DLL**：命中缓存即 `LoadLibrary` + `GetProcAddress("impor_entry")` 调用，不再 `CreateProcess`，也不调 `FreeLibrary`（进程即将退出，省一次卸载）；未命中先试编 DLL，失败落 `.nodll` 标记，再退老 `exe` + `_P_OVERLAY`，最后回落解释器。实测 `impor <脚本>` **38.1 / 39.7 → 25.1 / 25.6 ms**（`noop.exe` 进程创建地板 18.6 ms，DLL 加载+调用 2.4–3.7 ms），启动器 23,040 B。
+- **静默探测**：冷跑试编 DLL / exe 失败的诊断不再漏到用户眼前（探测子进程 stderr 重定向到 `NUL`）。
+- **修掉两个真缺陷**：① `_native_run` 每次热跑多付一次 `gcc --version`（实测 **147.5 ms**），P0 收益被吃光——改为 `_native_cache_key`（键只含源码/工具链文件指纹/版本/优化级，不含编译器身份，产物存在即执行）；② 默认原生之后 `const A = 1; A = 2` 被快路径静默放行，`error_audit` 从 20/20 掉到 19/20——在 `_native_run` 开头跑 `_reject_const_mutation`，命中即交解释器出完整诊断。
+- **口径**：25 ms 不等于 C 的 16.5 ms；差距全在进程创建地板。追平 C 的只有 `impor build` 产物（16.3 / 16.9 ms）。`impor run` 的下界约 200 ms（启动 Python 查缓存本身 ≈174 ms），再快只能走常驻服务或重写 C 内核。详见 `docs/性能报告-v6.6.md`。
+- **回归**：`tests/test_v42_native_run.py` +3 项（默认/回落输出一致且无提示、子集外静默回落、DLL 含 `impor_entry` 导出名）；unittest 四套 **31 OK**、对拍 **24/24**、`check_fmt_all` **207/207**、`verify_claims` **22/22**、`error_audit` **20/20**。
+- **边界**：`run` 缓存不覆盖编译器身份（换 gcc 请删 `~/.impor/run-cache`）；冷跑首次 50–60 ms（Defender 扫描 + 首次编译），不是语言开销。
+
+### `impor run` 的 C 级路径：透明编译 + 原生启动器（patch6）
+
+- **`impor run --native`**：命令、门禁、错误信息不变；能静态编译的脚本先编成原生产物再执行，产物按「源码 + 工具链指纹」缓存在 `~/.impor/run-cache`，子集外脚本自动回落解释器并提示。实测百万循环 **2061 ms → 305 ms**。
+- **`impor-fast.exe`（新增原生启动器，21 KB）**：`impor.bat` 早前预留的入口现在有了实现——命中缓存直接把进程换成编译好的 exe（`_P_OVERLAY`，不再起第二个 Python），未命中则 `build --quiet` 静默编译后执行，编译失败回落 `run`。实测 `impor <脚本>` 百万循环 **39.7 ms**、`fib(25)` **38.1 ms**（C 16.7 / 16.5 ms；构建产物 16.3 / 16.9 ms）。
+- **`impor build --quiet`**：只产出文件，不打印构建摘要（供启动器调用，避免污染程序输出）。
+- **`impor.bat`**：传 `IMPOR_CALLER_CWD`，保证相对脚本路径按调用者目录解析。
+- **口径**：纯 Python 的 AST 解释器有物理地板（`python -S -I` 空启动 39 ms、导入 `impor.cli` 197 ms），解释器内部优化不可能把 2061 ms 做到 16 ms；能到 C 量级的是产物与「run 走原生启动器」这条命令。详见 `docs/性能报告-v6.5.md`。
+- **回归**：新增 `tests/test_v42_native_run.py`（4 项）；`check_fmt_all` 207/207、`verify_claims` 22/22。
+
+### 产物逼平 C：默认换 gcc -O2 + 快路径扩容（patch5）
+
+- **`impor build` 默认不再用内置 tcc**：新增 `--cc auto|tcc|gcc|clang|<路径>` 与 `-O0..-O3`（`--opt N`），`auto` 在找得到 x86_64 gcc 时用 **gcc -O2**，否则退回内置 tcc；`IMPOR_BUILD_CC` 可全局改默认。构建摘要新增「编译器：gcc.exe -O2（版本行）」，缓存键带上编译器与优化级，换编译器不会命中旧产物。
+- **同一份生成的 C，换编译器实测**（本机、含进程启动、取最优）：数值快路径 `fib(25)` 从 tcc 的 16.6–19.8 ms 变成 gcc -O2 的 **16.6 ms**；**完整 `Val` 后端百万循环从 tcc 的 210.6 ms 变成 17.7 ms**。结论修正：此前说的“装箱 8 倍惩罚”其实是 tcc 不会内联/优化，不是值模型本身的问题。
+- **交付形态（默认 `impor build`）**：`fib(25)` **21.5 ms**、百万循环 **20.7 ms**、浮点百万循环 **22.9 ms**（手写 C 基准 19.6 / 19.2 ms）；`--no-fast` 完整后端百万循环 **20.0 ms**（与快路径同量级）。详见 `docs/性能报告-v6.4.md`。
+- **快路径扩容**：`range(A, B)` / `range(A, B, STEP)` 进数值快路径（此前一律回退）；循环结束后变量停在**最后一个值**（patch4 停在越界值，已修）；`print` 支持多参数混排（`print("合计", s, "结束")`）；出现浮点字面量则该脚本数值域切成 `double`，输出按 Python 最短往返 repr（`1.0` / `-0.0` / `1e+16` / `1e-05` / `0.30000000000000004` 全部一致）。
+- **明确回退**：同一变量整数/浮点混用、浮点脚本含 `def`、`range` 边界为浮点 → 自动落完整后端（不静默改语义）。
+- **回归**：新增 `tests/test_v42_fast_path.py`（13 项）；`tests/test_v41_cfast_for.py` 按新语义更新（`range(A,B)` 由“应回退”改为“应支持”）。对拍 24 用例 **24/24**；`check_fmt_all` 207/207、`verify_claims` 22/22。
+
+### 计数循环进入数值快路径（patch4）
+
+- **`for 变量 in range(N)` 不再回退**：此前 `cfast` 完全不认识 `For`，最常见的计数循环被静默回退到完整 `Val` 后端。现在由 `cfast` 直接生成 C 的 `for`，`range(N)` 的界在进循环时求值一次（循环体改 `N` 不影响迭代次数），循环体里的 `break` / `continue` 语义与解释器一致。
+- **实测（本机、含进程启动、7 次取最优）**：`fib(25)` **24.8 ms**、100 万次累加 **34.0 ms**（同一脚本解释器为 287 ms / 2139 ms；`For` 未进快路径前是 214.4 ms）。详见 `docs/性能报告-v6.3.md`。
+- **边界仍明确**：`range(a, b)` / `range(a, b, step)` 与浮点界继续回退完整后端（不静默改语义）；快路径仍是 `long long`，溢出报中文错误并以退出码 3 结束，任意精度请 `--no-fast`。
+- **新增回归** `tests/test_v41_cfast_for.py`（6 项）：能编、输出与解释器逐行一致、界只求值一次、越界写法明确回退、`break` 一致。
+
+### C ABI 交付层四关口（v4.1 修订）
+
+- **`FreeLibrary` 崩溃修好**：根因是“调用过会分配内存的导出函数 + 卸载 DLL”时，CRT/atexit 钩子在进程退出阶段踩到已卸载模块。修法三件套：DLL 模式跳过 `atexit(rt_shutdown)`（`IMPOR_BUILD_DLL`），Windows DLL 改用进程堆分配器（`rtd_alloc/rtd_free/...` 覆盖 `malloc/free`），并在每个导出函数首行调 `impor_pin_once()`（运行时 `GetModuleHandleExW` 带 `PIN` 标志钉住自身）。32 位宿主 mode0–6 与 `host_free` 全部 rc=0。
+- **64 位产物可用**：`impor/cli.py` 新增 `find_gcc64()`（`IMPOR_CC` → PATH → 常见 MinGW 安装位，`gcc -dumpmachine` 校验 x86_64）；`--target win64` 在缺 `cl` 时自动回落 x86_64 gcc，编译后校验 PE `Machine=0x8664`，不符即拒绝交付、不静默退回 32 位 tcc。调用时把 gcc 自身 `bin` 前置进子进程 `PATH`（否则找不到 `cc1/as/ld` 会静默失败），命令带 `-std=gnu99`（TDM gcc 4.8 默认 gnu89）。
+- **Linux 产物跑通**：`--target linux64` 补 `-std=gnu99`，并校验产物确为 ELF64 / `Machine=62`；`.github/workflows/c-abi-x64.yml` 新增 `linux64-runtime` job：ubuntu 上生成 `liblogic.so`、校验导出符号、再实跑 C 静态宿主、C `dlopen/dlclose` 宿主与 Python `ctypes` 宿主，三者退出码均为 0。CI 运行 `C ABI matrix #44890796019` 五格全绿，日志留档 `docs/ci-evidence.md` + `docs/ci-2026-11-21-linux64-job.log`。
+- **落地示例**：新增 `examples/cabi_demo/`（`logic.impor` + `host_c.c` / `host_c_dyn.c` / `host_python.py` / `host_rust.rs` / README），一份逻辑三种宿主直接调用；`host_c_dyn.c` 同一份源码在 Windows 走 `LoadLibrary/FreeLibrary`、在 Linux 走 `dlopen/dlclose`。
+
+### 语法：`nonlocal` 后不再强制 `set`
+
+- `nonlocal count = count + 1` 与 `nonlocal set count = count + 1` 等价（`global` 同理），旧写法继续支持，`impor fmt` 两种写法都原样保留。自举编译器 `bootstrap/imporc.impor` 一直允许省略，此前属于四端不一致，v4.1 让参考解析器对齐。新增 `tests/test_v41_nonlocal.py` 覆盖 解释器 / 转译 / C 后端 / imporc 四条路径。
+
+### 头部标记门禁
+
+- `tools/check_fmt_all.py` 增加“首行头部形态”校验：头部若存在必须与规范逐字一致（`important<<DAY<<english("English"):`），写花（多空格 / 缺引号 / 粘贴串行）判红；头部仍可省略（v2.3.1 起的既有规则）。该串是语言头部指令，不是乱码或生成残留。
+- `tools/verify_claims.py` 的构建数字补上“跳过多少个基线/生成文件”，README 首屏口径改为 `207/207 通过（另有 21 个基线/生成文件按规则跳过）`，与树内 228 个 `.impor` 对得上账。
+
+### 四端一致性收口 + 默认构建提速（v4.1 修订）
+
+- **异常在 C 后端补齐**：`exception` 声明、`raise T("消息")`、`catch T e` 的类型过滤，以及类型不匹配时“先跑 finally 再抛给外一层”的语义（`rt_err_matches` / `rt_rethrow`）。数组越界与除零从 `rt_abort`（直接退出）改成 `rt_throw`（可被 `try/catch` 捕获）。`examples/demo_29_exceptions.impor`、`examples/errors.impor` 与“嵌套 try + 类型不匹配”用例，解释器与独立 exe 的 stdout 逐字节一致。
+- **`impor build` 默认走数值快路径**：`--fast` 从显式 opt-in 变为默认行为，新增 `--no-fast` 退回完整 Val 后端；`--lib` / `--c-source` 固定走完整后端。快路径的 `+ - * %` 与取负换成带 64 位溢出检查的 `iadd/isub/imul/ineg`，溢出时打印中文错误并以退出码 3 结束、提示改用 `--no-fast`，不再静默回绕。构建摘要新增「后端：」一行。
+- **JSON 浮点**：C 运行时改用最短可回读的浮点写法（`6.6` 而不是 `6.5999999999999996`），整数值浮点保证带 `.0`。
+- **能力矩阵落地**：新增 `tools/support_matrix.py`，16 个用例同时跑 解释器 / 转译器 / C 后端(完整) / C 后端(auto) / imporc，直接生成 `docs/能力矩阵.md`；`--check` 只在已知基线之外出现新不一致时判红，基线在 `docs/能力矩阵基线.json`。
+- 实测（本机）：fib(28) 解释器 292 ms、完整 Val 后端 456 ms、默认构建 42 ms；矩阵 16 例 C 后端 14/16 与解释器一致，imporc 7/16（`import` 与较新内建未进 imporc 映射表，仍为已知缺口）。
+
+### 包管理器：装完即可 import（vendor 化）
+
+- `impor pkg install` 默认把包装到 `<项目>/lib/<名字>/`，并把 `./lib`（必要时补 `./lib/<名字>`）写进 `impor.toml` 的 `[module_search_paths]`，装完直接 `import` 可用；`--no-vendor` 保留旧的"只进缓存"行为。
+- `impor pkg install` / `impor pkg remove` 不再在缺少 `impor.toml` 的目录里凭空生成配置：此时只写全局缓存并打印提示（此前会往当前目录写入 `impor.toml` + `impor.lock`）。
+- `impor/config.py`：全局缓存下**每个已安装包目录**也加入模块搜索路径，修复"安装成功但 `import` 报 `E1015`"（`<包>/<名字>.impor` 这种没有 `__pkg__.impor` 的布局）。
+- `impor.toml` 的 `[dependencies]` 与 `[module_search_paths]` 改为按行编辑，保留注释与原有顺序（此前 `_write_toml` 整篇重写会删掉注释）。
+
+验收：`tests.test_impor` / `tests.test_v51` 中 pkg 相关 14 项通过；自建 25 条 vendor 断言全过；`tools/verify_release.py` 22/22。
+
+### 后端语义对齐：`impor run --int64`
+
+- 新增 `--int64`（别名 `--strict-int`）：把解释器切到 C 后端的 int64 语义，加 / 减 / 乘 / 取负 / 字面量越界一律报 `整数溢出：超出 64 位有符号整数范围`（`E1012`）。默认解释器仍是 Python 任意精度、行为不变；这条开关把"两个引擎说同样的话、答案不一样"从只能靠人记变成可检出的错误。
+- 数值快路径（`--fast`）、`c_runtime.c`、解释器 `--int64` 三处溢出文案逐字统一为 `整数溢出：超出 64 位有符号整数范围 [E1012]`；旧文案"数值快路径的 64 位整数溢出"退役，`impor/cfast.py` 的提示改为指向 `--no-fast` / `--no-native` 与 `--int64` 自检。
+- 修掉一处真实的闸门绕过：`visit_BinOp` 里"双数字字面量快速路径"在溢出检查之前直接返回，`print(9223372036854775807 + 1)` 因此能穿过 `--int64`；现已与变量热路径共用同一闸门。
+
+### 递归上限可配
+
+- 写死的 3200 层改为 `--max-depth N` 或 `IMPOR_MAX_DEPTH`；树遍历与快速后端同步生效，Python 帧上限按深度等比放宽。
+
+### 头部标记退役
+
+- `impor new` 的 script / lib / game / pkg 四种模板不再在首行写 `important<<DAY<<english("English"):`；版本信息归 `impor.toml` 的 `[project] version`。
+- 缺头部默认不再打印提示（旧行为可用 `IMPOR_HEADER_HINT=1` 打开）；已有头部的文件继续解析，`tools/check_fmt_all.py` 仍校验逐字一致。
+
+### 规范与文档单一化
+
+- `docs/语言规范.md` §0 重写：删除"按机器整数回绕"（它与同文件"C 后端溢出报错"自相矛盾），新增四行后端语义矩阵与 `--int64` 自检命令；"唯一写法"补上准确边界（删除的 12 类 vs 长期兼容的 `elseif` / `switch` / 缩进块 / 三种注释 / 头部）。
+- `conformance/README.md` 的"语义差异"改为"可用 `--int64` 比对"，并指向新单测 `tests/test_v4_backend_parity.py`（12 项）。
+
+验收：`tests.test_v4_backend_parity` 12/12（含 C 产物同句比对）；`tools/verify_release.py` 22/22；pkg 相关 14 项不变。
+
+## [4.0.0] - 2026-11-21
+
+### 唯一写法：12 类兼容写法物理删除
+
+- `impor/lexer.py` 从 `KEYWORDS` 删除 `func` / `loop` / `local`，`DEPRECATED_ALIASES` 只保留 `elseif` / `switch`。
+- `impor/parser.py` 删除 12 类分支：`func`、`loop`、`let/local`、裸 `print`、`:=`、`++/--`、`&& || !`、`<>`、`then`、`unless`、`for each/of`、`1..n`、C 风格 `for`、`do..until`。`imporc.impor` 同步删除对 `func` 的识别；旧写法统一报 `E2002`，不静默降级。裸 `print` 在语句位置按内建标识符拦截（`print "hi"` / `print 1 + 2` / `print x` 均 `E2002`），`print(...)` 正常；`impor lint` 对这类文件返回 1 并带错误码，不再输出“未发现问题”。
+- 源码迁移：`bootstrap/imporc.impor` 55 处 `func→def`，并删除其 4 处 `func` 解析分支；`tests/` 33 个文件 191 处；`conformance/compat_3_11/` 9 个 fixture 改为 `def` / `while true`，`manifest.json` 重算哈希并标注 `syntax_version: 4.0.0`。
+- API 基线关键字 58 → 55；新增 `tests/test_v4_alias_removed.py` 锁定删除项。
+
+### 验收自证
+
+- `tools/check_fmt_all.py` 改为文件系统扫描（`os.walk`），不再调用 `git ls-files`；发布包内可直接跑。
+- `tools/verify_claims.py` 去掉 `git rev-parse`；README 首屏的版本、保留字、内建、标准库、错误码、格式门禁数字全部从发布包内文件计算并写入标记块，`--check` 会抓漂移。
+- README 删除硬编码的 47 MB / 0.8 s / 121.5 KB / 16.8 MB / 28 ms；改为工具现场打印或指向复现命令。
+
+### 明确边界
+
+- `elseif` / `switch`、分号、冒号缩进块、`extends`、`new A` 省括号、`super.m()`、`catch {}`、裸 `exit`、隐式返回、`var x`、`static/readonly` 仍兼容，不在本次 12 类清单内。
+- README 没有“可 catch 熔断”的承诺；本版未新增步数/时间预算 API，避免把未实现的能力写成文案。
+
+## [3.14.0] - 2026-11-21
+
+### 验收机制变成可执行事实
+
+- `tools/api_baseline.json` 进仓库 `tools/` 并随发布包分发；`api_frozen` 继续按基线校验公开面。
+- README 兑现率改由 `python tools/verify_claims.py` 直出，手写数字被标记块替换；新增 `--check` 模式，README 或 `docs/claims.md` 与脚本结果不一致时直接失败。当前自动验证 22/22，人工验收 2 项。
+- 新增 `tests/test_v314.py`：缺文件干净失败、仅 WARN 时 rc=0、冒烟不创建 Tk 三项锁死。
+
+### 全仓格式化锁绿
+
+- `tools/check_fmt_all.py` 进入 CI 与发布门禁：受版本控制的 237 个 `.impor` 中，216 个纳入门禁并全部通过；跳过的 21 个是 3.11 冻结 fixture（20）与自举生成物 `bootstrap/imporc.impor`（1）。
+- 同步修复 `impor/fmt.py` 三个真实缺陷：大括号块内缩进子块被拍平、`return [` 前空格丢失、一元负号后多空格；修复后对 108 个改动文件做 AST 对比，语义未变。
+
+### 后端口径定稿
+
+- 解释器是唯一语义定义；C 后端明确为“语法子集，不支持即编译期拒绝”，不再自称唯一发布通道。
+- 删除代码与当前文档中的旧口径残留；历史 CHANGELOG 标注“该口径已废止”，不篡改历史事实。
+
+### 退出码与测试入口
+
+- `impor check`：只有 error 级问题返回非零，格式未达标只给 WARN；文件不存在输出干净失败信息，不再抛 `UnboundLocalError` 或内部栈。
+- `examples/snake.impor --smoke` 走纯逻辑 60 帧，不创建 `Tk()`，无显示环境也能跑。
+
+### 未做（明确边界到 v4）
+
+- 12 类同义写法仍保留；物理删别名、edition 开关与 parser 分支删除留给 v4，v3.14 只完成格式化锁绿与口径收口。
+
+## [3.13.0] - 2026-11-20
+
+### 已修：声明语义变真
+
+- `set q = 5` / `q = 5` / `q := 5` 在 `q` 未声明时，解释器、`impor run`、`impor lint`、`impor build`、`impor compile` 全部拒绝；不再静默创建变量。
+- `Env.update_nearest` 找不到绑定改为抛 `NameError`；裸赋值不再被解析成 `local` 声明；快速后端对 `update/global/nonlocal` 强制回退树遍历。
+- `impor lint` 新增 `undeclared-assign`；`build` / `compile` 新增 `_decl_gate` 静态门禁。
+- enum 合成变量单独豁免，全仓 206 个 `.impor` 重扫零误报。
+- 回归：`tests/test_strict_declarations.py`（四端 + 声明后更新 + 函数内更新）。
+
+### 已改口径：不再自称“好语言”
+
+- 定位写死为 **教学语言 + 小型工具 + 可发布玩具**。
+- 删除“C 后端是唯一发布通道”的旧口径，改为“解释器/便携版是默认路径，C 后端是可选的脱离 Python 分发路径”。
+- README 新增 `fib(28)` 算力实测：解释器 301–331 ms，C exe 473–479 ms，**C 后端更慢**；删除“原生更快”的误读空间。
+- 类型注解降级为“仅字面量静态提示”，新增 `docs/类型注解边界.md`。
+- 修复 `docs/语言规范.md` 两个 `## 14`（C 后端改为 §23）与 19.2 中文关键字矛盾。
+
+### 未做（明确边界）
+
+- 12 类同义写法未物理删除；`impor fmt` 与 `impor lint --style` 负责收敛，兼容层标为 deprecated。
+- C 后端大整数 / 自定义异常未补齐，边界见 `docs/3.13-后端能力边界.md`。
+- CHANGELOG 历史未拆分，本版只停止继续膨胀。
 
 ## [3.12.0] - 2026-11-19
 
@@ -72,6 +1085,10 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 - 增量构建缓存键纳入 `c_runtime.c` / `ctrans.py` / `cfast.py` 指纹，改运行时或转译器不再命中旧 exe。
 - `fileread` 在复制成字符串后释放临时缓冲，反复读取大文件不再堆积。
 - 桌面打包不再复制 `apps/impor_sqlite_report/report.db`、`report.html` 与 `apps/impor_ssg/_site/` 运行产物。
+- 修复安装到含括号目录（如 `Impor(I++) 3.12.0`）时双击入口报「未知命令: (」：`.bat` 的 `if (...)` 块会被路径里的 `)` 截断，
+  入口与三个快速开始脚本改为 `goto` 结构，`install.bat` 的 `cd /d` 补引号；桌面发布目录同步改为无括号的 `Impor 3.12.0`。
+- 入口中文提示不再由 `echo` 输出，改由 `type examples/quickstart/_welcome.txt` 输出，避免 cmd 在部分双击环境下把全角冒号误当命令分隔符。
+- CLI 首次运行不再打印旧版的“未找到可选的头部标记”提示；头部标记自 v2.3 起就是可选项，新手入口保持干净输出。
 
 ## [3.11.0] - 2026-11-18
 
@@ -246,9 +1263,9 @@ Impor (I++) 的版本变更记录。每条只列**用户可感知的变化**；�
 - `_BIN_OPS` 补入 `->`，`def add(a : int) -> int` 不会再被格式化成 `- >`，格式化后的 C ABI 源码仍可直接 `build --lib`。
 - `examples/c_abi/lib.impor` 改为 fmt-clean，`impor fmt --check` 通过。
 
-### 变更：C 后端成为唯一发布路径
+### 变更：C 后端当时被定为唯一发布通道（该口径已在 3.13 废止）
 
-- `impor build` 是唯一发布出口（exe 或 DLL）；`impor run` / `repl` / `run-dbg` 只做开发期运行与调试。
+- `impor build` 是当时的唯一发布出口（exe 或 DLL）；`impor run` / `repl` / `run-dbg` 只做开发期运行与调试。
 - `impor compile`（Impor → Python）保留为开发兼容，不再承担发布职责；帮助文案已明确标注“不是发布路径”。
 - `imporc` 只做内部一致性探针，不再是对外编译入口。
 - C 后端遇到不支持特性时，不再引导用户“改用 Python 后端发布”，只提示开发期用 `impor run` 验证。

@@ -1,0 +1,5 @@
+// bench/suite/mod1m.impor —— 取模密集（测 imod 与符号校正路径）
+var h = 0
+for i in range(1000000)
+    h = h + i % 7
+print(h)

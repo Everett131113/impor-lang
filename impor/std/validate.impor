@@ -1,0 +1,94 @@
+// std/validate.impor — 常见输入校验（纯字符串判定，返回布尔）
+
+def is_digit(s) {
+    if len(s) == 0 {
+        return false
+    }
+    for ch in s {
+        var b = ord(ch)
+        if b < 48 or b > 57 {
+            return false
+        }
+    }
+    return true
+}
+
+def is_int(s) {
+    var t = trim(s)
+    if len(t) == 0 {
+        return false
+    }
+    if t[0] == "-" or t[0] == "+" {
+        return is_digit(strcut(t, 1, len(t)))
+    }
+    return is_digit(t)
+}
+
+def is_number(s) {
+    var t = trim(s)
+    if is_int(t) {
+        return true
+    }
+    var p = strfind(t, ".")
+    if p <= 0 {
+        return false
+    }
+    var left = strcut(t, 0, p)
+    var right = strcut(t, p + 1, len(t))
+    if len(right) == 0 {
+        return false
+    }
+    return is_int(left) and is_digit(right)
+}
+
+def is_alpha(s) {
+    if len(s) == 0 {
+        return false
+    }
+    for ch in s {
+        var b = ord(ch)
+        var lower_ok = b >= 97 and b <= 122
+        var upper_ok = b >= 65 and b <= 90
+        if not lower_ok and not upper_ok {
+            return false
+        }
+    }
+    return true
+}
+
+def in_range(v, lo, hi) {
+    return v >= lo and v <= hi
+}
+
+def is_email(s) {
+    var t = trim(s)
+    var at = strfind(t, "@")
+    if at <= 0 {
+        return false
+    }
+    var user = strcut(t, 0, at)
+    var host = strcut(t, at + 1, len(t))
+    if len(user) == 0 or len(host) < 3 {
+        return false
+    }
+    if strfind(host, "@") >= 0 {
+        return false
+    }
+    var dot = strfind(host, ".")
+    if dot <= 0 {
+        return false
+    }
+    return dot < len(host) - 1
+}
+
+def not_empty(s) {
+    return len(trim(s)) > 0
+}
+
+export is_digit
+export is_int
+export is_number
+export is_alpha
+export in_range
+export is_email
+export not_empty

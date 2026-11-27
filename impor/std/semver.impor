@@ -1,0 +1,82 @@
+// std/semver.impor — 语义化版本解析与比较（不处理 build metadata 的排序）
+
+def parse(v) {
+    var core = v
+    var plus = strfind(v, "+")
+    if plus > 0 {
+        set core = strcut(v, 0, plus)
+    }
+    var dash = strfind(core, "-")
+    var pre = ""
+    if dash > 0 {
+        set pre = strcut(core, dash + 1, len(core))
+        set core = strcut(core, 0, dash)
+    }
+    var parts = split_on(core, ".")
+    var out = { }
+    out["major"] = to_num(parts[0])
+    if len(parts) > 1 {
+        out["minor"] = to_num(parts[1])
+    } else {
+        out["minor"] = 0
+    }
+    if len(parts) > 2 {
+        out["patch"] = to_num(parts[2])
+    } else {
+        out["patch"] = 0
+    }
+    out["pre"] = pre
+    out["text"] = v
+    return out
+}
+
+def split_on(s, sep) {
+    var out = []
+    var start = 0
+    var i = 0
+    while i < len(s) {
+        if s[i] == sep {
+            arrappend(out, strcut(s, start, i))
+            set start = i + 1
+        }
+        set i = i + 1
+    }
+    arrappend(out, strcut(s, start, len(s)))
+    return out
+}
+
+def compare(a, b) {
+    if a["major"] != b["major"] {
+        if a["major"] > b["major"] {
+            return 1
+        }
+        return - 1
+    }
+    if a["minor"] != b["minor"] {
+        if a["minor"] > b["minor"] {
+            return 1
+        }
+        return - 1
+    }
+    if a["patch"] != b["patch"] {
+        if a["patch"] > b["patch"] {
+            return 1
+        }
+        return - 1
+    }
+    return 0
+}
+
+def ge(a, b) {
+    return compare(a, b) >= 0
+}
+
+def satisfies(a, b) {
+    return compare(a, b) >= 0
+}
+
+export parse
+export split_on
+export compare
+export ge
+export satisfies

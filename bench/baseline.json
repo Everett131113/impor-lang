@@ -1,0 +1,15 @@
+{
+  "cases": {
+    "interp:fib25": 2.3905,
+    "interp:mod1m": 3.1627,
+    "interp:nested1m": 2.3983,
+    "interp:sum2m": 4.5133,
+    "native:fib25": 0.0164,
+    "native:mod1m": 0.0164,
+    "native:nested1m": 0.0162,
+    "native:sum2m": 0.0166
+  },
+  "cc": "gcc:gcc.EXE (tdm64-2) 4.8.1",
+  "limit": 0.3,
+  "python": "3.11.5"
+}

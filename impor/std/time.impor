@@ -1,23 +1,45 @@
-// std/time.impor — 时间戳、睡眠与人可读时间
-// 使用：import std.time  →  std.time.readable()
+// std/time.impor — 时间格式化与时长换算（底层 clock()/now()）
+// 口径：now() 是宿主本地时间的数值；本模块只做换算与格式化，不做时区。
 
-func readable() {
-    return now()
-}
-
-func seconds() {
+def ms() {
     return clock()
 }
 
-func sleep_ms(ms) {
-    sleep(ms / 1000.0)
+def seconds() {
+    return clock() / 1000
 }
 
-func elapsed(start) {
-    return clock() - start
+def since(t0) {
+    return clock() - t0
 }
 
-export readable
+def human(ms_value) {
+    if ms_value < 1000 {
+        return str(ms_value) + " ms"
+    }
+    var s = ms_value / 1000
+    if s < 60 {
+        return str(s) + " s"
+    }
+    var m = s / 60
+    var rs = s - m * 60
+    if m < 60 {
+        return str(m) + " min " + str(rs) + " s"
+    }
+    var h = m / 60
+    var rm = m - h * 60
+    return str(h) + " h " + str(rm) + " min"
+}
+
+def pad2(n) {
+    if n < 10 {
+        return "0" + str(n)
+    }
+    return str(n)
+}
+
+export ms
 export seconds
-export sleep_ms
-export elapsed
+export since
+export human
+export pad2

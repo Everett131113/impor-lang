@@ -63,7 +63,7 @@ class TestLauncher(unittest.TestCase):
                 "list-modules", "reload", "check-imports", "fmt", "check-fmt",
                 "lint", "doc", "lsp", "pkg", "test", "demo", "env", "bench", "bench-spec", "mem",
                 "dap", "explain", "doctor", "teach", "conformance", "migrate-cn",
-                "release-check", "sys-check", "syntax",
+                "release-check", "sys-check", "syntax", "stability", "serve",
             }),
         )
 

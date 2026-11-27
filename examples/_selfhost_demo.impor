@@ -1,10 +1,10 @@
 # 自举子集测试程序：递归 + 字符串 + 循环 + 文件
-func fib(n)
+def fib(n)
     if n < 2
         return n
     return fib(n - 1) + fib(n - 2)
 
-func greet(name)
+def greet(name)
     return "Hello, " + name
 
 var total = 0

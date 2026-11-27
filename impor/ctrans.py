@@ -40,6 +40,8 @@ BUILTINS = {
     "str": "rt_tostr",
     "int": "rt_to_int",
     "len": "rt_len",
+    "ord": "rt_ord",
+    "chr": "rt_chr",
     "expect": "rt_expect",
     "type": "rt_type",
     "type_of": "rt_type",
@@ -103,6 +105,28 @@ BUILTINS = {
     "ffi_read_i64": "rt_ffi_read_i64",
     "ffi_read_str_at": "rt_ffi_read_str_at",
     "__module__": "rt_module_new",
+    # 4.2：并发（实现在 c_runtime.c 末尾；Python 侧见 impor/rt_concurrency.py）
+    "thread_spawn": "rt_thread_spawn",
+    "thread_join": "rt_thread_join",
+    "thread_alive": "rt_thread_alive",
+    "thread_id": "rt_thread_id",
+    "cpu_count": "rt_cpu_count",
+    "mutex_new": "rt_mutex_new",
+    "mutex_lock": "rt_mutex_lock",
+    "mutex_unlock": "rt_mutex_unlock",
+    "mutex_trylock": "rt_mutex_trylock",
+    "cond_new": "rt_cond_new",
+    "cond_wait": "rt_cond_wait",
+    "cond_wait_ms": "rt_cond_wait_ms",
+    "cond_notify": "rt_cond_notify",
+    "cond_notify_all": "rt_cond_notify_all",
+    "atomic_new": "rt_atomic_new",
+    "atomic_load": "rt_atomic_load",
+    "atomic_store": "rt_atomic_store",
+    "atomic_add": "rt_atomic_add",
+    "atomic_sub": "rt_atomic_sub",
+    "atomic_exchange": "rt_atomic_exchange",
+    "atomic_cas": "rt_atomic_cas",
 }
 
 # print 特殊处理；range 仅在 for 中；其余内建一律不支持（编译报错）
@@ -112,6 +136,11 @@ UNSUPPORTED_BUILTINS_HINT = (
     "vec2", "rgb", "frame", "fps", "pause", "watch", "snapshot",
     "breakpoint", "import_path", "reload", "open", "readln", "writeln",
     "filecat",
+    # 5.2 新增内建暂不支持 C 后端
+    "strsplit", "strcount", "strstart", "strend",
+    "arrinsert", "arrremove", "arrsort", "arrcount",
+    "round", "floor", "ceil",
+    "any", "all", "map", "filter", "zip", "enumerate",
 )
 
 # 仍未支持的 AST 节点类型名（给出友好提示）
@@ -149,7 +178,10 @@ _RUNTIME_C_EMBEDDED = r"""
 
 typedef enum { V_NULL, V_INT, V_FLOAT, V_STR, V_BOOL, V_ARR } VType;
 typedef struct Arr Arr;
-typedef struct { VType t; long long i; double f; char *s; Arr *a; } Val;
+/* v4.7.2：tagged union。56 字节 -> 16 字节（tag 4 + payload 8 + 对齐） */
+typedef struct { VType t; union { long long i; double f; char *s; Arr *a; }; } Val;
+/* 4.7.2 硬门禁：Val 必须是 16 字节（tag 4 + payload 8 + 对齐） */
+typedef char val_size_must_be_16[(sizeof(Val) == 16) ? 1 : -1];
 struct Arr { Val *items; long long n, cap; };
 
 static void rt_abort(const char *msg) {
@@ -157,12 +189,12 @@ static void rt_abort(const char *msg) {
     exit(1);
 }
 
-static Val v_null(void) { Val v; v.t = V_NULL; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; return v; }
-static Val v_int(long long x) { Val v; v.t = V_INT; v.i = x; v.f = 0; v.s = NULL; v.a = NULL; return v; }
-static Val v_float(double x) { Val v; v.t = V_FLOAT; v.i = 0; v.f = x; v.s = NULL; v.a = NULL; return v; }
-static Val v_bool(int b) { Val v; v.t = V_BOOL; v.i = b ? 1 : 0; v.f = 0; v.s = NULL; v.a = NULL; return v; }
-static Val v_str(const char *s) { Val v; v.t = V_STR; v.i = 0; v.f = 0; v.s = strdup(s ? s : ""); v.a = NULL; return v; }
-static Val v_arr(void) { Val v; v.t = V_ARR; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; return v; }
+static Val v_null(void) { Val v; v.t = V_NULL; v.i = 0; return v; }
+static Val v_int(long long x) { Val v; v.t = V_INT; v.i = x; return v; }
+static Val v_float(double x) { Val v; v.t = V_FLOAT; v.f = x; return v; }
+static Val v_bool(int b) { Val v; v.t = V_BOOL; v.i = b ? 1 : 0; return v; }
+static Val v_str(const char *s) { Val v; v.t = V_STR; v.s = strdup(s ? s : ""); return v; }
+static Val v_arr(void) { Val v; v.t = V_ARR; v.a = NULL; return v; }
 
 static int rt_truth(Val v) {
     switch (v.t) {
@@ -189,16 +221,126 @@ static long long rt_int(Val v) {
     if (v.t == V_STR && v.s) return atoll(v.s);
     return 0;
 }
+/* patch8：Python 的浮点 % 结果符号跟随除数，C 的 fmod 跟随被除数，必须校正 */
+static double rt_fmod_py(double a, double b) {
+    double r = fmod(a, b);
+    if (r != 0.0 && ((r < 0.0) != (b < 0.0))) r += b;
+    return r;
+}
 static const char *rt_str_of(Val v) { return v.t == V_STR && v.s ? v.s : ""; }
+
+/* patch8：浮点打印按 Python repr 的口径（最短可往返 + 指数两位 + 整数补 .0）。
+ * 旧实现是 snprintf("%.12g")：0.1+0.2 会打成 0.3（丢精度），1e16 打成 1e+016，
+ * 与解释器不一致——对拍 c30_float_repr 就是这么挂的。
+ * 注意：不能拿 %.*f 来出定点结果——MSVCRT 的 %f 存在末位舍入偏差
+ * （实测 -698301.6521509961 被打成 …962）。这里只用最短数字串自己拼小数点。 */
+static void rt_fmt_double(double d, char *buf, size_t n) {
+    char full[96];
+    char digits[28];
+    char cand[64];
+    int p, exp10 = 0, neg = 0, dlen = 0;
+    size_t dn = 0, k = 0, i;
+    if (d != d) { snprintf(buf, n, "nan"); return; }
+    if (d == 0.0) { snprintf(buf, n, (1.0 / d < 0) ? "-0.0" : "0.0"); return; }
+    if (d > 1.7976931348623157e308) { snprintf(buf, n, "inf"); return; }
+    if (d < -1.7976931348623157e308) { snprintf(buf, n, "-inf"); return; }
+    if (d < 0) { neg = 1; d = -d; }
+    snprintf(full, sizeof full, "%.20e", d);          /* 例如 9.52510211185840190e+005 */
+    {
+        char *e = strchr(full, 'e');
+        exp10 = e ? (int)atoi(e + 1) : 0;             /* atoi 在 tcc 里可用 */
+        if (e) *e = 0;
+        for (const char *q = full; *q; q++) {
+            if (*q == '-' || *q == '+') continue;
+            if (*q == '.') continue;
+            if (dlen + 2 < (int)sizeof digits) digits[dlen++] = *q;
+        }
+        digits[dlen] = 0;
+    }
+    for (p = 1; p <= 17; p++) {
+        char tdig[28];
+        int carry, j;
+        memcpy(tdig, digits, (size_t)p);
+        tdig[p] = 0;
+        carry = (digits[p] >= '5');
+        j = p - 1;
+        while (carry && j >= 0) {
+            if (tdig[j] == '9') { tdig[j] = '0'; j--; }
+            else { tdig[j] = (char)(tdig[j] + 1); carry = 0; }
+        }
+        if (carry) {                                  /* 999… -> 1000…：数量级 +1 */
+            tdig[0] = '1';
+            for (j = 1; j < p; j++) tdig[j] = '0';
+            exp10 += 1;
+        }
+        /* 组串校验往返 */
+        {
+            size_t m = 0;
+            if (neg) cand[m++] = '-';
+            cand[m++] = tdig[0];
+            if (p > 1) {
+                cand[m++] = '.';
+                for (j = 1; j < p; j++) cand[m++] = tdig[j];
+            }
+            snprintf(cand + m, sizeof cand - m, "e%c%02d", exp10 < 0 ? '-' : '+',
+                     exp10 < 0 ? -exp10 : exp10);
+        }
+        if (strtod(cand, NULL) == (neg ? -d : d)) {
+            /* 去掉尾部多余的 0（最短表示不含它们）；全 0 时保留一位 */
+            dn = (size_t)p;
+            while (dn > 1 && tdig[dn - 1] == '0') dn--;
+            memcpy(digits, tdig, dn);
+            digits[dn] = 0;
+            break;
+        }
+        if (carry) exp10 -= 1;                        /* 这次进位没成，还原指数 */
+    }
+    if (p > 17) { snprintf(buf, n, "%.17e", neg ? -d : d); return; }
+    if (neg && k + 1 < n) buf[k++] = '-';
+    if (exp10 < -4 || exp10 >= 16) {
+        if (k + 1 < n) buf[k++] = digits[0];
+        if (dn > 1) {
+            if (k + 1 < n) buf[k++] = '.';
+            for (i = 1; i < dn; i++) if (k + 1 < n) buf[k++] = digits[i];
+        }
+        if (k + 4 < n)
+            k += snprintf(buf + k, n - k, "e%c%02d", exp10 < 0 ? '-' : '+',
+                          exp10 < 0 ? -exp10 : exp10);
+    } else if (exp10 >= 0) {
+        size_t ip = (size_t)(exp10 + 1);
+        for (i = 0; i < ip; i++) {
+            if (k + 1 < n) buf[k++] = (i < dn) ? digits[i] : '0';
+        }
+        if (k + 1 < n) buf[k++] = '.';
+        if (dn > ip) {
+            for (i = ip; i < dn; i++) if (k + 1 < n) buf[k++] = digits[i];
+        } else {
+            if (k + 1 < n) buf[k++] = '0';
+        }
+    } else {
+        if (k + 1 < n) buf[k++] = '0';
+        if (k + 1 < n) buf[k++] = '.';
+        for (i = 0; i < (size_t)(-exp10 - 1); i++) if (k + 1 < n) buf[k++] = '0';
+        for (i = 0; i < dn; i++) if (k + 1 < n) buf[k++] = digits[i];
+    }
+    if (k >= n) k = n - 1;
+    buf[k] = 0;
+    if (!strchr(buf, 'e')) {
+        char *dot = strchr(buf, '.');
+        if (dot) {
+            char *end = buf + strlen(buf) - 1;
+            while (end > dot + 1 && *end == '0') *end-- = 0;
+        } else {
+            size_t m2 = strlen(buf);
+            if (m2 + 2 < n) { buf[m2] = '.'; buf[m2 + 1] = '0'; buf[m2 + 2] = 0; }
+        }
+    }
+}
 
 /* 数值格式化（对齐 Impor str()：整数 float 显示 .0） */
 static void rt_fmt_num(Val v, char *buf, size_t n) {
     if (v.t == V_FLOAT) {
-        snprintf(buf, n, "%.12g", v.f);
-        if (!strchr(buf, '.') && !strchr(buf, 'e') && !strchr(buf, 'E')) {
-            size_t m = strlen(buf);
-            if (m + 2 < n) { buf[m] = '.'; buf[m + 1] = '0'; buf[m + 2] = '\0'; }
-        }
+        rt_fmt_double(v.f, buf, n);
     } else {
         snprintf(buf, n, "%lld", v.i);
     }
@@ -251,7 +393,7 @@ static Val rt_add(Val a, Val b) {
         memcpy(buf, sa.s ? sa.s : "", na);
         memcpy(buf + na, sb.s ? sb.s : "", nb + 1);
         free(sa.s); free(sb.s);
-        Val r; r.t = V_STR; r.i = 0; r.f = 0; r.a = NULL; r.s = buf;
+        Val r; r.t = V_STR; r.s = buf;
         return r;
     }
     if (a.t == V_FLOAT || b.t == V_FLOAT) return v_float(rt_num(a) + rt_num(b));
@@ -412,7 +554,7 @@ static Val rt_mod(Val a, Val b) {
     if (a.t == V_FLOAT || b.t == V_FLOAT) {
         double d = rt_num(b);
         if (d == 0) rt_abort("取模除数为零");
-        return v_float(fmod(rt_num(a), d));
+        return v_float(rt_fmod_py(rt_num(a), d));
     }
     long long d = rt_int(b);
     if (d == 0) rt_abort("取模除数为零");
@@ -517,6 +659,15 @@ static Val rt_type(Val v) {
         case V_ARR: return v_str("list");
     }
     return v_str("unknown");
+}
+
+/* 4.9.1：`x have <类型名>` —— 运行期类型判定，返回布尔。
+   判定口径与解释器 typename() 一致，不做隐式转换。 */
+static Val rt_have(Val v, const char *tn) {
+    Val t = rt_type(v);
+    const char *s = (t.t == V_STR && t.s) ? t.s : "";
+    if (!tn) return v_bool(0);
+    return v_bool(strcmp(s, tn) == 0);
 }
 
 /* ---------- 字符串工具（ASCII 版；中文原样保留） ---------- */
@@ -750,7 +901,7 @@ class CGen:
         self.globals_map = {}      # 顶层变量名 -> gN
         self.funcs = []            # [(name, cname, params, body)]
         self.funcs_map = {}        # name -> cname
-        self.exports = []          # v3.8.2：export func → C ABI 元数据
+        self.exports = []          # v3.8.2：export def → C ABI 元数据
         self._fn_writes = {}       # fn名 -> 函数内写集合（局部变量名）
         self.classes = []          # [ClassDef 节点]（按源码顺序，基类在前）
         self.class_methods = {}    # 类名 -> [(方法名, params, body)]
@@ -767,6 +918,7 @@ class CGen:
         self._arg_seq = 0
         self._match_seq = 0
         self._try_seq = 0
+        self.exceptions = set()     # v4.1：exception 声明的类型名（catch 过滤用）
         self.closures = []          # 嵌套函数（闭包）定义
         self._closure_map = {}      # (外层函数名, 嵌套函数名) -> cloN
         self._boxed_by_fn = {}      # 函数名 -> 被闭包捕获、需要装箱的局部名
@@ -1005,7 +1157,9 @@ class CGen:
                         "param_types": list(getattr(s, "param_types", []) or []),
                         "ret_type": getattr(s, "ret_type", "") or "",
                     })
-                self._fn_writes[s.name] = self._collect_writes(s.body)
+                w = self._collect_writes(s.body)
+                w.update(s.params)
+                self._fn_writes[s.name] = w
                 self._collect_closures_for(s)
             elif isinstance(s, ClassDef):
                 # 类：收集方法（作为带 (Obj*, Val*) 签名的方法函数）与字段初始化
@@ -1021,7 +1175,9 @@ class CGen:
                         self._fcnt += 1
                         self.method_cnames[(s.cls_name, st.name)] = fn
                         self.class_methods[s.cls_name].append((st.name, st.params, st.body))
-                        self._fn_writes["%s.%s" % (s.cls_name, st.name)] = self._collect_writes(st.body)
+                        w = self._collect_writes(st.body)
+                        w.update(st.params)
+                        self._fn_writes["%s.%s" % (s.cls_name, st.name)] = w
                     elif isinstance(st, _Assign):
                         if st.scope == "global":
                             raise UnsupportedFeature(
@@ -1032,9 +1188,9 @@ class CGen:
                             "类体只支持方法（def）与字段赋值（var 名 = 初值）",
                             getattr(st, "lineno", 0), getattr(st, "col", 0))
             elif isinstance(s, ExceptionDef):
-                raise UnsupportedFeature(
-                    _UNSUP_NODE.get(type(s).__name__, "类/异常定义"),
-                    s.lineno, s.col)
+                # v4.1：exception 声明本身不产生代码，只登记类型名，
+                # 供 raise / catch 与解释器同名对齐。
+                self.exceptions.add(s.exc_name)
 
     def _collect_globals(self, node):
         """收集顶层赋值名 → 全局变量（含顶层 while/if/块 体内的声明）。"""
@@ -1183,8 +1339,22 @@ class CGen:
         self._collect_defs(node)
         self._collect_globals(node)
         self._collect_lambdas(node)
+        # 4.6：泛型单态化（按调用点静态类型生成专用函数；不命中则回退擦除版）
+        # 4.7：扩到「全标注标量函数」；`--no-mono` / IMPOR_NO_MONO 可整条关闭
+        # （原生实例的算术是裸 C 运算，不做逐运算溢出检查，需要严格 E1012 时关掉它）。
+        import os as _os
+        if _os.environ.get("IMPOR_NO_MONO", "").strip().lower() in ("1", "true", "yes", "on"):
+            self.mono = {"specs": {}, "c": []}
+        else:
+            from . import monomorph
+            self.mono = monomorph.plan(node)
         out = []
         out.append("/* 由 Impor (I++) 编译器生成，勿手改 */")
+        if not self.emit_main:
+            # v4.1：共享库（DLL）模式。运行时据此跳过 atexit 注册——
+            # tcc 的 DLL CRT 在 FreeLibrary/进程退出时会重复走退出钩子，
+            # 之前会以 0xC0000005 崩溃。DLL 里改由宿主显式调用 impor_runtime_shutdown()。
+            out.append("#define IMPOR_BUILD_DLL 1")
         out.append("#include <stdio.h>")
         out.append("#include <stdlib.h>")
         out.append("#include <string.h>")
@@ -1204,6 +1374,9 @@ class CGen:
             for c in self.closures:
                 out.append("static Val %s(void *_env, Val *_args);" % c["cname"])
         out.append("/*__FFI_PROTOS__*/")
+        if getattr(self, "mono", None) and self.mono["c"]:
+            out.append("")
+            out.extend(self.mono["c"])
         if self.lambdas:
             out.append("")
             out.append("/* lambda 原型 */")
@@ -1466,7 +1639,7 @@ class CGen:
             Assign, CompoundAssign, Print, If, While, For, Def, Return,
             Break, Continue, ExitScript, ClsOut, AssertNode, ExprStmt,
             ClassDef, ExceptionDef, Call, IndexSet, AttrSet, Block,
-            MatchNode, BindingPattern, TryCatch,
+            MatchNode, BindingPattern, TryCatch, Raise,
         )
         t = type(n)
         if t is MatchNode:
@@ -1576,8 +1749,9 @@ class CGen:
         if t is ClassDef:
             return ["reg_class(&ci_%s);" % n.cls_name]
         if t is ExceptionDef:
-            raise UnsupportedFeature(_UNSUP_NODE.get(t.__name__, "不支持的语法"),
-                                     n.lineno, n.col)
+            return []  # v4.1：声明本身无代码，名字已在收集阶段登记
+        if t is Raise:
+            return [self._gen_raise(n)]
         raise UnsupportedFeature(
             "C 后端暂不支持：%s" % _UNSUP_NODE.get(t.__name__, t.__name__),
             getattr(n, "lineno", 0), getattr(n, "col", 0))
@@ -1668,17 +1842,37 @@ class CGen:
         out.append("}")
         return out
 
+    def _gen_raise(self, n):
+        """v4.1：raise Foo("消息") → rt_throw("Foo", "消息")。
+
+        exception 声明的类型名在收集阶段登记，但这里不强制查表：
+        与解释器一致，raise 后面的名字本身就是类型名。
+        """
+        tname = n.exc_type_name or "Error"
+        msg = ('rt_str_of(rt_tostr(%s))' % self._gen_expr(n.msg_expr)
+               if n.msg_expr is not None else '""')
+        return 'rt_throw(%s, %s);' % (c_escape_str(tname), msg)
+
     def _gen_try(self, n):
         """try/catch/finally → setjmp 跳转栈。
 
         v3.8.4：运行时已有 g_jmp_stack / g_err_type / g_err_msg，这里补上
         push/pop 与 catch 变量绑定。异常由 rt_throw() longjmp 回最近一层。
+
+        v4.1：按类型过滤 catch（catch Foo e），类型不匹配时先跑 finally，
+        再把异常抛给外一层 try —— 与解释器的捕获顺序一致。
         """
         self._try_seq += 1
         tid = self._try_seq
         tj = "_tj%d" % tid
-        out = ["{", "    int %s = g_jmp_n++;" % tj,
-               "    if (setjmp(g_jmp_stack[%s]) == 0) {" % tj]
+        rh = "_rh%d" % tid
+        # 4.6：tj/rh 必须跨 setjmp/longjmp 存活，按 C99 §7.13.2.1 只有 volatile
+        # 自动变量能保证 longjmp 后值不变。之前写成普通 int，gcc -O2 把它们放进
+        # 调用者保存寄存器，longjmp 回落后读到垃圾：_rh 非零就去 rt_rethrow(垃圾tj)
+        # → longjmp 越界 → 0xC0000005。（-O0 20/20 通过、-O2 6/20 崩，就是这么来的）
+        out = ["{", "    volatile int %s = g_jmp_n++;" % tj,
+               "    volatile int %s = 0;" % rh,
+               "    if (IMPOR_SETJMP(g_jmp_stack[%s]) == 0) {" % tj]
         self._gen_block(out, n.body, indent=2)
         out.append("        g_jmp_n = %s;" % tj)
         out.append("    } else {")
@@ -1687,10 +1881,20 @@ class CGen:
             ev = n.err_var or "__err"
             target = self._lname(ev) if self._cur_fn else self._gname(ev)
             out.append("        Val %s = rt_err_obj();" % target)
-            self._gen_block(out, n.catch_body, indent=2)
+            if n.err_type:
+                out.append("        if (rt_err_matches(%s)) {" % c_escape_str(n.err_type))
+                self._gen_block(out, n.catch_body, indent=3)
+                out.append("        } else {")
+                out.append("            %s = 1;" % rh)
+                out.append("        }")
+            else:
+                self._gen_block(out, n.catch_body, indent=2)
+        else:
+            out.append("        %s = 1;" % rh)
         out.append("    }")
         if n.finally_body:
-            self._gen_block(out, n.finally_body, indent=2)
+            self._gen_block(out, n.finally_body, indent=1)
+        out.append("    if (%s) rt_rethrow(%s);" % (rh, tj))
         out.append("}")
         return out
 
@@ -1714,24 +1918,31 @@ class CGen:
                 raise UnsupportedFeature("range 参数数量错误", n.lineno, n.col)
             self._loop_depth += 1
             out = []
+            # patch8：三界先各求值一次（解释器先把 range 物化成列表），
+            # 循环变量在**循环体开始处**赋值——这样循环结束后它保留“最后一个值”，
+            # 与解释器一致。旧实现把变量声明在 for 头部，函数/顶层作用域里会遮蔽
+            # 同名变量，循环后 `print(i)` 打出 None（对拍里 c01/c02/c03/c04/c07/c08/
+            # c09/c10 八例就是这么挂的）。
+            uid = id(n)
             if len(args) == 1:
-                out.append("for (Val %s = v_int(0); rt_int(%s) < rt_int(%s); "
-                           "%s = v_int(rt_int(%s) + 1)) {" %
-                           (varc, varc, self._gen_expr(args[0]), varc, varc))
+                st_c, en_c, sp_c = "v_int(0)", self._gen_expr(args[0]), "v_int(1)"
             elif len(args) == 2:
-                out.append("for (Val %s = %s; rt_int(%s) < rt_int(%s); "
-                           "%s = v_int(rt_int(%s) + 1)) {" %
-                           (varc, self._gen_expr(args[0]), varc,
-                            self._gen_expr(args[1]), varc, varc))
+                st_c, en_c, sp_c = self._gen_expr(args[0]), self._gen_expr(args[1]), "v_int(1)"
             else:
-                st = self._gen_expr(args[0])
-                en = self._gen_expr(args[1])
-                sp = self._gen_expr(args[2])
-                out.append("for (Val %s = %s; (rt_int(%s) >= 0 ? "
-                           "rt_int(%s) < rt_int(%s) : rt_int(%s) > rt_int(%s)); "
-                           "%s = v_int(rt_int(%s) + rt_int(%s))) {" %
-                           (varc, st, sp, varc, en, varc, en, varc, varc, sp))
-            self._gen_block(out, n.body, indent=1)
+                st_c, en_c, sp_c = (self._gen_expr(args[0]), self._gen_expr(args[1]),
+                                    self._gen_expr(args[2]))
+            out.append("{ Val _ri%d = %s; Val _re%d = %s; Val _rs%d = %s;" %
+                       (uid, st_c, uid, en_c, uid, sp_c))
+            # 步长为 0 必须报错退出：没有这道门 `range(0, 5, 0)` 是死循环
+            out.append("  if (rt_int(_rs%d) == 0) { fprintf(stderr, "
+                       "\"ImporRuntimeError: range 的步长不能为 0。\\n\"); exit(1); }" % uid)
+            out.append("  for (; (rt_int(_rs%d) >= 0 ? rt_int(_ri%d) < rt_int(_re%d) "
+                       ": rt_int(_ri%d) > rt_int(_re%d)); "
+                       "_ri%d = v_int(rt_int(_ri%d) + rt_int(_rs%d))) {" %
+                       (uid, uid, uid, uid, uid, uid, uid, uid))
+            out.append("    %s = _ri%d;" % (varc, uid))
+            self._gen_block(out, n.body, indent=2)
+            out.append("  }")
             out.append("}")
             self._loop_depth -= 1
             return out
@@ -1755,7 +1966,7 @@ class CGen:
         from impor.ast_nodes import (
             Num, Str, FStr, Bool, Null, Var, BinOp, UnaryOp, TernaryExpr, Call,
             ListLit, DictLit, IndexGet, Slice, AttrGet, Pipe, NewInstance, SuperCall,
-            Lambda, Await,
+            Lambda, Await, TypeTest,
         )
         t = type(n)
         if t is Num:
@@ -1817,6 +2028,10 @@ class CGen:
                     "super() 只能用于方法调用 super().方法()", n.lineno, n.col)
             return "rt_getattr(%s, %s)" % (self._gen_expr(n.obj_expr),
                                            c_escape_str(n.attr_name))
+        if t is TypeTest:
+            # 4.9.1：运行期类型判定走运行库，和解释器同一套类型名
+            return "rt_have(%s, %s)" % (self._gen_expr(n.expr),
+                                        c_escape_str(n.type_name))
         if t is NewInstance:
             args = [self._gen_expr(a) for a in n.args]
             if not args:
@@ -2065,6 +2280,11 @@ class CGen:
             return "rt_ffi_open(%s)" % self._gen_expr(n.args[0])
         if name == "ffi_call":
             return self._gen_ffi_call(n)
+        from . import monomorph
+        spec = monomorph.call_spec(getattr(self, "mono", None), name, n.args)
+        if spec is not None:
+            return monomorph.call_code(spec, [self._gen_expr(a) for a in n.args],
+                                       n.lineno)
         if name in self.funcs_map:
             cname = self.funcs_map[name]
             params = [f[2] for f in self.funcs if f[1] == cname][0]
@@ -2089,6 +2309,9 @@ class CGen:
                     raise UnsupportedFeature("expect 需要 2 或 3 个参数", n.lineno, n.col)
                 if len(args) == 2:
                     args.append('v_str("")')
+            if fn == "rt_strfind" and len(args) == 2:
+                # 解释器的 strfind(s, sub) 默认从 0 开始；C 运行库是 3 参数形式
+                args.append("v_int(0)")
             return "%s(%s)" % (fn, ", ".join(args))
         if name in UNSUPPORTED_BUILTINS_HINT:
             raise UnsupportedFeature(
@@ -2191,6 +2414,10 @@ def c_transpile(ast_node, source_name=None, stats=None, source_lines=None,
     except LinkError as e:
         raise UnsupportedFeature(str(e), 0, 0)
     _reject_const_mutation(ast_node)
+    # 4.7.2：语言层一般内联（单表达式小函数在调用点展开；判据见 impor/inline.py 顶部文档）
+    if stats is not None:
+        from .inline import inline_program
+        inline_program(ast_node, stats=stats, source_name=source_name)
     gen = CGen()
     gen.source_lines = source_lines
     gen.source_name = source_name
@@ -2198,4 +2425,7 @@ def c_transpile(ast_node, source_name=None, stats=None, source_lines=None,
     c = gen.gen_program(ast_node)
     if stats is not None:
         stats["exports"] = list(gen.exports)
+        mono = getattr(gen, "mono", None) or {}
+        stats["mono"] = len(mono.get("specs") or {})
+        stats["mono_tail"] = mono.get("tail", 0)
     return c

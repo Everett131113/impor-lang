@@ -1,0 +1,17 @@
+# HTTP 绑定 demo（v4.3.2）
+# 运行：在 bindings/http 目录下，py -3 ..\..\Impor.py run demo.impor
+# 需要能访问外网；访问不了时 status=0，error 会给出 WinHTTP 错误码。
+
+import http_bind as http
+
+print("load:", http.load("impor_bind_http.dll"))
+
+var r = http.get("https://example.com/", 15000)
+print("status:", r["status"])
+print("body len:", len(r["body"]))
+print("has html:", strfind(to_str(r["body"]), "<html") >= 0)
+print("error:", r["error"])
+
+# 明确拒绝非 http(s) 协议：应返回 status=0 且 error 非空
+var bad = http.get("ftp://example.com/x", 5000)
+print("reject ftp:", bad["status"], "|", bad["error"])

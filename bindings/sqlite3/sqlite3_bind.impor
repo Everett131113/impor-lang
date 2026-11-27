@@ -1,0 +1,51 @@
+# Impor 绑定：SQLite3（v4.3.1）
+# 用法：先把 impor_bind_sqlite3.dll 与本文件放在同一目录，再 import sqlite3_bind。
+# 所有函数返回 Impor 原生类型（int / 列表 / 字典），不向调用方暴露 C 指针。
+
+var __lib = nil
+var __loaded = false
+
+export def load(shim_path, native_path)
+    if __loaded {
+        return true
+    }
+    set __lib = ffi_open(shim_path)
+    set __loaded = ffi_call(__lib, "impor_sqlite_load",[native_path], "int",["cstr"]) == 1
+    return __loaded
+
+export def version()
+    if !__loaded {
+        return ""
+    }
+    return ffi_call(__lib, "impor_sqlite_version",[], "cstr",[])
+
+export def open(db_path)
+    if !__loaded {
+        return 0
+    }
+    return ffi_call(__lib, "impor_sqlite_open",[db_path], "int",["cstr"])
+
+export def exec(handle, sql)
+    if handle <= 0 {
+        return - 1
+    }
+    return ffi_call(__lib, "impor_sqlite_exec",[handle, sql], "int",["int", "cstr"])
+
+export def query(handle, sql)
+    if handle <= 0 {
+        return { "cols": [], "rows": [], "error": "bad handle" }
+    }
+    var raw = ffi_call(__lib, "impor_sqlite_query",[handle, sql], "cstr",["int", "cstr"])
+    return json_decode(raw)
+
+export def error(handle)
+    if handle <= 0 {
+        return "bad handle"
+    }
+    return ffi_call(__lib, "impor_sqlite_error",[handle], "cstr",["int"])
+
+export def close(handle)
+    if handle <= 0 {
+        return false
+    }
+    return ffi_call(__lib, "impor_sqlite_close",[handle], "int",["int"]) == 1

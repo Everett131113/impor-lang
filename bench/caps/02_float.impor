@@ -1,0 +1,7 @@
+// 浮点：加与乘
+var a = 1.5
+var b = 2.25
+print(a + b)
+print(a * b)
+# EXPECT: 3.75
+# EXPECT: 3.375

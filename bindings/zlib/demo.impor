@@ -1,0 +1,15 @@
+import zlib_bind as zl
+
+var shim = "impor_bind_zlib.dll"
+var native = "D:\\编程软件\\python3.11\\Lib\\site-packages\\h5py\\zlib.dll"
+
+print("native exists:", fileexists(native))
+print("load:", zl.load(shim, native))
+print("version:", zl.version())
+print("crc32 abc:", zl.crc32("abc"))
+
+var text = "Impor 4.3.1 绑定测试：中文 + ASCII + 1234567890"
+var packed = zl.compress(text)
+print("packed hex len:", len(packed))
+print("roundtrip:", zl.uncompress(packed) == text)
+print("plain len:", len(text), "packed len:", len(packed) / 2)

@@ -23,6 +23,7 @@ Impor (I++) 包管理器（impor pkg）：本地源码包 + git 仓库来源。
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +40,7 @@ except ImportError:  # Python < 3.11
 
 from .config import CONFIG_NAME, _SimpleToml, pkg_cache_dir
 from .observability import note_swallowed
+from . import versionsolve
 
 REGISTRY_ENV = "IMPOR_REGISTRY"
 TOKEN_ENV_DEFAULT = "IMPOR_TOKEN"
@@ -93,24 +95,15 @@ def parse_constraint(spec):
 
 
 def ver_satisfies(ver, constraint):
-    """ver 是否满足 constraint（'>=' / '<=' / '==' / '!=' / '>' / '<' / 空）。"""
-    op, want = parse_constraint(constraint)
-    if op is None:
-        return True
-    got = _norm_ver(ver)
-    if op == "==":
-        return got == want
-    if op == "!=":
-        return got != want
-    if op == ">=":
-        return got >= want
-    if op == "<=":
-        return got <= want
-    if op == ">":
-        return got > want
-    if op == "<":
-        return got < want
-    return True
+    """ver 是否满足 constraint。
+
+    4.7.1：交给 `versionsolve.satisfies`，因此支持 `^1.2` / `~1.2` / `>=1.0,<2.0`
+    这类多段合取（原先只认单个比较符，`^`/`~` 会被当成裸版本号按 `==` 匹配）。
+    """
+    try:
+        return versionsolve.satisfies(ver, constraint)
+    except ValueError:
+        return False
 
 
 # ---------- TOML 读写 ----------
@@ -162,6 +155,97 @@ def _project_dir(start=None):
         if parent == d:
             return os.path.abspath(start or os.getcwd())
         d = parent
+
+
+def _has_project(proj_dir):
+    """proj_dir 下是否真的有 impor.toml（区分"项目内"与"退回 cwd"）。"""
+    return os.path.isfile(os.path.join(proj_dir, CONFIG_NAME))
+
+
+def _ensure_path_entry(proj_dir, entry):
+    """确保 impor.toml 的 [module_search_paths] paths 里含 entry。
+
+    按行编辑：保留注释、空行与原有顺序（不用 _write_toml 整篇重写）。
+    返回 True 表示做了修改。
+    """
+    path = os.path.join(proj_dir, CONFIG_NAME)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return False
+
+    sec_start = None
+    for i, ln in enumerate(lines):
+        if ln.strip() == "[module_search_paths]":
+            sec_start = i
+            break
+
+    if sec_start is not None:
+        sec_end = len(lines)
+        for j in range(sec_start + 1, len(lines)):
+            st = lines[j].strip()
+            if st.startswith("[") and st.endswith("]"):
+                sec_end = j
+                break
+        for j in range(sec_start + 1, sec_end):
+            st = lines[j].strip()
+            if st.startswith("paths") and "=" in st and "[" in st:
+                inner = st.split("[", 1)[1].rsplit("]", 1)[0]
+                items = [x.strip().strip("\"'") for x in inner.split(",") if x.strip()]
+                if entry.lstrip("./") in {x.lstrip("./") for x in items}:
+                    return False
+                items.append(entry)
+                lines[j] = "paths = [" + ", ".join('"%s"' % x for x in items) + "]"
+                break
+        else:
+            lines.insert(sec_end, 'paths = ["%s"]' % entry)
+    else:
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.append("[module_search_paths]")
+        lines.append('paths = ["%s"]' % entry)
+
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    return True
+
+
+def _vendor_pkg(name, proj_dir, cache_dir=None):
+    """把缓存里的包复制到 <project>/lib/<name>/，并保证 ./lib 在搜索路径里。
+
+    返回 (目标目录, 建议 import 名或 None, 是否额外加了 ./lib/<name>)。
+    """
+    cache_dir = cache_dir or CACHE_DIR
+    src = os.path.join(cache_dir, name)
+    if not os.path.isdir(src):
+        return None, None, False
+    lib_dir = os.path.join(proj_dir, "lib")
+    os.makedirs(lib_dir, exist_ok=True)
+    dest = os.path.join(lib_dir, name)
+    if os.path.isdir(dest):
+        shutil.rmtree(dest)
+    shutil.copytree(src, dest, ignore=shutil.ignore_patterns(".git", "__pycache__"))
+    _ensure_path_entry(proj_dir, "./lib")
+
+    # 判断装完能不能直接 import：
+    #   1) 有 __pkg__.impor → 以 ./lib 为根，import <name>
+    #   2) 有 <name>.impor   → 以 ./lib/<name> 为根，import <name>
+    #   3) 只有一个顶层模块 → 以 ./lib/<name> 为根，import <那个模块名>
+    extra_root = False
+    if os.path.isfile(os.path.join(dest, "__pkg__.impor")):
+        return dest, name, extra_root
+    if os.path.isfile(os.path.join(dest, name + ".impor")):
+        _ensure_path_entry(proj_dir, "./lib/" + name)
+        extra_root = True
+        return dest, name, extra_root
+    mods = sorted(fn[:-6] for fn in os.listdir(dest) if fn.endswith(".impor"))
+    if len(mods) == 1:
+        _ensure_path_entry(proj_dir, "./lib/" + name)
+        extra_root = True
+        return dest, mods[0], extra_root
+    return dest, None, extra_root
+
 
 
 def _pkg_meta(pkg_dir):
@@ -623,11 +707,11 @@ def _pkg_requires(pkg_dir):
 
 
 def _check_dep_conflicts(pkg_dir, proj_dir):
-    """检测新安装包声明的依赖与项目已有依赖的版本冲突（v2.8）。
+    """检测新安装包声明的依赖与项目已有依赖的版本冲突。
 
-    返回冲突列表 [(依赖名, 项目已有约束, 该包要求约束)]。
-    约束写法不同但语义可能一致（如 >=1.0 与 >=1.0），仅当字符串不同才报告；
-    更精确的交集判定留给 lock 阶段。
+    4.7.1：判定从「字符串不同就报」改成**真区间交集**（`versionsolve.ranges_intersect`）。
+    `>=1.0` 与 `>=1.0,<2.0` 以前会被报成冲突，其实前者包含后者，装上去完全没问题；
+    反过来 `>=1.0,<1.5` 和 `>=2.0` 才是真冲突，现在能识别出来。
     """
     toml_path = os.path.join(pkg_dir, CONFIG_NAME)
     if not os.path.isfile(toml_path):
@@ -637,20 +721,63 @@ def _check_dep_conflicts(pkg_dir, proj_dir):
     existing = _deps_from_toml(proj_dir)
     out = []
     for dep_name, dep_constraint in deps.items():
-        if dep_name in existing and existing[dep_name] != dep_constraint:
-            out.append((dep_name, existing[dep_name], dep_constraint))
+        old = existing.get(dep_name)
+        if old is None:
+            continue
+        try:
+            compatible = versionsolve.ranges_intersect(old, dep_constraint)
+        except ValueError:
+            compatible = False
+        if not compatible:
+            out.append((dep_name, old, dep_constraint))
     return out
 
 
 def _set_dep(proj_dir, name, constraint):
-    cfg = _read_toml(os.path.join(proj_dir, CONFIG_NAME))
-    deps = dict(cfg.get("dependencies") or {})
-    if constraint:
-        deps[name] = constraint
+    """按行更新 impor.toml 的 [dependencies]，保留注释与顺序（不整篇重写）。"""
+    path = os.path.join(proj_dir, CONFIG_NAME)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        lines = []
+    key = re.escape(name)
+
+    sec_start = None
+    for i, ln in enumerate(lines):
+        if ln.strip() == "[dependencies]":
+            sec_start = i
+            break
+
+    if sec_start is None:
+        if not constraint:
+            return
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.append("[dependencies]")
+        lines.append('%s = "%s"' % (name, constraint))
     else:
-        deps.pop(name, None)
-    cfg["dependencies"] = deps
-    _write_toml(os.path.join(proj_dir, CONFIG_NAME), cfg)
+        sec_end = len(lines)
+        for j in range(sec_start + 1, len(lines)):
+            st = lines[j].strip()
+            if st.startswith("[") and st.endswith("]"):
+                sec_end = j
+                break
+        hit = None
+        for j in range(sec_start + 1, sec_end):
+            if re.match(r"\s*%s\s*=" % key, lines[j]):
+                hit = j
+                break
+        if constraint:
+            if hit is None:
+                lines.insert(sec_end, '%s = "%s"' % (name, constraint))
+            else:
+                lines[hit] = '%s = "%s"' % (name, constraint)
+        elif hit is not None:
+            del lines[hit]
+
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 def _refresh_lock(proj_dir, cache_dir, new_sources=None, extra=None):
@@ -836,12 +963,19 @@ def _registry_spec(spec, deps):
     return s, deps.get(s, "")
 
 
-def install(spec, project_dir=None, cache_dir=None):
-    """安装包：本地目录 / git URL / 私有源包名[@版本]。返回 (name, version)。"""
+def install(spec, project_dir=None, cache_dir=None, vendor=True, report=None):
+    """安装包：本地目录 / git URL / 私有源包名[@版本]。返回 (name, version)。
+
+    vendor=True（默认）：装完复制到 <project>/lib/<name>/，并把 ./lib 写进
+    impor.toml 的 [module_search_paths]，使 `import <name>` 立刻可用。
+    vendor=False：只进全局缓存（1.0 行为）。
+    不在项目内（找不到 impor.toml）：只进缓存，**不生成任何配置文件**。
+    """
     cache_dir = cache_dir or CACHE_DIR
     os.makedirs(cache_dir, exist_ok=True)
     proj_dir = _project_dir(project_dir)
-    deps = _deps_from_toml(proj_dir)
+    has_proj = _has_project(proj_dir)
+    deps = _deps_from_toml(proj_dir) if has_proj else {}
     sources = {}
 
     if _looks_like_source(spec):
@@ -869,14 +1003,23 @@ def install(spec, project_dir=None, cache_dir=None):
                           for dep, proj_c, pkg_c in conflicts)
         raise ValueError(f"依赖冲突：{name} 的依赖与项目现有声明不一致：{detail}")
 
-    _set_dep(proj_dir, name, constraint or ">=%s" % ver)
-    sources[name] = {"source": source, "sha256": archive_sha}
-    _refresh_lock(proj_dir, cache_dir, sources)
+    if has_proj:
+        _set_dep(proj_dir, name, constraint or ">=%s" % ver)
+        sources[name] = {"source": source, "sha256": archive_sha}
+        _refresh_lock(proj_dir, cache_dir, sources)
+        if vendor:
+            dest, import_name, extra = _vendor_pkg(name, proj_dir, cache_dir)
+            if report is not None:
+                report["vendored"] = dest
+                report["import_name"] = import_name
+                report["vendor_root"] = ("./lib/" + name) if extra else "./lib"
+    elif report is not None:
+        # 不在项目内：只进缓存，绝不凭空生成 impor.toml
+        report["no_project"] = True
     return name, ver
 
-
 def remove(name, project_dir=None, cache_dir=None):
-    """卸载包：从缓存删除并从 impor.toml / lock 移除。"""
+    """卸载包：从缓存删除、删掉 lib/ 下的 vendor 副本，并从 impor.toml / lock 移除。"""
     cache_dir = cache_dir or CACHE_DIR
     proj_dir = _project_dir(project_dir)
     pkg = os.path.join(cache_dir, name)
@@ -884,8 +1027,13 @@ def remove(name, project_dir=None, cache_dir=None):
     if os.path.isdir(pkg):
         shutil.rmtree(pkg)
         removed = True
-    _set_dep(proj_dir, name, None)
-    _refresh_lock(proj_dir, cache_dir)
+    if _has_project(proj_dir):
+        vendored = os.path.join(proj_dir, "lib", name)
+        if os.path.isdir(vendored):
+            shutil.rmtree(vendored)
+            removed = True
+        _set_dep(proj_dir, name, None)
+        _refresh_lock(proj_dir, cache_dir)
     return removed
 
 
@@ -920,17 +1068,36 @@ def prune(project_dir=None, cache_dir=None):
     return _prune_unreachable(proj_dir, cache_dir or CACHE_DIR)
 
 
-def upgrade(name=None, project_dir=None, cache_dir=None):
-    """升级：git/本地源重新拉取，私有源按约束取最高版本；返回更新的包名列表。"""
+def _installed_source(proj_dir, name, cache_dir=None):
+    """从 impor.lock 找回某个包的安装来源；没有可用来源时返回 ""。
+
+    lock 的 source 可能是本地绝对路径、git URL、或 registry:<base>#<name>@<ver>；
+    老 lock 里可能只剩占位值 local / cache / project，这些都无法重新拉取。
+    """
+    entries = _read_lock(proj_dir)
+    meta = entries.get(name) or {}
+    src = str(meta.get("source") or "").strip()
+    if src in ("", "local", "cache", "project"):
+        return ""
+    return src
+
+
+def upgrade(name=None, project_dir=None, cache_dir=None, report=None):
+    """升级：git/本地源重新拉取，私有源按约束取最高版本；返回更新的包名列表。
+
+    4.0.1：升级后若项目里存在 <project>/lib/<name>/（说明这个包是 vendor 过的），
+    同步刷新这份副本；否则不动项目目录（只改全局缓存）。
+    """
     cache_dir = cache_dir or CACHE_DIR
     os.makedirs(cache_dir, exist_ok=True)
     proj_dir = _project_dir(project_dir)
     deps = _deps_from_toml(proj_dir)
     updated = []
+    revendored = []
     for dep_name, constraint in deps.items():
         if name and dep_name != name:
             continue
-        source = _installed_source(proj_dir, dep_name)
+        source = _installed_source(proj_dir, dep_name, cache_dir)
         if not source:
             print(f"impor pkg: {dep_name} 无记录来源，跳过（用 install 重新安装）")
             continue
@@ -953,13 +1120,87 @@ def upgrade(name=None, project_dir=None, cache_dir=None):
                 _refresh_lock(proj_dir, cache_dir, {n: {"source": desc}})
             updated.append(n)
             print(f"impor pkg: 已升级 {n} → {v}")
+            if os.path.isdir(os.path.join(proj_dir, "lib", dep_name)):
+                dest, _import_name, _extra = _vendor_pkg(dep_name, proj_dir, cache_dir)
+                if dest:
+                    revendored.append(dest)
+                    print(f"impor pkg: 已刷新 vendor 副本 {dest}")
         except ValueError as e:
             print(f"impor pkg: {dep_name} 升级失败: {e}")
     _refresh_lock(proj_dir, cache_dir)
+    if report is not None:
+        report["updated"] = updated
+        report["revendored"] = revendored
     return updated
 
 
 # ---------- CLI ----------
+def _toml_meta_from_text(text):
+    if tomllib is not None:
+        try:
+            return tomllib.loads(text)
+        except Exception:
+            pass
+    return _SimpleToml.loads(text)
+
+
+def _zip_meta(zip_path):
+    """从 .zip 包里读 (name, version)；读不到返回 None。"""
+    try:
+        with zipfile.ZipFile(zip_path) as z:
+            cands = [n for n in z.namelist() if n.endswith(CONFIG_NAME)]
+            if not cands:
+                return None
+            cands.sort(key=lambda n: n.count("/"))
+            data = _toml_meta_from_text(z.read(cands[0]).decode("utf-8", "replace"))
+    except Exception:
+        return None
+    proj = data.get("project") or {}
+    name = str(proj.get("name") or "").strip()
+    ver = str(proj.get("version") or "").strip()
+    return (name, ver) if name else None
+
+
+def search(keyword="", project_dir=None, cache_dir=None, include_zip=True):
+    """本地包索引：扫全局缓存目录与项目里的 *.zip，按名字关键字过滤。
+
+    不联网、不需要远端索引，离线可用。返回
+    [{"name","version","kind","path"}]，kind 为 "cache" 或 "zip"。
+    """
+    cache_dir = cache_dir or CACHE_DIR
+    proj_dir = _project_dir(project_dir)
+    kw = (keyword or "").strip().lower()
+    hits = []
+    if os.path.isdir(cache_dir):
+        for n in sorted(os.listdir(cache_dir)):
+            d = os.path.join(cache_dir, n)
+            if not os.path.isdir(d):
+                continue
+            try:
+                name, ver = _pkg_meta(d)
+            except ValueError:
+                continue
+            if kw and kw not in name.lower():
+                continue
+            hits.append({"name": name, "version": ver, "kind": "cache", "path": d})
+    if include_zip:
+        for base in (proj_dir, os.path.join(proj_dir, "dist")):
+            if not os.path.isdir(base):
+                continue
+            for fn in sorted(os.listdir(base)):
+                if not fn.endswith(".zip"):
+                    continue
+                zp = os.path.join(base, fn)
+                meta = _zip_meta(zp)
+                if not meta:
+                    continue
+                name, ver = meta
+                if kw and kw not in name.lower():
+                    continue
+                hits.append({"name": name, "version": ver, "kind": "zip", "path": zp})
+    return hits
+
+
 def _cli_positionals(args, value_flags):
     """取出位置参数；跳过 --flag 及其值，避免把 --out 的路径当包目录。"""
     out = []
@@ -1073,11 +1314,26 @@ def main_pkg(args):
                     return 1
                 return 0
             if not rest:
-                print("用法: impor pkg install <本地目录|git URL|包名[@版本]|名字=约束>", file=sys.stderr)
+                print("用法: impor pkg install <本地目录|git URL|包名[@版本]|名字=约束> [--no-vendor]", file=sys.stderr)
                 return 3
-            name, ver = install(" ".join(rest))
+            do_vendor = "--no-vendor" not in args[1:]
+            report = {}
+            name, ver = install(" ".join(rest), vendor=do_vendor, report=report)
             print(f"已安装 {name} {ver} → {os.path.join(CACHE_DIR, name)}")
-            print("已在项目 impor.toml 声明依赖，并刷新 impor.lock")
+            if report.get("no_project"):
+                print("未检测到 impor.toml：只装入缓存，未生成任何配置文件。")
+                print("要装完即可 import：先在项目目录运行 impor pkg init，再执行本命令；")
+                print("或临时用 import_path(\"%s\") 手动加入搜索路径。" % os.path.join(CACHE_DIR, name))
+            else:
+                print("已在项目 impor.toml 声明依赖，并刷新 impor.lock")
+                if report.get("vendored"):
+                    print(f"已 vendor 到 {report['vendored']}（搜索路径 {report.get('vendor_root')}）")
+                    if report.get("import_name"):
+                        print(f"现在即可直接使用：import {report['import_name']}")
+                    else:
+                        print("包内没有唯一可导入模块，请检查包结构（<name>.impor 或 __pkg__.impor）")
+                else:
+                    print("已跳过 vendor（--no-vendor）：仅缓存，运行时需 import_path 才可用")
             return 0
         if sub == "remove":
             if len(args) < 2:
@@ -1137,9 +1393,30 @@ def main_pkg(args):
             print(f"私有源: {url}")
             print("令牌: " + ("已配置（不显示）" if token else "未配置（公开源或允许匿名）"))
             return 0
+        if sub == "search":
+            kw = None
+            for a in args[1:]:
+                if not a.startswith("--"):
+                    kw = a
+                    break
+            hits = search(kw or "")
+            if not hits:
+                print("本地没有匹配的包（已扫过缓存目录与项目的 *.zip）")
+                return 0
+            for h in hits:
+                print("  %-20s %-10s  [%s]  %s" % (h["name"], h["version"], h["kind"], h["path"]))
+            print("共 %d 个" % len(hits))
+            return 0
         if sub == "upgrade":
-            updated = upgrade(args[1] if len(args) > 1 and not args[1].startswith("--") else None)
+            report = {}
+            updated = upgrade(args[1] if len(args) > 1 and not args[1].startswith("--") else None,
+                              report=report)
             print(f"共升级 {len(updated)} 个包")
+            rev = report.get("revendored") or []
+            if rev:
+                print(f"已同步刷新 {len(rev)} 份项目内 vendor 副本")
+            elif updated:
+                print("（项目内没有 vendor 副本，仅更新了全局缓存）")
             return 0
         if sub == "pack":
             rest = _cli_positionals(args[1:], {"--out"})

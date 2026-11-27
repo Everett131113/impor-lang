@@ -5,10 +5,10 @@ Impor (I++) 词法分析器。
 Token 类型：
   OP, NUM, STR, ID, KEY, EOF, INDENT, DEDENT, NEWLINE
 
-关键字（真正的保留字）：
-  if else elseif while for in def func var set return true false
+关键字（真正的保留字，v4.0.0 共 55 个）：
+  if else elseif while for in def var set return true false
   and or not break continue import as try catch finally nonlocal
-  global class new super exception raise loop exit cls
+  global class new super exception raise exit cls
 
 说明：
   - 支持 // 与 # 单行注释，/* */ 多行注释（可跨行）
@@ -50,18 +50,18 @@ TOK_DOC = "DOC"    # v3.5 文档注释：以 `##` 开头的整行，供 hover / 
 
 KEYWORDS = {
     "if", "else", "elseif", "while", "for", "in",
-    "def", "func", "var", "set", "return",
+    "def", "var", "set", "return",
     "true", "false", "and", "or", "not",
     "break", "continue", "import", "as",
     "try", "catch", "finally",
     "nonlocal", "global", "class", "new", "super",
-    "exception", "raise", "loop", "exit", "cls",
+    "exception", "raise", "exit", "cls",
     "from", "export", "assert", "use",
     "yield", "with",  # v3.8.4：保留但未实现，语法阶段必须明确拒绝
     "const", "switch",  # v2.17：只读常量声明；match 的 C 风格别名
     # v2.18：新增关键字（目标 120 个保留字）——别名 / 字面量 / 预留特性
     # 注：fn / repeat 为软关键字（语句位置特殊解析，其他位置可作标识符，避免撞 std 模块与内建）
-    "local", "elif", "until",
+    "elif", "until",
     "case", "default", "nil", "null", "none",
     # v3.7.2：以下 6 个改为软关键字（仍保留语法，但可作标识符）。
     # 从 KEYWORDS 移除后，parser 按上下文判断，未命中语法时按普通 ID 处理。
@@ -72,24 +72,32 @@ KEYWORDS = {
     "sealed",
 }
 
+# v4.0.0：已删除的历史关键字。不再进入 KEYWORDS，但也不允许被当作标识符，
+# 否则 `let x = 1` 会被拆成两个语句而静默“成功”。
+REMOVED_KEYWORDS = frozenset({"func", "loop", "local", "let", "then", "unless", "do"})
+
 # v3.7.2：同义关键字收敛。左边是 deprecated 别名，右边是唯一推荐主写法。
 # fmt 只输出主写法；LSP 补全只推主写法；规范/教程/conformance 以主写法为准。
 DEPRECATED_ALIASES = {
-    "func": "def",
     "elseif": "elif",
     "switch": "match",
-    "loop": "while",
-    "let": "var",
 }
 DEPRECATED_KEYWORDS = frozenset(DEPRECATED_ALIASES)
 CANONICAL_KEYWORDS = frozenset((KEYWORDS - DEPRECATED_KEYWORDS)
                                | set(DEPRECATED_ALIASES.values()))
 # v3.7.2：软关键字——保留语法语义，但不在词法层封锁，可作普通标识符。
-SOFT_KEYWORDS = frozenset({"static", "readonly", "async", "await", "this", "defer"})
+# 4.9.1：`have` 加入（`x have int`）—— 它只在比较位置生效，所以仍是软关键字。
+SOFT_KEYWORDS = frozenset({"static", "readonly", "async", "await", "this", "defer",
+                           "have"})
 # 其中只有 static / readonly / this 有可用语义（const 别名 / self 别名）；
+# 4.9.1：have 已有完整语义（类型判定，三后端支持），同属 IMPLEMENTED。
 # async / await / defer 尚未实现，必须在语法阶段拒绝，不能静默当标识符。
-IMPLEMENTED_SOFT_KEYWORDS = frozenset({"static", "readonly", "this"})
+IMPLEMENTED_SOFT_KEYWORDS = frozenset({"static", "readonly", "this", "have"})
 UNIMPLEMENTED_SOFT_KEYWORDS = frozenset({"async", "await", "defer"})
+# 高亮与补全用的「视觉关键字」：硬关键字 + 有语义的软关键字。
+# 和 KEYWORDS 分开是故意的 —— `have` 不能进 KEYWORDS（否则 `var have = 1` 会坏），
+# 但编辑器必须把它染成关键字色，否则用户看不出这是语法。
+HIGHLIGHT_KEYWORDS = frozenset(KEYWORDS | IMPLEMENTED_SOFT_KEYWORDS)
 # 预留但无运行时语义的保留字：出现即拒绝，避免“写了像支持”的静默接受。
 UNIMPLEMENTED_RESERVED_KEYWORDS = frozenset({
     "interface", "namespace", "abstract", "override", "implements", "sealed",
@@ -142,6 +150,7 @@ def unescape_impor(s):
 def _scan_number(s, i, n):
     buf = []
     seen_dot = False
+    seen_exp = False
     while i < n:
         c = s[i]
         if c.isdigit():
@@ -149,15 +158,27 @@ def _scan_number(s, i, n):
         elif c == '_' and i + 1 < n and s[i + 1].isdigit():
             # v2.17 数字下划线：1_000_000 → 1000000（_ 不得出现在数字尾部/小数点后）
             i += 1
-        elif c == '.' and not seen_dot and i + 1 < n and s[i + 1] != '.':
+        elif c == '.' and not seen_dot and not seen_exp and i + 1 < n and s[i + 1] != '.':
             # v3.4：`1..5` 不把第一个点当小数点（否则会被拆成 1.0 与 .5）
             seen_dot = True; buf.append(c); i += 1
+        elif c in ('e', 'E') and not seen_exp:
+            # 科学计数法：1e3、2.5E-4、1_000e+2；e 后必须有数字（可带正负号）
+            j = i + 1
+            if j < n and s[j] in ('+', '-'):
+                j += 1
+            if j < n and s[j].isdigit():
+                seen_exp = True
+                buf.append(c); i += 1
+                if s[i] in ('+', '-'):
+                    buf.append(s[i]); i += 1
+            else:
+                break
         else:
             break
     text = "".join(buf)
     if text == ".":
         return ".", i
-    val = int(text) if not seen_dot else float(text)
+    val = float(text) if (seen_dot or seen_exp) else int(text)
     return val, i
 
 
@@ -278,6 +299,17 @@ def _scan_line(tokens, s, line_no):
                 buf.append(s[i]); i += 1
             word = "".join(buf)
             src_word = word
+            if word in REMOVED_KEYWORDS:
+                fixed = {
+                    "func": "def", "loop": "while true", "local": "var",
+                    "let": "var", "then": "冒号或大括号块", "unless": "if not",
+                    "do": "while true 或 for in",
+                }[word]
+                raise ImporSyntaxError(
+                    "`%s` 是 v4.0.0 已删除的历史写法" % word,
+                    line_no, col0,
+                    hint="改用唯一写法：%s" % fixed,
+                )
             if word in KEYWORDS:
                 word_out, t = word, TOK_KEY
             elif legacy_cn_enabled() and word in CN_TO_EN:

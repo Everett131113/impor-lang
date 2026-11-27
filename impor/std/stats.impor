@@ -1,0 +1,131 @@
+// std/stats.impor — 统计工具（纯算术，纯 Impor 实现，三端一致）
+// 使用：use std.stats  或  import std.stats → std.stats.mean(lst)
+//
+// 全部函数接受数字列表，空列表统一返回 0（Impor 无 null 字面量，
+// 与 std.mathx 的 sum/avg/min_of 保持同一口径）。
+
+def mean(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var total = 0
+    for x in lst {
+        total += x
+    }
+    return total / len(lst)
+}
+
+def median(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var sorted = sort_numbers(lst)
+    var n = len(sorted)
+    var mid = div(n, 2)
+    if n % 2 == 0 {
+        return(sorted[mid - 1] + sorted[mid]) / 2
+    }
+    return sorted[mid]
+}
+
+def variance(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var m = mean(lst)
+    var acc = 0
+    for x in lst {
+        var d = x - m
+        acc += d * d
+    }
+    return acc / len(lst)
+}
+
+def stddev(lst) {
+    return sqrt(variance(lst))
+}
+
+// 牛顿迭代求平方根（float）。mathx 里没有 sqrt，这里自带一份，避免跨模块依赖。
+def sqrt(x) {
+    if x <= 0 {
+        return 0
+    }
+    var g = x
+    if g > 1.0 {
+        g = g / 2.0
+    }
+    var i = 0
+    while i < 40 {
+        g =(g + x / g) / 2.0
+        i += 1
+    }
+    return g
+}
+
+// 众数：出现次数最多的值，并列时取先出现的。
+def mode(lst) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var best = lst[0]
+    var best_count = 0
+    for x in lst {
+        var c = 0
+        for y in lst {
+            if y == x {
+                c += 1
+            }
+        }
+        if c > best_count {
+            best_count = c
+            best = x
+        }
+    }
+    return best
+}
+
+// 百分位（p 取 0..100），线性插值。
+def percentile(lst, p) {
+    if len(lst) == 0 {
+        return 0
+    }
+    var sorted = sort_numbers(lst)
+    var n = len(sorted)
+    if p <= 0 {
+        return sorted[0]
+    }
+    if p >= 100 {
+        return sorted[n - 1]
+    }
+    var idx = p *(n - 1) / 100.0
+    var lo = int(idx)
+    var hi = lo + 1
+    if hi >= n {
+        return sorted[n - 1]
+    }
+    var frac = idx - lo
+    return sorted[lo] *(1 - frac) + sorted[hi] * frac
+}
+
+def sort_numbers(lst) {
+    var out = arrdup(lst)
+    var i = 1
+    while i < len(out) {
+        var key = out[i]
+        var j = i - 1
+        while j >= 0 and out[j] > key {
+            out[j + 1] = out[j]
+            j -= 1
+        }
+        out[j + 1] = key
+        i += 1
+    }
+    return out
+}
+
+export mean
+export median
+export variance
+export stddev
+export mode
+export percentile

@@ -1,0 +1,19 @@
+// std/process.impor — 调外部命令（走 system()，只拿退出码，不抓输出）
+// 口径：拿不到 stdout/stderr；需要输出请让命令自己重定向到文件，再用 std.fs 读。
+
+def run(cmd) {
+    return system(cmd)
+}
+
+def ok(cmd) {
+    return system(cmd) == 0
+}
+
+def run_or_fail(cmd) {
+    // C 后端不支持 throw：失败时返回非 0 退出码，由调用方判断。
+    return system(cmd)
+}
+
+export run
+export ok
+export run_or_fail

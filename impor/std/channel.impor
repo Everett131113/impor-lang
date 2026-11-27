@@ -1,0 +1,200 @@
+// std/channel.impor — 通道（v4.3.1：条件变量版）
+// 用法：import std.channel as ch  →  var c = ch.make(0)
+//
+// 语义（四端一致：解释器 / Python 转译 / C 后端 gcc / 内置 tcc）：
+// - cap <= 0 表示无界；cap > 0 表示最多缓存 cap 个，满了发送方**挂起**等待
+// - 收空且未关闭时**挂起**等待，由发送方唤醒（v4.3 的 1 ms 轮询已删除）
+// - recv 在「已关闭且已排空」时返回 ch.empty()，用 ch.is_empty(v) 判断；
+//   载荷不要用这个哨兵值（它是普通字符串常量）
+// - recv_timeout(c, ms) 超时返回 [false, empty()]，取到返回 [true, 值]
+// - 底层是 mutex 保护的队列 + 原子计数 + 条件变量；列表本身不加锁读写属未定义行为
+
+def make(cap) {
+    return {
+        "cap": cap,
+        "items": [],
+        "head": 0,
+        "lock": mutex_new(),
+        "cond": cond_new(),
+        "size": atomic_new(0),
+        "closed": atomic_new(0),
+        "sends": atomic_new(0),
+        "recvs": atomic_new(0)
+    }
+}
+
+def size(c) {
+    return atomic_load(c["size"])
+}
+
+def is_closed(c) {
+    return atomic_load(c["closed"]) > 0
+}
+
+def close(c) {
+    mutex_lock(c["lock"])
+    atomic_store(c["closed"], 1)
+    cond_notify_all(c["cond"])
+    mutex_unlock(c["lock"])
+    return true
+}
+
+def empty() {
+    return "::impor-channel-empty::"
+}
+
+def is_empty(v) {
+    return v == empty()
+}
+
+def send(c, v) {
+    mutex_lock(c["lock"])
+    var cap = c["cap"]
+    while cap > 0 and atomic_load(c["size"]) >= cap and atomic_load(c["closed"]) == 0 {
+        cond_wait(c["cond"], c["lock"])
+    }
+    if atomic_load(c["closed"]) > 0 {
+        mutex_unlock(c["lock"])
+        return false
+    }
+    c["items"] = arrappend(c["items"], v)
+    atomic_add(c["size"], 1)
+    atomic_add(c["sends"], 1)
+    cond_notify(c["cond"])
+    mutex_unlock(c["lock"])
+    return true
+}
+
+def try_recv(c) {
+    mutex_lock(c["lock"])
+    var got = false
+    var v = empty()
+    if c["head"] < len(c["items"]) {
+        v = c["items"][c["head"]]
+        c["head"] = c["head"] + 1
+        atomic_sub(c["size"], 1)
+        atomic_add(c["recvs"], 1)
+        got = true
+        cond_notify(c["cond"])
+    }
+    mutex_unlock(c["lock"])
+    if got {
+        return[true, v]
+    }
+    return[false, empty()]
+}
+
+def recv(c) {
+    mutex_lock(c["lock"])
+    while c["head"] >= len(c["items"]) and atomic_load(c["closed"]) == 0 {
+        cond_wait(c["cond"], c["lock"])
+    }
+    var v = empty()
+    if c["head"] < len(c["items"]) {
+        v = c["items"][c["head"]]
+        c["head"] = c["head"] + 1
+        atomic_sub(c["size"], 1)
+        atomic_add(c["recvs"], 1)
+        cond_notify(c["cond"])
+    }
+    mutex_unlock(c["lock"])
+    return v
+}
+
+def recv_timeout(c, ms) {
+    var t0 = clock()
+    mutex_lock(c["lock"])
+    while c["head"] >= len(c["items"]) and atomic_load(c["closed"]) == 0 {
+        var left = ms -(clock() - t0) * 1000
+        if left <= 0 {
+            mutex_unlock(c["lock"])
+            return[false, empty()]
+        }
+        cond_wait_ms(c["cond"], c["lock"], left)
+    }
+    var got = false
+    var v = empty()
+    if c["head"] < len(c["items"]) {
+        v = c["items"][c["head"]]
+        c["head"] = c["head"] + 1
+        atomic_sub(c["size"], 1)
+        atomic_add(c["recvs"], 1)
+        got = true
+        cond_notify(c["cond"])
+    }
+    mutex_unlock(c["lock"])
+    return[got, v]
+}
+
+def drain(c) {
+    var out = []
+    var r = try_recv(c)
+    while r[0] {
+        out = arrappend(out, r[1])
+        r = try_recv(c)
+    }
+    return out
+}
+
+def stats(c) {
+    return[atomic_load(c["sends"]), atomic_load(c["recvs"]), atomic_load(c["size"])]
+}
+
+def select(chans, ms) {
+    // 4.5：多路复用。ms < 0 表示无限等待，ms >= 0 为总超时（毫秒）。
+    // 返回 [索引, 值]；超时或所有通道都已关闭且排空时返回 [-1, empty()]。
+    // 实现：对每个通道轮转 recv_timeout(1 ms)，靠条件变量让出 CPU，不自杀式忙等。
+    var t0 = clock()
+    while true {
+        var i = 0
+        for c in chans {
+            var r = recv_timeout(c, 1)
+            if r[0] {
+                return[i, r[1]]
+            }
+            set i = i + 1
+        }
+        var any_open = false
+        for c in chans {
+            if not is_closed(c) {
+                set any_open = true
+            }
+        }
+        if not any_open {
+            return[-1, empty()]
+        }
+        if ms >= 0 {
+            if(clock() - t0) * 1000 >= ms {
+                return[-1, empty()]
+            }
+        }
+    }
+}
+
+def select_now(chans) {
+    // 单趟非阻塞探测：命中即返回 [索引, 值]，否则 [-1, empty()]。
+    var i = 0
+    for c in chans {
+        var r = try_recv(c)
+        if r[0] {
+            return[i, r[1]]
+        }
+        set i = i + 1
+    }
+    return[-1, empty()]
+}
+
+export make
+export empty
+export is_empty
+export size
+export is_closed
+export close
+export send
+export recv
+export recv_timeout
+export try_recv
+export drain
+export stats
+export select
+export select_now

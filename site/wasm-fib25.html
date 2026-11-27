@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Impor × WebAssembly · fib25.impor</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 32px; background: #12151c; color: #e6e9ef;
+         font-family: "Cascadia Code", Consolas, monospace; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; letter-spacing: .5px; }
+  .sub { color: #7f8899; font-size: 13px; margin-bottom: 20px; }
+  pre { background: #1a1f29; border: 1px solid #262c38; border-radius: 10px;
+        padding: 18px; font-size: 14px; line-height: 1.6; margin: 0;
+        white-space: pre-wrap; min-height: 40px; }
+  .foot { margin-top: 14px; color: #6b7484; font-size: 12px; }
+  .err { color: #ff7b72; }
+</style>
+</head>
+<body>
+<h1>fib25.impor</h1>
+<div class="sub">由 Impor 4.8 直接编译成 WebAssembly（手写二进制，无 LLVM）。</div>
+<pre id="out">载入中…</pre>
+<div class="foot" id="meta"></div>
+<script>
+const B64 = "AGFzbQEAAAABGAVgAn5+AX5gAX4BfmAAAGABfgBgAn9/AAJRBQNlbnYLcHJpbnRfYmVnaW4AAgNlbnYJcHJpbnRfaTY0AAMDZW52CXByaW50X3N0cgAEA2VudghwcmludF9ubAACA2VudghvdmVyZmxvdwACAwgHAAAAAQABAgUDAQABBgEABxMCBl9zdGFydAALBm1lbW9yeQIACroCBzsBAX4gACABfCECIAJCAFMgAEIAVXEgAUIAVXEEQBAEAAsgAkIAVSAAQgBTcSABQgBTcQRAEAQACyACCzsBAX4gACABfSECIAJCAFMgAEIAU3EgAUIAVXEEQBAEAAsgAkIAVSAAQgBVcSABQgBTcQRAEAQACyACCzwBAX4gACABfiECIAFQBEAFIABCf1EgAUKAgICAgICAgIB/UXEEQBAEAAsgAiABfyAAUgRAEAQACwsgAgshAQF+IABCAH0hASAAQoCAgICAgICAgH9RBEAQBAALIAELLwEBfiABUARAAAsgACABgSECIAJCAFIgAkIAUyABQgBTc3EEQCACIAF8IQILIAILJAAgAEICUwRAIAAPBQsgAEIBEAYQCiAAQgIQBhAKEAUPQgAPCwwAEABCGRAKEAEQAwsLBwEAQYAICwA=";
+const bytes = Uint8Array.from(atob(B64), c => c.charCodeAt(0));
+const lines = [], errs = [], out = document.getElementById('out');
+let inst = null;
+const imports = { env: {
+  print_begin() { lines.length = lines.length; },
+  print_i64(v) { lines.push(String(v)); },
+  print_str(p, l) {
+    const m = new Uint8Array(inst.exports.memory.buffer, p, l);
+    lines.push(new TextDecoder('utf-8').decode(m));
+  },
+  print_nl() { out.textContent += lines.join(' ') + '\n'; lines.length = 0; },
+  overflow() { errs.push('ImporE1012 整数溢出'); }
+}};
+WebAssembly.instantiate(bytes, imports).then(r => {
+  inst = r.instance;
+  out.textContent = '';
+  inst.exports._start();
+  if (errs.length) { out.textContent += errs.join('\n') + '\n'; }
+  document.getElementById('meta').textContent =
+    'wasm ' + bytes.length + ' 字节 · 函数 ' + 7 + ' 个 · 全局 ' + 0 + ' 个';
+}).catch(e => {
+  out.innerHTML = '<span class="err">' + e.message + '</span>';
+});
+</script>
+</body>
+</html>

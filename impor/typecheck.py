@@ -127,6 +127,7 @@ class TypeChecker:
         self._enum_var_types = {}
         self._classes = {}
         self._class_stack = []
+        self._generics = {}   # 4.2：泛型函数名 -> {tparams, raw 注解表}
 
     def check(self, source, path=""):
         self.issues = []
@@ -136,6 +137,7 @@ class TypeChecker:
         self._enum_var_types = {}
         self._classes = {}
         self._class_stack = []
+        self._generics = {}
         try:
             body = strip_header(source)
             tree = Parser(tokenize(body)).program()
@@ -153,7 +155,46 @@ class TypeChecker:
                     pre[s.name] = normalize_type(s.typ)
             env = {k: v for k, v in pre.items() if v}
         self._walk(tree, env, {})
+        self._check_generic_calls(tree)
         return self.issues
+
+    def _check_generic_calls(self, tree):
+        """4.2：泛型调用点一致性检查（声明期约束、运行期擦除）。
+
+        把实参的字面量类型绑定到类型参数：`max2(3, 9)` → T=int。
+        同一类型参数在同一次调用里绑成两种类型（`max2(1, "a")`）直接报错；
+        变量/表达式实参静态判不出来，跳过，与既有「注解不强制运行时」口径一致。
+        """
+        if not self._generics:
+            return
+        for node in _iter_nodes(tree):
+            if not isinstance(node, Call):
+                continue
+            callee = node.callee
+            if not isinstance(callee, Var):
+                continue
+            g = self._generics.get(callee.name)
+            if not g:
+                continue
+            bound = {}
+            for i, arg in enumerate(node.args or []):
+                if i >= len(g["raw"]):
+                    break
+                tp = g["raw"][i]
+                if tp not in g["tparams"]:
+                    continue
+                lt = _lit_type(arg)
+                if not lt:
+                    continue
+                if tp in bound and bound[tp] != lt:
+                    self.issues.append(TypeIssue(
+                        getattr(arg, "lineno", 0) or node.lineno,
+                        getattr(arg, "col", 1) or 1, "generic-mismatch",
+                        "泛型参数 %s 在本调用里既绑成 %s 又绑成 %s；Impor 泛型是"
+                        "声明期约束、运行期擦除，同一调用必须同型（混型请先显式转换）"
+                        % (tp, bound[tp], lt)))
+                else:
+                    bound[tp] = lt
 
     def _collect(self, node):
         """收集本文件函数签名与 enum 成员（跨文件仍交给 ProjectIndex）。"""
@@ -166,13 +207,19 @@ class TypeChecker:
                 self._collect(st)
             return
         if isinstance(node, Def):
-            ptypes = [normalize_type(x) for x in (getattr(node, "param_types", []) or [])]
+            tparams = set(getattr(node, "type_params", []) or [])
+            raw = [normalize_type(x) for x in (getattr(node, "param_types", []) or [])]
+            # 4.2：泛型类型参数在静态检查里等价于「任意类型」（运行期是擦除的）
+            ptypes = [("?" if x in tparams else x) for x in raw]
             if len(ptypes) < len(node.params or []):
                 ptypes += [""] * (len(node.params or []) - len(ptypes))
+            ret = normalize_type(getattr(node, "ret_type", ""))
             self._sigs.setdefault(node.name, {
                 "params": ptypes,
-                "ret": normalize_type(getattr(node, "ret_type", "")),
+                "ret": "?" if ret in tparams else ret,
             })
+            if tparams:
+                self._generics[node.name] = {"tparams": tparams, "raw": raw}
             self._collect(node.body)
             return
         if isinstance(node, ClassDef):

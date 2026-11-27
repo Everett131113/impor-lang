@@ -1,0 +1,6 @@
+// bench/suite/nested1m.impor —— 双层循环，测循环建立开销
+var n = 0
+for i in range(1000)
+    for j in range(1000)
+        n = n + 1
+print(n)

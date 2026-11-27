@@ -1,0 +1,110 @@
+// std/metrics.impor — 进程内指标登记（counter / gauge / 直方图摘要）
+// 用途：给服务写 /metrics 前的本地聚合；不做导出格式。
+
+var COUNTERS = { }
+var GAUGES = { }
+var SAMPLES = { }
+
+def has_key(d, k) {
+    for x in d {
+        if x == k {
+            return true
+        }
+    }
+    return false
+}
+
+def reset() {
+    set COUNTERS = { }
+    set GAUGES = { }
+    set SAMPLES = { }
+    return true
+}
+
+def inc(name, delta) {
+    if has_key(COUNTERS, name) {
+        COUNTERS[name] = COUNTERS[name] + delta
+    } else {
+        COUNTERS[name] = delta
+    }
+    return COUNTERS[name]
+}
+
+def counter(name) {
+    if has_key(COUNTERS, name) {
+        return COUNTERS[name]
+    }
+    return 0
+}
+
+def gauge(name, v) {
+    GAUGES[name] = v
+    return v
+}
+
+def gauge_value(name) {
+    if has_key(GAUGES, name) {
+        return GAUGES[name]
+    }
+    return 0
+}
+
+def observe(name, v) {
+    if has_key(SAMPLES, name) {
+        arrappend(SAMPLES[name], v)
+    } else {
+        SAMPLES[name] = [v]
+    }
+    return len(SAMPLES[name])
+}
+
+def samples(name) {
+    if has_key(SAMPLES, name) {
+        return SAMPLES[name]
+    }
+    return[]
+}
+
+def summarize(name) {
+    var xs = samples(name)
+    var n = len(xs)
+    if n == 0 {
+        return[0, 0, 0, 0]
+    }
+    var total = 0
+    var lo = xs[0]
+    var hi = xs[0]
+    for x in xs {
+        set total = total + x
+        if x < lo {
+            set lo = x
+        }
+        if x > hi {
+            set hi = x
+        }
+    }
+    return[n, total / n, lo, hi]
+}
+
+def dump() {
+    for k in COUNTERS {
+        print("counter " + k + " = " + str(COUNTERS[k]))
+    }
+    for k in GAUGES {
+        print("gauge " + k + " = " + str(GAUGES[k]))
+    }
+    for k in SAMPLES {
+        print("hist " + k + " = " + str(len(SAMPLES[k])))
+    }
+    return true
+}
+
+export reset
+export inc
+export counter
+export gauge
+export gauge_value
+export observe
+export samples
+export summarize
+export dump

@@ -1,0 +1,60 @@
+// channels.impor — 通道 + 线程池（v4.3）
+// 跑法：impor run examples/channels.impor
+//       impor compile examples/channels.impor -o channels.py && py -3 channels.py
+//       impor build   examples/channels.impor -o channels.exe && channels.exe
+//
+// 输出（解释器 / 转译 / C 后端 / 32 位 tcc 一致，worker 分派数量不保证相同）：
+//   sent: 20
+//   sum: 210
+//   stats: [20, 20, 0]
+//   workers: 4
+//   done: 16
+
+import std.channel as ch
+import std.pool as pool
+
+// 有缓冲通道：cap = 4，满了发送方自旋等待
+var c = ch.make(4)
+
+def produce() {
+    var i = 0
+    while i < 20 {
+        ch.send(c, i + 1)
+        i += 1
+    }
+    ch.close(c)
+    return 20
+}
+
+def consume() {
+    var sum = 0
+    var v = ch.recv(c)
+    while not ch.is_empty(v) {
+        set sum = sum + v
+        set v = ch.recv(c)
+    }
+    return sum
+}
+
+var hp = thread_spawn(produce)
+var hc = thread_spawn(consume)
+print("sent:", thread_join(hp))
+print("sum:", thread_join(hc))
+print("stats:", ch.stats(c))
+
+// 线程池：4 个常驻 worker 从内部通道取任务
+var p = pool.new_pool(4)
+var counter = atomic_new(0)
+
+def job() {
+    atomic_add(counter, 1)
+    return 1
+}
+
+var k = 0
+while k < 16 {
+    pool.submit(p, job)
+    k += 1
+}
+print("workers:", len(pool.shutdown(p)))
+print("done:", atomic_load(counter))

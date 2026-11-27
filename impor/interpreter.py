@@ -17,6 +17,7 @@ Impor (I++) 解释器。
 
 import os
 import sys
+import threading
 import time
 
 from .ast_nodes import (
@@ -26,7 +27,7 @@ from .ast_nodes import (
     ListLit, DictLit, IndexGet, IndexSet, Slice, ImportNode, FromImportNode,
     ExportNode, Block, Defer, TryCatch,
     ClassDef, ExceptionDef, Raise, AssertNode, MatchNode, BindingPattern, AdtPattern, Lambda,
-    Await,
+    Await, TypeTest,
 )
 from .lexer import tokenize
 from .parser import Parser
@@ -56,6 +57,11 @@ class ReturnExc(Exception):
 class Closure:
     __slots__ = ("params", "body", "outer_env", "bound_self", "bound_cls",
                  "is_method", "is_async", "interp", "name", "tail_expr", "head_len")
+
+    # 4.2：解释器本身不是重入的（cur_env / call_stack 是实例属性），
+    # 所以 thread_spawn 会给每个线程准备一份执行副本放进这个线程局部槽；
+    # Closure 调用时优先用副本，避免两个线程互相踩 cur_env。
+    _thread_interp = threading.local()
     def __init__(self, params, body, outer_env, interp=None, name=None):
         self.params = params
         self.body = body
@@ -75,7 +81,7 @@ class Closure:
         if len(args) != len(self.params):
             raise ImporException("CallError",
                                  f"函数需要 {len(self.params)} 个参数，给了 {len(args)} 个", 0)
-        interp = self.interp
+        interp = getattr(Closure._thread_interp, "inst", None) or self.interp
         if interp is None:
             from .runtime import _get_interp
             interp = _get_interp()
@@ -334,15 +340,18 @@ class Env:
             cur = cur.outer
         raise ImporException("ScopeError", f"nonlocal：找不到外层局部变量 '{name}'")
 
-    def update_nearest(self, name, value):
-        """复合赋值：就近更新找到的绑定；找不到则写入当前环境。"""
+    def update_nearest(self, name, value, lineno=0, col=0):
+        """更新已存在的绑定；找不到就报 NameError，绝不静默创建变量。"""
         cur = self
         while cur is not None:
             if name in cur.store:
                 cur.store[name] = value
                 return
             cur = cur.outer
-        self.store[name] = value
+        raise ImporException(
+            "NameError",
+            f"变量 {name} 未声明；首次赋值请写 `var {name} = ...`",
+            lineno, col=col)
 
     def has(self, name):
         cur = self
@@ -402,9 +411,16 @@ def wrap_py_error(e, lineno=0, col=0, filename=None):
     if isinstance(e, RecursionError):
         return ImporRuntimeError(
             "RecursionDeep",
-            "递归过深：超出解释器栈上限（约 3200 层）。请改用循环/迭代实现，"
-            "或减少递归深度", lineno, col, filename, cause=e)
+            "递归过深：超出解释器栈上限（默认约 3200 层，可用 --max-depth 调整）。"
+            "请改用循环/迭代实现，或减少递归深度", lineno, col, filename, cause=e)
     return ImporRuntimeError(type(e).__name__, str(e), lineno, col, filename, cause=e)
+
+
+# v4.1：C 后端（c_runtime.c 的 rt_ck_add/sub/mul 与 rt_neg）用 int64 上下界判定；
+# 解释器在 --int64 模式下用同一组常量与同一句文案，保证输出可逐字比对。
+I64_MIN = -9223372036854775808
+I64_MAX = 9223372036854775807
+I64_MSG = "整数溢出：超出 64 位有符号整数范围"
 
 
 # ---------------- 解释器 ----------------
@@ -412,9 +428,25 @@ class Interpreter:
     def __init__(self, log_cb=None, clear_cb=None, snapshot_cb=None,
                  sandbox_mode=False, gui_root=None, debug_mode=False,
                  debug_pause_callback=None, argv=None, filename=None,
-                 fast_mode=False):
+                 fast_mode=False, int64_mode=False, max_depth=None):
         self.fast_mode = bool(fast_mode)
         self._fast_disabled = False
+        # v4.1：后端对齐模式。False = Python 任意精度（默认，与 4.0.0 一致）；
+        # True = 与 C 后端同一 int64 语义：加减乘与字面量越界一律报 OverflowError[E1012]。
+        # 用 `impor run --int64` 打开，可在交付前把"两后端答案不一致"变成可检出的错误。
+        self.int64_mode = bool(int64_mode)
+        _depth_override = max_depth is not None
+        if max_depth is None:
+            raw = os.environ.get("IMPOR_MAX_DEPTH", "").strip()
+            _depth_override = raw.isdigit()
+            max_depth = int(raw) if _depth_override else 3200
+        self.max_depth = int(max_depth)
+        # 这两项都要精确控制语义，而 `_run_fast` 是把 AST 转成 Python 源码执行，
+        # 绕过了 visit_* 里的溢出与深度闸门，因此打开任一开关时关掉转译后端的快路径。
+        if self.int64_mode or _depth_override:
+            self.fast_mode = False
+        # 4.1：稳定性内核。None = 关闭（默认，行为与 4.0.0 一致）；打开后五道闸门生效。
+        self.stab = None
         self.global_env = Env()
         self.cur_env = self.global_env
         self.log_cb = log_cb
@@ -435,9 +467,10 @@ class Interpreter:
         # v3.7.8：defer 帧栈。函数/模块进入时压入一个列表，退出时按 LIFO 执行。
         self._defer_frames = []
 
-        # v3.7.1：树遍历与快速后端统一为 3200 层，避免脚本里有没有 class
-        # 改变递归上限。每层 Impor 调用约消耗 6-7 个 Python 帧，200000 帧覆盖 3200 层。
-        _REC_LIMIT = 200000
+        # v3.7.1：树遍历与快速后端统一为同一层数（默认 3200，可由
+        # --max-depth / IMPOR_MAX_DEPTH 覆盖），避免脚本里有没有 class 改变递归上限。
+        # 每层 Impor 调用约消耗 6-7 个 Python 帧，故 Python 帧上限按深度等比放宽。
+        _REC_LIMIT = max(200000, self.max_depth * 70)
         if sys.getrecursionlimit() < _REC_LIMIT:
             sys.setrecursionlimit(_REC_LIMIT)
         self._call_depth = 0
@@ -507,16 +540,27 @@ class Interpreter:
             MatchNode: self.visit_MatchNode, BindingPattern: self.visit_BindingPattern,
             AdtPattern: self.visit_AdtPattern,
             Lambda: self.visit_Lambda, Await: self.visit_Await,
+            TypeTest: self.visit_TypeTest,
         }
 
     # ---------- 运行入口 ----------
+    def enable_stability(self, limits=None):
+        """4.1：打开稳定性内核（额度/计量/围栏）。返回 Governor，便于读统计。"""
+        from .stability import enable as _enable
+        gov = _enable(self, limits)
+        return gov
+
     def run(self, node):
+        # 4.1：每次顶层执行重置额度；REPL/编辑器复用解释器不会被上一条命令拖累。
+        if self.stab is not None:
+            self.stab.begin()
         # v3.7.8：模块级 defer 帧。退出（正常/异常/exit）时按 LIFO 执行。
         frame = []
         self._defer_frames.append(frame)
         try:
             if (self.fast_mode and not self._fast_disabled and not self.debug_mode
                     and not self.coverage_enabled and self.snapshot_cb is None
+                    and self.stab is None
                     and self._fast_eligible(node)):
                 try:
                     self._run_fast(node)
@@ -570,11 +614,16 @@ class Interpreter:
                 # const / readonly / static 的只读语义由树遍历解释器兑现；
                 # 转译快速路径不认识 const，必须回退，否则 x = 6 会静默改写常量。
                 return False
+            if t.__name__ in ("Assign", "CompoundAssign") and getattr(cur, "scope", "") in (
+                    "update", "global", "nonlocal"):
+                # 更新/跨作用域赋值必须走树遍历：Python 直译会把“未声明变量”
+                # 静默创建成局部变量，破坏 v3.13 的严格声明语义。
+                return False
             if t.__name__ not in self._FAST_OK_NODES:
                 if t.__name__ in ("ImportNode", "FromImportNode", "ExportNode",
                                   "ClassDef", "ExceptionDef", "TryCatch", "Raise",
                                   "AssertNode", "MatchNode", "Await", "NewInstance",
-                                  "AttrGet", "AttrSet", "Pipe"):
+                                  "AttrGet", "AttrSet", "Pipe", "TypeTest"):
                     return False
                 continue
             for k, v in getattr(cur, "__dict__", {}).items():
@@ -680,6 +729,10 @@ class Interpreter:
 
     def _exec_stmt(self, node):
         """执行一条语句（语句位置统一入口，含调试检查与行覆盖）。"""
+        gov = self.stab
+        if gov is not None:
+            # 计数只落在语句入口：子表达式不计数，保证三后端步数可比。
+            gov.on_stmt(getattr(node, "lineno", 0), getattr(node, "col", 0))
         if self.debug_mode:
             self._dbg_check(node)
         if self.coverage_enabled:
@@ -751,7 +804,17 @@ class Interpreter:
 
     # ---------- 字面量 ----------
     def visit_Num(self, n):
+        # v4.1：--int64 模式下，字面量本身越界也要报错（C 后端同样编译期/运行期拒绝）。
+        if self.int64_mode:
+            return self._i64(n.val, n)
         return n.val
+
+    def _i64(self, v, n, col=None):
+        """int64 对齐模式的越界拦截：非 int 原样返回，越界抛 OverflowError[E1012]。"""
+        if type(v) is int and (v < I64_MIN or v > I64_MAX):
+            raise ImporException("OverflowError", I64_MSG, n.lineno,
+                                 col=(col if col is not None else getattr(n, "col", 0)))
+        return v
 
     def visit_Str(self, n):
         return n.val
@@ -840,6 +903,30 @@ class Interpreter:
                 return clo
             cur = cur.base
         return None
+
+    def visit_TypeTest(self, n):
+        """4.9.1：`x have int`。
+
+        判定口径就是运行期真实的类型标签（`typename()`），不做隐式转换：
+        1 have float 是 False，True have int 也是 False（bool 是独立类型）。
+        右侧除内建类型名外，也接受任意类名，用来判"是不是这个类的实例"。
+        """
+        v = self.visit(n.expr)
+        want = n.type_name
+        if want in ("int", "float", "str", "bool", "list", "dict",
+                    "class", "module", "func", "exception"):
+            return typename(v) == want
+        if want in ("object", "instance"):
+            return isinstance(v, ImporInstance)
+        if isinstance(v, ImporInstance):
+            cls = v.cls
+            while cls is not None:
+                if getattr(cls, "name", None) == want:
+                    return True
+                cls = getattr(cls, "base_cls", None) or getattr(cls, "base", None)
+            return False
+        raise ImporException("TypeError", "have 的类型名未知：%s" % want,
+                             n.lineno, col=n.col)
 
     def visit_AttrGet(self, n):
         obj = self.visit(n.obj_expr)
@@ -934,19 +1021,40 @@ class Interpreter:
         f = self.visit(rhs)
         return f(self.visit(n.left))
 
+    def _stab_repeat(self, l, r, lineno, col):
+        """4.1：字符串/数组重复在分配前预检（"x" * 10**8 是典型的瞬间爆内存）。"""
+        if self.stab is not None and isinstance(l, (str, list, tuple)) and type(r) is int:
+            size = len(l) * max(0, r)
+            self.stab.check_alloc(size, "重复拼接的字符串/数组", bytes_each=4,
+                                  lineno=lineno, col=col)
+
     def visit_BinOp(self, n):
         op = n.op
+        # 4.4：`and` / `or` 补上短路求值。此前 parser 已把 `&&`/`||` 归一成 `and`/`or`
+        # （见 parser.and_expr / or_expr），但树遍历路径没有对应分支，直接报
+        # “未知运算符 and/or”；IR 参考求值器的对拍把它暴露出来（tests/test_ir.py）。
+        # 短路语义必须在这里做，不能先求右值：`x != 0 and 1 / x > 1` 靠的就是这个顺序。
+        if op in ("and", "or"):
+            left = self.visit(n.left)
+            if op == "and":
+                return self.visit(n.right) if left else left
+            return left if left else self.visit(n.right)
         # v2.9 性能：双数字字面量快速路径，跳过两次 visit 查表
+        # v4.1：这条路径同样要过 int64 闸门，否则 `print(MAX + 1)` 会绕过溢出检查。
         l, r = n.left, n.right
         if type(l) is Num and type(r) is Num:
             a, b = l.val, r.val
+            _i64 = self.int64_mode
             try:
                 if op == "+":
-                    return a + b
+                    v = a + b
+                    return self._i64(v, n) if _i64 else v
                 if op == "-":
-                    return a - b
+                    v = a - b
+                    return self._i64(v, n) if _i64 else v
                 if op == "*":
-                    return a * b
+                    v = a * b
+                    return self._i64(v, n) if _i64 else v
                 if op == "/":
                     return a / b
                 if op == "%":
@@ -969,15 +1077,20 @@ class Interpreter:
         l = self.visit(n.left)
         r = self.visit(n.right)
         # v6.1 性能：整数热路径，跳过通用类型分派
+        # v4.1：int64 对齐模式只多一次属性读取与两次比较，关闭时等价于原热路径。
+        _i64 = self.int64_mode
         if type(l) is int and type(r) is int:
             if op == "+":
-                return l + r
+                v = l + r
+                return self._i64(v, n) if _i64 else v
             if op == "-":
-                return l - r
+                v = l - r
+                return self._i64(v, n) if _i64 else v
             if op == "<":
                 return l < r
             if op == "*":
-                return l * r
+                v = l * r
+                return self._i64(v, n) if _i64 else v
             if op == "/":
                 if r == 0:
                     raise ImporException("ZeroDivisionError", "division by zero",
@@ -1010,6 +1123,7 @@ class Interpreter:
             if op == "-":
                 return l - r
             if op == "*":
+                self._stab_repeat(l, r, n.lineno, n.col)
                 return l * r
             if op == "/":
                 return l / r
@@ -1041,9 +1155,10 @@ class Interpreter:
             if n.op in ("not", "!"):
                 return not c
             if n.op == "-":
-                return -c
+                # v4.1：-LLONG_MIN 在 C 侧报错，解释器 --int64 模式下同样拦截。
+                return self._i64(-c, n) if self.int64_mode else -c
             if n.op == "+":
-                return +c
+                return c
         except Exception as e:
             raise wrap_py_error(e, n.lineno, n.col, self.filename)
         raise ImporException("OpError", f"未知单目运算符 {n.op}", n.lineno, col=n.col)
@@ -1069,7 +1184,7 @@ class Interpreter:
             self.cur_env.set_nonlocal(n.name, v)
         elif n.scope == 'update':
             # v2.10：set 就近更新——沿作用域链更新已存在绑定；无则写入当前环境
-            self.cur_env.update_nearest(n.name, v)
+            self.cur_env.update_nearest(n.name, v, n.lineno, n.col)
         else:
             self.cur_env.set_local(n.name, v)
         return v
@@ -1096,12 +1211,14 @@ class Interpreter:
             res = old % nv
         else:
             raise ImporException("OpError", f"不支持 {n.op}", n.lineno, col=n.col)
+        if self.int64_mode:
+            res = self._i64(res, n)
         if n.scope == 'global':
             self.cur_env.set_global(n.name, res)
         elif n.scope == 'nonlocal':
             self.cur_env.set_nonlocal(n.name, res)
         else:
-            self.cur_env.update_nearest(n.name, res)
+            self.cur_env.update_nearest(n.name, res, n.lineno, n.col)
         return res
 
     # ---------- 语句 ----------
@@ -1213,7 +1330,9 @@ class Interpreter:
         return n._fast_plan
 
     def visit_While(self, n):
-        plan = self._fast_while(n) if not self.debug_mode else None
+        # 4.1：稳定模式必须禁用「快速循环计划」，否则一整段 while 在一个 Python 帧里
+        # 跑完几十万条 Impor 语句，计量器完全看不到（有闸门但闸门失效）。
+        plan = self._fast_while(n) if (not self.debug_mode and self.stab is None) else None
         if plan is not None:
             store = self.cur_env.store
             if all(name in store for name in n._fast_names) and \
@@ -1279,10 +1398,11 @@ class Interpreter:
         raise ReturnExc(self.visit(n.expr) if n.expr is not None else None)
 
     def _call_closure(self, f, args, n, kwargs=None):
-        if self._call_depth >= 3200:
-            raise wrap_py_error(RecursionError("Impor 调用深度超过 3200 层"),
-                                getattr(n, "lineno", 0), getattr(n, "col", 0),
-                                self.filename)
+        if self._call_depth >= self.max_depth:
+            raise wrap_py_error(
+                RecursionError("Impor 调用深度超过 %d 层（--max-depth）" % self.max_depth),
+                getattr(n, "lineno", 0), getattr(n, "col", 0),
+                self.filename)
         self._call_depth += 1
         old_env = self.cur_env
         old_self, old_cls = self._cur_self, self._cur_cls
@@ -1347,7 +1467,10 @@ class Interpreter:
         if callable(f):
             try:
                 return f(*args)
-            except ImporException:
+            except ImporException as e:
+                # 内建里抛出的错误没有行号（如分配闸门），在调用点补上，保证四段式诊断有位置
+                if not e.lineno:
+                    e.lineno, e.col = n.lineno, (e.col or n.col)
                 raise
             except Exception as e:
                 raise wrap_py_error(e, n.lineno, n.col, self.filename)
@@ -1647,6 +1770,15 @@ class Interpreter:
         import importlib
         name = n.modname
         target = n.alias or name
+        if name == "imporai":
+            # AI 数值包位于 impor.imporai，暴露为顶层名 imporai
+            try:
+                mod = importlib.import_module("impor.imporai")
+            except Exception as e:
+                raise ImporException("ImportError", f"导入 imporai 失败: {e}",
+                                     n.lineno, col=n.col)
+            self.cur_env.set_local(target, mod)
+            return mod
         if n.is_python:
             # 旧式 important.xxx → 宿主 Python 模块
             try:
@@ -1686,7 +1818,11 @@ class Interpreter:
         return mod
 
     def visit_FromImportNode(self, n):
-        target_mod = self._load_module(n.modname, n.rel_level, n.lineno)
+        if n.modname == "imporai":
+            import importlib
+            target_mod = importlib.import_module("impor.imporai")
+        else:
+            target_mod = self._load_module(n.modname, n.rel_level, n.lineno)
         if n.star:
             # from 模块 import * ：导入该模块所有对外符号
             if isinstance(target_mod, Module):
@@ -1918,10 +2054,12 @@ def strip_header(src, strict=False, warn=False):
         return stripped[len(HEADER_MARK):]
     if strict:
         raise ImporException("FormatError", f"缺少头部标记 {HEADER_MARK}")
-    if warn:
+    if warn and os.environ.get("IMPOR_HEADER_HINT", "").strip() in ("1", "true", "yes", "on"):
+        # v4.1：头部标记自 v2.3.1 起就只是可选版本标记；默认不再对每个新文件打提示，
+        # 需要旧行为时置 IMPOR_HEADER_HINT=1。版本标记的新家是 impor.toml。
         import sys as _sys
         print('Impor 提示: 未找到可选的头部标记 important<<DAY<<english("English"):'
-              '（不影响运行；建议首行添加以便标记版本）', file=_sys.stderr)
+              '（不影响运行；已不再推荐写进源码，版本信息请放 impor.toml）', file=_sys.stderr)
     return stripped
 
 

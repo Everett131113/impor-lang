@@ -99,10 +99,10 @@ def patch_stack(src, dst, reserve_bytes=8 * 1024 * 1024):
             data = f.read(opt + 0x100)
         magic = struct.unpack_from("<H", data, opt)[0]
         if magic == 0x10B:      # PE32
-            off = opt + 0x48
+            off = opt + 0x48    # SizeOfStackReserve
             fmt = "<I"
         elif magic == 0x20B:    # PE32+
-            off = opt + 0x30
+            off = opt + 0x48    # SizeOfStackReserve（PE32+ 同样是 0x48，仅宽度为 8）
             fmt = "<Q"
         else:
             raise SystemExit("unknown PE magic 0x%04x" % magic)

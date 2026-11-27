@@ -1,0 +1,10 @@
+var s = "ab" + "cd"
+print(s)
+var t = "x" * 3
+print(t)
+print(s == "abcd")
+print(s != "ab")
+var u = "hello"
+u += " world"
+print(u)
+print("a" + "b" + "c")

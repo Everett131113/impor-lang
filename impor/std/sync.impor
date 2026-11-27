@@ -1,0 +1,64 @@
+// std/sync.impor — 锁与条件变量（v4.3.1）
+// 用法：import std.sync as sy
+//
+// 这层不是新实现：它把内建的 mutex_* / cond_* 收成一套名字，
+// 让「锁 + 条件变量」有稳定的库级写法，不依赖内建名字背下来。
+//
+// 语义（四端一致）：
+// - make_lock / make_cond 返回整数句柄，跨种类不通用
+// - wait(cond, lock) 必须由**已持有 lock 的线程**调用：
+//   内部先释放 lock、挂起，被唤醒后重新持有 lock 才返回
+// - wait_ms(cond, lock, ms) 超时返回 false，被唤醒返回 true
+// - notify 唤醒一个等待者，notify_all 唤醒全部；没有等待者时通知丢失，
+//   条件状态（队列非空、任务完成）要调用方自己用变量记住
+
+def make_lock() {
+    return mutex_new()
+}
+
+def lock(h) {
+    mutex_lock(h)
+    return true
+}
+
+def unlock(h) {
+    mutex_unlock(h)
+    return true
+}
+
+def try_lock(h) {
+    return mutex_trylock(h)
+}
+
+def make_cond() {
+    return cond_new()
+}
+
+def wait(cond, h) {
+    cond_wait(cond, h)
+    return true
+}
+
+def wait_ms(cond, h, ms) {
+    return cond_wait_ms(cond, h, ms)
+}
+
+def notify(cond) {
+    cond_notify(cond)
+    return true
+}
+
+def notify_all(cond) {
+    cond_notify_all(cond)
+    return true
+}
+
+export make_lock
+export lock
+export unlock
+export try_lock
+export make_cond
+export wait
+export wait_ms
+export notify
+export notify_all

@@ -1,0 +1,9 @@
+# 内联用例 2：溢出报错位置。调用点在第 8 行，函数体在第 4 行。
+# 开内联报第 8 行（调用点）；IMPOR_NO_INLINE=1 时报第 4 行（函数体）。
+def mul2(x : int) -> int {
+    return x * 2
+}
+
+var big : int = 9223372036854775807
+var r : int = mul2(big)
+print(r)

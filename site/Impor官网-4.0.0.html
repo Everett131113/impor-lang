@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impor (I++) 4.0.0 — 写下来，编译它，交付出去</title>
+<meta name="description" content="Impor (I++) 4.0.0 发布页：编译产物与 C 并列的实测数据、自举编译器支持花括号块、四条可用性缺陷的修复记录，以及照实写的边界。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2314181b'/%3E%3Ctext x='7' y='24' font-family='Consolas,monospace' font-size='20' fill='%23e8e4d9'%3E4%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#faf9f5;
+  --ink:#14181b;
+  --ink-soft:#5a6169;
+  --rule:#d8d5cc;
+  --blue:#17456e;
+  --rust:#a53a26;
+  --mono:"Cascadia Mono","Consolas","SF Mono",monospace;
+  --sans:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+  --serif:"Source Han Serif SC","Songti SC",SimSun,serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.7;
+  letter-spacing:.01em;
+}
+.wrap{max-width:960px;margin:0 auto;padding:28px 20px 64px}
+.rule{height:1px;background:var(--rule);border:0;margin:0}
+
+/* ---------- 头部 ---------- */
+.masthead{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;padding-bottom:10px;border-bottom:2px solid var(--ink)}
+.brand{font-family:var(--mono);font-size:15px;letter-spacing:.06em}
+.brand b{font-weight:700}
+.masthead nav{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--ink-soft)}
+.masthead nav a{color:inherit;text-decoration:none;border-bottom:1px solid var(--rule)}
+.masthead nav a:hover{border-bottom-color:var(--ink);color:var(--ink)}
+
+/* ---------- hero ---------- */
+.hero{padding:44px 0 28px;display:grid;gap:26px}
+@media (min-width:768px){.hero{grid-template-columns:minmax(0,1.35fr) minmax(0,.9fr);align-items:end;gap:40px}}
+.hero h1{
+  font-family:var(--serif);
+  font-size:clamp(30px,5.4vw,52px);
+  line-height:1.14;
+  margin:0;
+  font-weight:600;
+  letter-spacing:-.01em;
+}
+.hero h1 span{display:block;font-family:var(--mono);font-size:clamp(44px,10vw,88px);line-height:.95;color:var(--blue);letter-spacing:-.03em;margin-bottom:8px}
+.hero .lede{margin:0 0 4px;font-size:15px;color:var(--ink-soft);max-width:34em}
+.hero .lede b{color:var(--ink);font-weight:600}
+.version-line{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);margin-top:14px}
+
+/* ---------- 关键数 ---------- */
+.figures{display:grid;grid-template-columns:1fr;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+@media (min-width:560px){.figures{grid-template-columns:repeat(3,1fr)}}
+.figures div{padding:16px 0 18px;border-bottom:1px solid var(--rule)}
+@media (min-width:560px){
+  .figures div{border-bottom:0;border-right:1px solid var(--rule);padding:18px 18px 20px}
+  .figures div:first-child{padding-left:0}
+  .figures div:last-child{border-right:0}
+}
+.figures .n{font-family:var(--mono);font-size:30px;letter-spacing:-.02em;display:block;line-height:1.1}
+.figures .k{font-size:12.5px;color:var(--ink-soft);display:block;margin-top:4px}
+
+/* ---------- 通用 section ---------- */
+section{margin-top:56px}
+.shead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;border-bottom:1px solid var(--ink);padding-bottom:8px;margin-bottom:22px}
+.shead h2{font-family:var(--serif);font-size:22px;font-weight:600;margin:0}
+.shead em{font-family:var(--mono);font-size:12px;font-style:normal;color:var(--ink-soft);letter-spacing:.04em}
+.shead .note{margin-left:auto;font-size:12.5px;color:var(--ink-soft)}
+
+/* ---------- 基准表 ---------- */
+.bench{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.bench col.c1{width:38%}
+.bench col.c2{width:31%}
+.bench col.c3{width:31%}
+.bench th{text-align:left;font-weight:600;font-size:12.5px;letter-spacing:.04em;color:var(--ink-soft);padding:0 0 8px}
+.bench td{padding:9px 0;border-top:1px solid var(--rule);vertical-align:middle}
+.bench td.name{font-family:var(--mono);font-size:13px;padding-right:10px}
+.bench td.num{font-family:var(--mono);font-size:13px}
+.bench tr.hi td{background:linear-gradient(90deg,rgba(23,69,110,.07),rgba(23,69,110,0))}
+.bench tr.hi td.name{font-weight:700;color:var(--blue)}
+.bar{display:block;height:5px;background:var(--rule);position:relative;margin-top:4px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--blue);display:block}
+.bench tr.hi .bar i{background:var(--rust)}
+.tnote{margin-top:14px;font-size:12.5px;color:var(--ink-soft);line-height:1.65}
+.tnote code{font-family:var(--mono);font-size:12px;background:#efeee8;padding:1px 4px}
+
+/* ---------- 修复记录 ---------- */
+.fixes{display:grid;gap:14px}
+.fix{border-left:3px solid var(--rule);padding:2px 0 2px 14px}
+.fix b{display:block;font-size:15px;margin-bottom:2px}
+.fix .was{font-size:13.5px;color:var(--rust)}
+.fix .now{font-size:13.5px;color:var(--ink-soft)}
+.fix .tag{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);letter-spacing:.04em}
+
+/* ---------- 边界 ---------- */
+.edges{display:grid;gap:12px}
+@media (min-width:700px){.edges{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 32px}}
+.edge{border-top:1px solid var(--rule);padding-top:10px;font-size:14px}
+.edge b{font-weight:600}
+.edge p{margin:4px 0 0;color:var(--ink-soft);font-size:13.5px}
+
+/* ---------- 下载 ---------- */
+.get{background:#f1efe8;border:1px solid var(--rule);padding:20px;display:grid;gap:14px}
+@media (min-width:700px){.get{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:center;gap:28px}}
+.get h3{margin:0;font-family:var(--serif);font-size:19px;font-weight:600}
+.get p{margin:6px 0 0;font-size:13.5px;color:var(--ink-soft)}
+.get .files{font-family:var(--mono);font-size:12.5px;line-height:1.9;color:var(--ink)}
+.get .files span{color:var(--ink-soft)}
+
+footer{margin-top:56px;border-top:2px solid var(--ink);padding-top:14px;font-size:12.5px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== 头部 ===== -->
+  <header class="masthead">
+    <div class="brand"><b>Impor</b> (I++) · 自举编译器 + C 后端 + 解释器</div>
+    <nav aria-label="页面导航">
+      <a href="#bench">实测</a>
+      <a href="#fixes">这一版修了什么</a>
+      <a href="#edges">边界</a>
+      <a href="#get">拿包</a>
+    </nav>
+  </header>
+
+  <!-- ===== hero ===== -->
+  <div class="hero">
+    <div>
+      <h1><span>4.0.0</span>写下来，编译它，交付出去。</h1>
+      <div class="version-line">VERSION 4.0.0 · Windows x64 · 发布日 2026-11-22</div>
+    </div>
+    <div>
+      <p class="lede">这不是「能跑就行」的实验语言。这一版把三件事做实：<b>编译产物与 C 并列</b>、<b>自举编译器认花括号块</b>、<b>命令行与语法表不再自相矛盾</b>。</p>
+      <p class="lede">下面每个数字都来自同机同日的实测，边界照实写在页尾。</p>
+    </div>
+  </div>
+
+  <div class="figures">
+    <div><span class="n">55 / 101</span><span class="k">保留字 / 内建函数（语法表 157 条，含 1 个管道运算符）</span></div>
+    <div><span class="n">207 / 207</span><span class="k">全仓 .impor 格式门禁通过（另跳过 21 个基线文件）</span></div>
+    <div><span class="n">B = C = D</span><span class="k">自举闭环三代产物逐字节一致</span></div>
+  </div>
+
+  <!-- ===== 实测 ===== -->
+  <section id="bench">
+    <div class="shead">
+      <h2>同一台机器，同一天，同一个计时器</h2>
+      <em>hbench · best-of-10 · 含进程启动</em>
+      <span class="note">100 万次循环 / 朴素 fib(25)</span>
+    </div>
+
+    <table class="bench">
+      <colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>
+      <thead>
+        <tr><th>语言 / 路径</th><th>100 万循环</th><th>fib(25)</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td class="name">Impor 构建产物</td>
+          <td class="num">18.3 ms<span class="bar"><i style="width:7.8%"></i></span></td>
+          <td class="num">19.3 ms<span class="bar"><i style="width:8.2%"></i></span></td></tr>
+        <tr><td class="name">C（gcc -O2）</td>
+          <td class="num">18.5 ms<span class="bar"><i style="width:7.9%"></i></span></td>
+          <td class="num">17.9 ms<span class="bar"><i style="width:7.6%"></i></span></td></tr>
+        <tr><td class="name">Lua 5.4</td>
+          <td class="num">21.8 ms<span class="bar"><i style="width:9.3%"></i></span></td>
+          <td class="num">31.6 ms<span class="bar"><i style="width:13.4%"></i></span></td></tr>
+        <tr><td class="name">Impor 启动器</td>
+          <td class="num">25.2 ms<span class="bar"><i style="width:10.7%"></i></span></td>
+          <td class="num">23.6 ms<span class="bar"><i style="width:10%"></i></span></td></tr>
+        <tr><td class="name">Node 22</td>
+          <td class="num">123.7 ms<span class="bar"><i style="width:52.6%"></i></span></td>
+          <td class="num">134.4 ms<span class="bar"><i style="width:57.2%"></i></span></td></tr>
+        <tr><td class="name">impor run</td>
+          <td class="num">216.1 ms<span class="bar"><i style="width:92%"></i></span></td>
+          <td class="num">235.5 ms<span class="bar"><i style="width:100%"></i></span></td></tr>
+        <tr><td class="name">Python 3.11.5</td>
+          <td class="num">233.1 ms<span class="bar"><i style="width:99.1%"></i></span></td>
+          <td class="num">130.6 ms<span class="bar"><i style="width:55.5%"></i></span></td></tr>
+        <tr><td class="name">Impor 解释器</td>
+          <td class="num">2112.8 ms<span class="bar"><i style="width:100%"></i></span></td>
+          <td class="num">232.1 ms<span class="bar"><i style="width:98.6%"></i></span></td></tr>
+      </tbody>
+    </table>
+
+    <p class="tnote">
+      读法：<b>编译产物这一档，Impor 与 C 是并列的</b>——循环 18.3 vs 18.5 ms、fib 19.3 vs 17.9 ms，差在进程创建地板（约 19 ms，`noop.exe`）以内，净计算都 &lt; 0.5 ms。
+      常驻服务 <code>impor serve</code> 每请求 <b>4.52 ms</b>（循环）/ 11.94 ms（fib），是唯一低于进程地板的数字，<b>不能</b>直接跟「C 18.5 ms」比；同形态比是 25.2 vs 18.5。
+      <code>impor run</code> 落在 Python 同一档，因为它每次都起 Python 再 import 整个 CLI（约 174 ms 固定成本），语言本身没变慢。
+      表里最后一个 Impor 解释器（<code>run --no-native</code>）垫底，这是纯 Python 解释器的结构性地板，不属于可优化项。
+    </p>
+  </section>
+
+  <!-- ===== 修复记录 ===== -->
+  <section id="fixes">
+    <div class="shead">
+      <h2>这一版修掉的四条真实缺陷</h2>
+      <em>patch8b</em>
+      <span class="note">都是拿去用的时候撞到的，不是设计里的假设</span>
+    </div>
+
+    <div class="fixes">
+      <div class="fix">
+        <span class="tag">① 自举编译器 imporc</span>
+        <b>花括号块一律报「无法识别的语句 [ } ]」</b>
+        <p class="was">此前 `if (x) { … }`、`def f(n) { … }` 全部在第 4 行闭合 `}` 上失败，而 4.0 的标准写法就是花括号；诊断文件名还永远打成 `imporc.impor`。</p>
+        <p class="now">修法：词法前把花括号写法整段归一化成缩进写法（保留文件自己的缩进，只叠加花括号层数），并把 40 处诊断改成真实脚本名。现在 `if / def / while` 的花括号、`} else {` 链、块内注释都过，闭合 `}` 不再报错；纯缩进文件一行不改。</p>
+      </div>
+      <div class="fix">
+        <span class="tag">② 命令行</span>
+        <b>README 写 `impor serve run`，实际不认</b>
+        <p class="was">参数循环把脚本名当「未知参数」吃掉，走完循环已无位置参数，于是这条命令永远空转。</p>
+        <p class="now">修法：循环里收集位置参数，`serve run` 用第一个当脚本、其余当参数，只对以 `-` 开头的未知开关报错。实测 `impor serve run 脚本` 直接出结果。</p>
+      </div>
+      <div class="fix">
+        <span class="tag">③ 语法表</span>
+        <b>79 关键字 + 43 内建 = 122 条，README 却写 55 / 101；查「管道」回「没有找到」</b>
+        <p class="was">表里躺着 12 个 4.0 已物理删除的历史关键字（`func` / `loop` / `let` / `local` …），内建缺一大半，`管道` 这种印在规范里的差异化特性查不到；`exit` 既是关键字又是内建，被字典键吞掉一个身份。</p>
+        <p class="now">修法：表直接对齐真源 `tools/api_baseline.json`，删过期项、补缺失项、加别名（`管道` / `管道运算符` / `pipe` → `|&gt;`），并给 `exit` 记第二个身份。现在 `impor syntax` 打出 <b>55 关键字 + 101 内建 + 1 运算符 = 157</b>，与 README 首屏同一个口径。</p>
+      </div>
+      <div class="fix">
+        <span class="tag">④ 公开面</span>
+        <b>官网页还停在 3.2.3，当前是 4.0.0</b>
+        <p class="was">公网托管页是 3.2.3 的技术专题存档，与本版事实已经对不上（版本、性能、语法条目数全是旧的）。</p>
+        <p class="now">修法：重写这一页（就是你正在看的这页）——只放本版实测、修复记录与边界，不再重复旧版本叙事。页面自带、无外部依赖，可直接传到任意静态托管。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 边界 ===== -->
+  <section id="edges">
+    <div class="shead">
+      <h2>能力与边界：照实写</h2>
+      <span class="note">不把「设计目标」写成「已完成」</span>
+    </div>
+    <div class="edges">
+      <div class="edge">
+        <b>自举编译器是子集，不是全语言</b>
+        <p>`imporc` 认的过程式子集含变量、控制流、函数、常用内建；管道 `|&gt;`、部分较新内建不在它的映射表里，遇到会明确报错，不会静默改语义。</p>
+      </div>
+      <div class="edge">
+        <b>C 后端编译期拒绝 `import`</b>
+        <p>模块导入走解释器；`use std.*` 的脚本会被挡在完整后端之外，以保证语义一致。已知缺口清单在 `docs/能力矩阵.md`，由 `tools/support_matrix.py` 实测生成。</p>
+      </div>
+      <div class="edge">
+        <b>解释器档的慢是结构性的</b>
+        <p>纯 Python 解释器不可能到几十毫秒：CPython 启动约 93 ms 加上 AST 遍历。这条路径的价值是「零依赖能跑」，不是速度。</p>
+      </div>
+      <div class="edge">
+        <b>性能数字的口径</b>
+        <p>表内是 best-of-10、含进程创建；均值通常高 1–3 ms，抖动来自 Windows 进程创建与 Defender。跨轮次的旧表不能与本表混排。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 拿包 ===== -->
+  <section id="get">
+    <div class="shead">
+      <h2>怎么拿</h2>
+      <em>Windows x64</em>
+    </div>
+    <div class="get">
+      <div>
+        <h3>完整包 + 增量包</h3>
+        <p>同一份代码走两条路：完整包自包含；增量包只装这一版改过的文件（bootstrap / imporc.exe / syntax_ref.py / cli.py / 文档与这一页）。校验值随包附 `.sha256`。</p>
+      </div>
+      <div class="files">
+        Impor-4.0.0-patch8b-Windows-x64.zip<br>
+        Impor-4.0.0-patch8b-增量.zip<br>
+        <span>分发目录：桌面「总Impor文件 / 关于Impor」</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Impor (I++) 4.0.0 · VERSION 是唯一版本真源</span>
+    <span>页面无外部依赖，可直接静态托管</span>
+  </footer>
+</div>
+</body>
+</html>

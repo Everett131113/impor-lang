@@ -19,6 +19,8 @@ from tkinter import filedialog, messagebox, ttk
 from .editor_theme import THEME, DARK_THEME, LIGHT_THEME, HIGH_CONTRAST_THEME
 from .editor_widgets import round_rect, FlatButton, TabStrip, ActivityBar, Minimap, MiniScrollbar
 from .observability import note_swallowed
+from .stability import stable_from_env, editor_limits, kill_tree
+from .pathsafe import rel_quiet
 
 
 class RuntimeMixin:
@@ -49,7 +51,7 @@ class RuntimeMixin:
     def _term_cwd_text(self):
         try:
             if os.path.commonpath([os.path.abspath(self._term_cwd), os.path.abspath(ROOT_DIR)]) == os.path.abspath(ROOT_DIR):
-                rel = os.path.relpath(self._term_cwd, ROOT_DIR).replace("\\", "/")
+                rel = rel_quiet(self._term_cwd, ROOT_DIR).replace("\\", "/")
                 return "cwd: " + (rel if rel != "." else "项目根")
             return "cwd: " + self._term_cwd
         except Exception:
@@ -75,11 +77,21 @@ class RuntimeMixin:
     def _term_interrupt(self, e=None):
         try:
             if self._term_proc is not None and self._term_proc.poll() is None:
-                self._term_proc.kill()
-                self.append_out("^C 已终止当前命令", "warn")
+                # 4.7.3：kill() 只杀 shell，gcc/exe 会变孤儿继续吃 CPU；
+                # 改为杀整棵进程树。
+                pid = getattr(self._term_proc, "pid", None)
+                ok, detail = (False, "no pid")
+                if pid:
+                    ok, detail = kill_tree(pid)
+                if not ok:
+                    try:
+                        self._term_proc.kill()
+                    except Exception:
+                        pass
+                self.append_out("^C 已终止当前命令（进程树）" + (("：" + detail[:80]) if detail else ""), "warn")
                 return "break"
-        except Exception:
-            pass
+        except Exception as exc:
+            note_swallowed("editor.term.interrupt", exc)
         self.task_entry.insert("insert", "^C")
         return "break"
 
@@ -279,10 +291,32 @@ class RuntimeMixin:
         FlatButton(bar, "保存", width=72, command=save).pack(side=tk.RIGHT, padx=4)
         FlatButton(bar, "取消", width=72, command=win.destroy).pack(side=tk.RIGHT, padx=4)
 
+    def stop_code(self):
+        """4.7.3：协作式停止——把剩余额度压到 0，下一条语句处熔断。
+
+        解释器没有 request_stop：它按语句计数，`stab.on_stmt` 每条语句都会
+        检查时间/步数额度。把额度压到 0 等价于「下一语句立刻停」，且不需要
+        去碰运行线程的栈（那会崩解释器）。
+        """
+        interp = getattr(self, "_interp", None)
+        if interp is None or getattr(interp, "stab", None) is None:
+            return False
+        self._stop_requested = True
+        try:
+            interp.stab.limits.seconds = 0.0
+            interp.stab.limits.steps = 0
+        except Exception:
+            return False
+        self.append_out("⏹ 已请求停止：下一条语句处中断…", "warn")
+        return True
+
     def run_code(self, src=None, coverage=False):
         if not self._ensure_trusted("运行"):
             return
         if self._running:
+            # 4.7.3：运行中再按一次运行键 = 停止（比去找「停止」按钮快）
+            if self.stop_code():
+                return
             return
         pane = self.current_pane()
         if pane is None:
@@ -302,6 +336,8 @@ class RuntimeMixin:
             pass
         self.clear_output()
         self.show_bottom("out")
+        # 5.1.1：每次运行自动弹出独立输出窗口（已存在则只提窗，不重复创建）
+        self.open_out_window()
         self.append_out("▶ 运行 " + (pane.path or "未命名") + " …")
         self._set_running(True)
         if self._debug_mode or pane.breakpoints:
@@ -316,6 +352,7 @@ class RuntimeMixin:
         except Exception as e:
             self._queue.put(("out", f"🔴 底层异常：{e}"))
         finally:
+            self._stop_requested = False
             self._queue.put(("done", None))
 
     def _run_worker_inner(self, src, path, coverage=False):
@@ -347,18 +384,30 @@ class RuntimeMixin:
                                  debug_mode=False,
                                  filename=path)
             self._interp = interp
+            if stable_from_env():
+                # 4.1：编辑器里的「安全运行」由环境变量打开（IMPOR_STABLE=1），
+                # 每次运行重置额度，熔断后编辑器本身不受影响。
+                interp.enable_stability()
+            else:
+                # 4.7.3：默认也挂一层宽松闸门（30 秒 / 500 万步）。
+                # 死循环脚本不再永久占住运行线程、让「运行」键一直灰着；
+                # IMPOR_EDITOR_RUN_SECONDS=0 可完全关掉，回到 4.7.2 行为。
+                interp.enable_stability(editor_limits())
             self._queue.put(("interp", interp))
             if coverage:
                 interp.enable_coverage(True)
             try:
                 interp.run(ast)
             except ImporException as err:
-                self._queue.put(("out", f"🔴 运行异常 第{err.lineno}行: {err.name}: {err.msg}"))
-                self._queue.put(("out", f"  为什么：{explain(err.name, err.msg)[0]}"))
-                self._queue.put(("out", f"  修复：{fix_for(err.name, err.msg)}"))
-                if getattr(err, "stack", None):
-                    for fr in reversed(err.stack):
-                        self._queue.put(("out", f"  {fr.name}（第{fr.lineno}行）"))
+                if getattr(self, "_stop_requested", False) and err.name in ("TimeLimit", "StepLimit"):
+                    self._queue.put(("out", "⏹ 已停止（用户中止，第%d 行）" % (err.lineno or 0)))
+                else:
+                    self._queue.put(("out", f"🔴 运行异常 第{err.lineno}行: {err.name}: {err.msg}"))
+                    self._queue.put(("out", f"  为什么：{explain(err.name, err.msg)[0]}"))
+                    self._queue.put(("out", f"  修复：{fix_for(err.name, err.msg)}"))
+                    if getattr(err, "stack", None):
+                        for fr in reversed(err.stack):
+                            self._queue.put(("out", f"  {fr.name}（第{fr.lineno}行）"))
             except Exception as e:
                 self._queue.put(("out", f"🔴 底层异常：{e}"))
             if coverage:
@@ -403,6 +452,8 @@ class RuntimeMixin:
                                           if ln - self._dbg_offset > 0}
         self._interp = interp
         self._dbg_interp = interp
+        if stable_from_env():
+            interp.enable_stability()
         if coverage:
             interp.enable_coverage(True)
         try:
@@ -526,7 +577,7 @@ class RuntimeMixin:
             if not os.path.isabs(path):
                 path = os.path.join(ROOT_DIR, path)
             path = os.path.abspath(path)
-        suite = os.path.relpath(path, ROOT_DIR).replace("\\", "/") if path else "运行"
+        suite = rel_quiet(path, ROOT_DIR).replace("\\", "/") if path else "运行"
         parent = self._test_suite_parent(suite)
         text = line
         if path:
@@ -632,7 +683,7 @@ class RuntimeMixin:
         self._test_asserts = 0
         self._test_failed_files = []
         for fp in files:
-            rel = os.path.relpath(fp, ROOT_DIR).replace("\\", "/")
+            rel = rel_quiet(fp, ROOT_DIR).replace("\\", "/")
             item = self.test_tree.insert("", tk.END, text=rel, open=True,
                                          values=("未运行", "", "", fp))
             self._test_row_meta[item] = (fp, 0)

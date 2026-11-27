@@ -2,7 +2,7 @@ important<<DAY<<english("English"):
 // 自定义异常与 try/catch/finally
 exception ScoreError
 
-func check(score)
+def check(score)
     if score < 0 or score > 100
         raise ScoreError("非法成绩")
     return score

@@ -1,7 +1,7 @@
 important<<DAY<<english("English"):
 // 辗转相除求最大公约数，再求最小公倍数
-func gcd(a, b)
-    loop
+def gcd(a, b)
+    while true
         if b == 0
             break
         var t = b
@@ -9,7 +9,7 @@ func gcd(a, b)
         set a = t
     return a
 
-func lcm(a, b)
+def lcm(a, b)
     return div(a * b, gcd(a, b))
 
 print("gcd(48, 36) =", gcd(48, 36))

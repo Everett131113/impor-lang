@@ -1,0 +1,53 @@
+# Impor 绑定：HTTP(S)（WinHTTP，v4.3.2）
+# 返回 dict：{"status": 200, "body": "...", "error": ""}
+# https 强制 TLS 1.2 起、证书校验不可关闭、重定向最多 5 次。
+# 响应体单独取（impor_http_body），不经过 JSON 转义。
+
+var __lib = nil
+var __loaded = false
+
+export def load(shim_path) {
+    if __loaded {
+        return true
+    }
+    set __lib = ffi_open(shim_path)
+    set __loaded = true
+    return true
+}
+
+export def status(id) {
+    if id <= 0 {
+        return 0
+    }
+    return ffi_call(__lib, "impor_http_status",[id], "int",["int"])
+}
+
+export def body(id) {
+    if id <= 0 {
+        return ""
+    }
+    return ffi_call(__lib, "impor_http_body",[id], "cstr",["int"])
+}
+
+export def error_of(id) {
+    if id <= 0 {
+        return ffi_call(__lib, "impor_http_last_error",[], "cstr",[])
+    }
+    return ffi_call(__lib, "impor_http_error",[id], "cstr",["int"])
+}
+
+export def get(url, timeout_ms) {
+    if !__loaded {
+        return {"status": 0, "body": "", "error": "未加载"}
+    }
+    var id = ffi_call(__lib, "impor_http_get",[url, timeout_ms], "int",["cstr", "int"])
+    return {"status": status(id), "body": body(id), "error": error_of(id)}
+}
+
+export def request(method, url, headers, body_text, timeout_ms) {
+    if !__loaded {
+        return {"status": 0, "body": "", "error": "未加载"}
+    }
+    var id = ffi_call(__lib, "impor_http_request",[method, url, headers, body_text, timeout_ms], "int",["cstr", "cstr", "cstr", "cstr", "int"])
+    return {"status": status(id), "body": body(id), "error": error_of(id)}
+}

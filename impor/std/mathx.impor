@@ -1,14 +1,14 @@
 // std/mathx.impor — Impor (I++) 内置标准库：数学工具（纯 Impor 实现）
 // 使用：use std.mathx 或 import std.mathx
 
-func _abs(x) {
+def _abs(x) {
     if x < 0 {
-        return -x
+        return - x
     }
     return x
 }
 
-func gcd(a, b) {
+def gcd(a, b) {
     a = _abs(a)
     b = _abs(b)
     while b != 0 {
@@ -19,21 +19,21 @@ func gcd(a, b) {
     return a
 }
 
-func lcm(a, b) {
+def lcm(a, b) {
     if a == 0 or b == 0 {
         return 0
     }
     return _abs(a * b) / gcd(a, b)
 }
 
-func fact(n) {
+def fact(n) {
     if n <= 1 {
         return 1
     }
     return n * fact(n - 1)
 }
 
-func fib(n) {
+def fib(n) {
     if n <= 1 {
         return n
     }
@@ -49,7 +49,7 @@ func fib(n) {
     return b
 }
 
-func is_prime(n) {
+def is_prime(n) {
     if n < 2 {
         return false
     }
@@ -63,7 +63,7 @@ func is_prime(n) {
     return true
 }
 
-func sum(lst) {
+def sum(lst) {
     var total = 0
     for x in lst {
         total += x
@@ -71,14 +71,14 @@ func sum(lst) {
     return total
 }
 
-func avg(lst) {
+def avg(lst) {
     if len(lst) == 0 {
         return 0
     }
     return sum(lst) / len(lst)
 }
 
-func min_of(lst) {
+def min_of(lst) {
     if len(lst) == 0 {
         return 0
     }
@@ -91,7 +91,7 @@ func min_of(lst) {
     return m
 }
 
-func max_of(lst) {
+def max_of(lst) {
     if len(lst) == 0 {
         return 0
     }

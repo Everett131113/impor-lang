@@ -34,14 +34,51 @@ int __stdcall WideCharToMultiByte(unsigned int CodePage, unsigned long dwFlags,
 #include <unistd.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <pthread.h>
 #define IMPOR_STDCALL
+#endif
+
+/* ===== v4.1 DLL 模式：绕开 CRT 堆，改用进程堆 =====
+   背景：tcc 生成的 DLL 第一次走 CRT malloc 时，会往 msvcrt.dll 的共享退出表登记
+   堆清理钩子；宿主 FreeLibrary 卸载 DLL 后，进程退出仍会调到已卸载代码，触发
+   0xC0000005。改用 GetProcessHeap() 分配后，DLL 不再登记该钩子，
+   “加载 → 调用 → 卸载 → 退出”全程退出码为 0（2026-11-21 实测）。 */
+#if defined(IMPOR_BUILD_DLL) && defined(_WIN32)
+static void *rtd_alloc(size_t n) {
+    return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, n ? n : (size_t)1);
+}
+static void *rtd_realloc(void *p, size_t n) {
+    HANDLE hp = GetProcessHeap();
+    if (!p) return HeapAlloc(hp, HEAP_ZERO_MEMORY, n ? n : (size_t)1);
+    if (!n) { HeapFree(hp, 0, p); return NULL; }
+    return HeapReAlloc(hp, HEAP_ZERO_MEMORY, p, n);
+}
+static void rtd_free(void *p) {
+    if (p) HeapFree(GetProcessHeap(), 0, p);
+}
+static char *rtd_strdup(const char *s) {
+    size_t n = strlen(s ? s : "") + 1;
+    char *d = (char *)rtd_alloc(n);
+    if (d) memcpy(d, s ? s : "", n);
+    return d;
+}
+#define malloc(n) rtd_alloc((size_t)(n))
+#define calloc(c, n) rtd_alloc((size_t)(c) * (size_t)(n))
+#define realloc(p, n) rtd_realloc((void *)(p), (size_t)(n))
+#define free(p) rtd_free((void *)(p))
+#define strdup(s) rtd_strdup(s)
 #endif
 
 typedef enum { V_NULL, V_INT, V_FLOAT, V_STR, V_BOOL, V_ARR, V_OBJ, V_DICT, V_FUNC, V_MODULE } VType;
 typedef struct Arr Arr;
 typedef struct Obj Obj;
 typedef struct Fn Fn;
-typedef struct { VType t; long long i; double f; char *s; Arr *a; Obj *o; Fn *fn; } Val;
+/* v4.7.2：Val 收紧为 tagged union（56 字节 -> 16 字节）。
+   6 个指针槽天然互斥（一个 Val 只有一个类型），合并成匿名 union 后语义等价：
+   生产端（v_null/v_int/v_float/...）一律最后写目标字段，前面的清零不会污染 payload。 */
+typedef struct { VType t; union { long long i; double f; char *s; Arr *a; Obj *o; Fn *fn; }; } Val;
+/* 4.7.2 硬门禁：Val 必须是 16 字节（tag 4 + payload 8 + 对齐）。谁加字段谁编译失败。 */
+typedef char val_size_must_be_16[(sizeof(Val) == 16) ? 1 : -1];
 struct Arr { Val *items; long long n, cap; struct Arr *rp_prev, *rp_next; };
 /* v4.2：一等函数 / 闭包。code 统一为 (env, args)，env 是捕获变量指针数组 */
 typedef Val (*FnCode)(void *env, Val *args);
@@ -73,6 +110,107 @@ static void rt_abort(const char *msg) {
     exit(1);
 }
 
+/* ================= v4.2 并发基础：自旋锁 + 线程局部状态 =================
+   为什么要有这两样东西：
+   1) 没有线程之前，驻留池 / 数组登记链表 / 统计计数器都是单线程独占的，
+      多线程下 push 链表会互相踩指针 → 用一把进程级自旋锁包住临界区。
+      刻意不用 CRITICAL_SECTION：它的初始化本身有竞态，而自旋锁靠
+      InterlockedCompareExchange / __sync 的原子性，不需要初始化，
+      也不用担心 DLL 首次调用 CRT 的坑（v4.1 已经踩过一次）。
+   2) try/raise 用的是 setjmp 跳转栈，全局一份 → 两个线程各自 try 会乱跳。
+      改成每线程一份（Win32 TLS / pthread_key），按需分配，进程内不回收
+      （线程数有限，回收反而引入竞态）。 */
+
+/* 锁与原子操作只用 32 位 CAS：32 位 tcc 下 64 位变量的对齐不保证 8 字节，
+   Interlocked*64 会踩到对齐要求；64 位计数值统一用 stat 锁保护，
+   先保证正确，再谈无锁（见末尾并发区注释）。 */
+#if defined(_WIN32)
+#define RT_CAS32(p, nv, ov) InterlockedCompareExchange((volatile LONG *)(p), (LONG)(nv), (LONG)(ov))
+#define RT_XCHG32(p, nv) InterlockedExchange((volatile LONG *)(p), (LONG)(nv))
+#else
+#define RT_CAS32(p, nv, ov) __sync_val_compare_and_swap((int *)(p), (int)(ov), (int)(nv))
+#define RT_XCHG32(p, nv) __sync_lock_test_and_set((int *)(p), (int)(nv))
+#endif
+
+static volatile int g_rt_lock_mem = 0;
+static volatile int g_rt_lock_stat = 0;
+static long long g_rt_tid_seq = 0;
+
+static void rt_lock_mem(void) {
+    while (RT_CAS32(&g_rt_lock_mem, 1, 0) != 0) {
+#if defined(_WIN32)
+        Sleep(0);
+#endif
+    }
+}
+static void rt_unlock_mem(void) { RT_XCHG32(&g_rt_lock_mem, 0); }
+static void rt_lock_stat(void) {
+    while (RT_CAS32(&g_rt_lock_stat, 1, 0) != 0) {
+#if defined(_WIN32)
+        Sleep(0);
+#endif
+    }
+}
+static void rt_unlock_stat(void) { RT_XCHG32(&g_rt_lock_stat, 0); }
+
+typedef struct RtTls {
+    jmp_buf jmp[64];
+    int jmp_n;
+    char err_type[128];
+    char err_msg[512];
+    const char *trace[128];
+    int trace_line[128];
+    int trace_n;
+    int cur_line;
+    long long tid;          /* 首次访问时分配，线程内稳定 */
+} RtTls;
+
+#if defined(_WIN32)
+static DWORD g_rt_tls_idx = TLS_OUT_OF_INDEXES;
+static RtTls *rt_tls(void) {
+    RtTls *p;
+    if (g_rt_tls_idx == TLS_OUT_OF_INDEXES) {
+        DWORD idx = TlsAlloc();
+        if (idx == TLS_OUT_OF_INDEXES) rt_abort("线程局部存储分配失败");
+        if (RT_CAS32(&g_rt_tls_idx, (int)idx, (int)TLS_OUT_OF_INDEXES) != (int)TLS_OUT_OF_INDEXES) {
+            TlsFree(idx);
+        }
+    }
+    p = (RtTls *)TlsGetValue(g_rt_tls_idx);
+    if (!p) {
+        p = (RtTls *)calloc(1, sizeof(RtTls));
+        if (!p) rt_abort("线程局部存储内存不足");
+        TlsSetValue(g_rt_tls_idx, p);
+    }
+    return p;
+}
+#else
+static pthread_key_t g_rt_tls_key;
+static int g_rt_tls_ready = 0;
+static RtTls *rt_tls(void) {
+    RtTls *p;
+    if (!g_rt_tls_ready) {
+        pthread_key_create(&g_rt_tls_key, NULL);
+        g_rt_tls_ready = 1;
+    }
+    p = (RtTls *)pthread_getspecific(g_rt_tls_key);
+    if (!p) {
+        p = (RtTls *)calloc(1, sizeof(RtTls));
+        if (!p) rt_abort("线程局部存储内存不足");
+        pthread_setspecific(g_rt_tls_key, p);
+    }
+    return p;
+}
+#endif
+
+static long long rt_next_tid(void) {
+    long long t;
+    rt_lock_stat();
+    t = ++g_rt_tid_seq;
+    rt_unlock_stat();
+    return t;
+}
+
 /* ================= v3.2 自动内存管理（C 侧） =================
    策略：所有堆数组登记到双链表，进程退出（atexit）统一释放；
    数值/字符串字面量走驻留池（相同常量复用同一块内存）；
@@ -87,38 +225,72 @@ static Arr *g_rt_arr_head = NULL;
 static long long g_rt_arr_n = 0;
 static int g_rt_shutdown_ready = 0;
 static void rt_shutdown(void);
+static void rt_wait_all_threads(void);   /* v4.2：定义在本文件末尾的并发区 */
 static void rt_note_alloc(long long bytes) {
+    rt_lock_stat();
     g_rt_allocs++;
     g_rt_bytes += bytes;
     if (g_rt_bytes > g_rt_peak) g_rt_peak = g_rt_bytes;
+    rt_unlock_stat();
+#if defined(IMPOR_BUILD_DLL)
+    /* 共享库模式不注册 atexit：tcc 的 DLL CRT 在 FreeLibrary/进程退出时会再次
+       走退出钩子，导致 0xC0000005 崩溃（2026-11-21 实测）。宿主可显式调用
+       impor_runtime_shutdown() 回收，或交给操作系统在卸载时收回。 */
+    (void)0;
+#else
     if (!g_rt_shutdown_ready) {
         g_rt_shutdown_ready = 1;
         atexit(rt_shutdown);
     }
+#endif
 }
 static void rt_note_free(long long bytes) {
+    rt_lock_stat();
     g_rt_frees++;
     g_rt_bytes -= bytes;
     if (g_rt_bytes < 0) g_rt_bytes = 0;
+    rt_unlock_stat();
+}
+/* 4.5：内存差额检查（IMPOR_LEAK_CHECK=1 打印，=2 打印并在有差额时标记 rc=3。
+   托管数组在进程退出时统一释放，所以这里统计的是「运行时记账的分配/释放次数差」，
+   用来发现绕过托管路径的分配。CLI 侧见 `impor run --check-leaks`。 */
+static long long g_rt_leak_live = 0;
+static void rt_leak_report(void) {
+    const char *mode = getenv("IMPOR_LEAK_CHECK");
+    long long live;
+    if (!mode || !*mode) return;
+    live = g_rt_allocs - g_rt_frees;
+    if (live < 0) live = 0;
+    g_rt_leak_live = live;
+    fprintf(stderr, "[leaks] 分配 %lld 次 / 释放 %lld 次 / 未释放 %lld 块\n",
+            g_rt_allocs, g_rt_frees, live);
+    fflush(stderr);
 }
 static void rt_arr_reg(Arr *a) {
+    rt_lock_mem();
     a->rp_prev = NULL;
     a->rp_next = g_rt_arr_head;
     if (g_rt_arr_head) g_rt_arr_head->rp_prev = a;
     g_rt_arr_head = a;
     g_rt_arr_n++;
+    rt_unlock_mem();
 }
 static void rt_arr_unreg(Arr *a) {
     if (!a) return;
+    rt_lock_mem();
     if (a->rp_prev) a->rp_prev->rp_next = a->rp_next;
     else if (g_rt_arr_head == a) g_rt_arr_head = a->rp_next;
     if (a->rp_next) a->rp_next->rp_prev = a->rp_prev;
     a->rp_prev = NULL;
     a->rp_next = NULL;
     if (g_rt_arr_n > 0) g_rt_arr_n--;
+    rt_unlock_mem();
 }
 static void rt_shutdown(void) {
-    Arr *p = g_rt_arr_head;
+    Arr *p;
+    rt_wait_all_threads();   /* v4.2：先等线程收尾，再释放数组登记表 */
+    rt_lock_mem();
+    p = g_rt_arr_head;
     while (p) {
         Arr *nx = p->rp_next;
         if (p->items) free(p->items);
@@ -127,6 +299,8 @@ static void rt_shutdown(void) {
     }
     g_rt_arr_head = NULL;
     g_rt_arr_n = 0;
+    rt_unlock_mem();
+    rt_leak_report();   /* 4.5：IMPOR_LEAK_CHECK=1 时打印分配/释放差额，=2 时泄漏即退出码 3 */
 }
 
 /* ---- 字符串常量驻留池（仅字面量 v_str_lit 使用；普通 v_str 仍为独立分配） ---- */
@@ -144,10 +318,14 @@ static char *rt_intern(const char *s) {
     if (!s) s = "";
     n = strlen(s);
     for (p = s; *p; p++) h = (h ^ (unsigned int)(unsigned char)*p) * 16777619u;
+    rt_lock_mem();
     if (n <= RT_INTERN_MAXLEN && g_rt_intern_n < RT_INTERN_MAX) {
         RtStrNode *b = g_rt_intern[h % RT_INTERN_BUCKETS];
         while (b) {
-            if (b->h == h && strcmp(b->s, s) == 0) return b->s;
+            if (b->h == h && strcmp(b->s, s) == 0) {
+                rt_unlock_mem();
+                return b->s;
+            }
             b = b->next;
         }
         node = (RtStrNode *)malloc(sizeof(RtStrNode));
@@ -160,11 +338,13 @@ static char *rt_intern(const char *s) {
                 g_rt_intern[h % RT_INTERN_BUCKETS] = node;
                 g_rt_intern_n++;
                 rt_note_alloc((long long)n + 1);
+                rt_unlock_mem();
                 return node->s;
             }
             free(node);
         }
     }
+    rt_unlock_mem();
     {
         char *d = (char *)malloc(n + 1);
         if (!d) rt_abort("内存不足");
@@ -177,16 +357,33 @@ static char *rt_intern(const char *s) {
 /* ---- mem()/gc()：由 ctrans 内建映射调用（实现见 v_str 之后的函数区） ---- */
 
 
-/* ---- 异常运行时（try / raise）：setjmp 跳转栈，由编译器生成的 try 语句使用 ---- */
-static jmp_buf g_jmp_stack[64];
-static int g_jmp_n = 0;
-static char g_err_type[128] = "";
-static char g_err_msg[512] = "";
+/* ---- 异常运行时（try / raise）：setjmp 跳转栈，由编译器生成的 try 语句使用 ----
+   v4.2：这些状态全部改成线程局部（宏指向 rt_tls()），否则两个线程各自 try
+   会共用同一份跳转栈，longjmp 到别的线程的帧上 → 直接崩。 */
+#define g_jmp_stack (rt_tls()->jmp)
+#define g_jmp_n (rt_tls()->jmp_n)
+#define g_err_type (rt_tls()->err_type)
+#define g_err_msg (rt_tls()->err_msg)
+
+/* 4.6 收尾：mingw-w64 在 x64 上把 setjmp 定义成
+       #define setjmp(BUF) _setjmp((BUF), __builtin_frame_address(0))
+   第二个参数是「SEH 链锚点」，_setjmp 把它存进 jmp_buf，longjmp 时由它恢复栈链。
+   -O2 没有帧指针，这个地址在某些栈布局下指向会被后续调用覆盖的区域；longjmp 之后
+   链已失效，下一次异常展开直接死在 ntdll!RtlVirtualUnwind2 —— 实测同一份 C：
+   -O0 20/20 通过，-O2 6/20 崩（0xC0000005），加 -fno-omit-frame-pointer 仍 16/40 崩。
+   纯 C 跳转不需要 SEH：传 NULL 即「不安装 SEH 帧」（与 mingw 的 32 位分支
+   _setjmp3(BUF, NULL) 同源），实测 -O2 40/40、-O0 40/40 全通过。
+   tcc / msvc / Linux 的 setjmp 没有这个二参数形态，保持原样。 */
+#if defined(_WIN64) && defined(__MINGW32__)
+#  define IMPOR_SETJMP(BUF) _setjmp((BUF), NULL)
+#else
+#  define IMPOR_SETJMP(BUF) setjmp(BUF)
+#endif
 
 /* ================= v4.2：统一错误码 + 调用栈 ================= */
-static const char *g_trace[128];
-static int g_trace_line[128];
-static int g_trace_n = 0;
+#define g_trace (rt_tls()->trace)
+#define g_trace_line (rt_tls()->trace_line)
+#define g_trace_n (rt_tls()->trace_n)
 
 /* v4.3：独立 exe 也显示源码片段（g_src_lines 由代码生成器写入） */
 #ifndef IMPOR_HAS_SRC
@@ -196,13 +393,13 @@ static int g_src_n = 0;
 extern const char *g_src_lines[];
 extern int g_src_n;
 #endif
-static int g_cur_line = 0;
+#define g_cur_line (rt_tls()->cur_line)
 static void rt_set_line(int n) { g_cur_line = n; }
 static void rt_print_snippet(void) {
     int ln = g_cur_line;
     if (ln < 1 || ln > g_src_n) return;
-    printf("  %d │ %s\n", ln, g_src_lines[ln - 1]);
-    printf("    │ ^\n");
+    fprintf(stderr, "  %d │ %s\n", ln, g_src_lines[ln - 1]);
+    fprintf(stderr, "    │ ^\n");
 }
 
 static const char *rt_diag_why(const char *t) {
@@ -217,7 +414,7 @@ static const char *rt_diag_why(const char *t) {
     if (strcmp(t, "ConstError") == 0) return "const 声明的名字是只读的，再次赋值会破坏它的不变式。";
     if (strcmp(t, "ImportError") == 0) return "导入的名字在模块搜索路径里找不到对应的文件或包。";
     if (strcmp(t, "RecursionError") == 0) return "递归层数超过了上限，继续下去会耗尽调用栈。";
-    if (strcmp(t, "OverflowError") == 0) return "整数超出 64 位有符号范围，无法继续精确计算。";
+    if (strcmp(t, "OverflowError") == 0) return "交付层把整数固定为 int64（−9223372036854775808 ~ 9223372036854775807）。加减乘越界时报错中止，而不是像 C 那样静默回绕成一个错误的值。";
     if (strcmp(t, "MemoryError") == 0) return "内存分配失败，通常是请求的容器太大。";
     if (strcmp(t, "FFIArchError") == 0) return "解释器/产物与目标库的位数不一致：32 位进程装不进 64 位 DLL，64 位进程也装不进 32 位 DLL。";
     if (strcmp(t, "FFIAccessError") == 0) return "这个原生库不在编译期烘焙的 FFI 允许清单里；运行时不能临时扩清单。";
@@ -237,7 +434,7 @@ static const char *rt_diag_fix(const char *t) {
     if (strcmp(t, "ConstError") == 0) return "确实需要修改就把它声明成 var；否则把赋值改成对另一个变量的计算。";
     if (strcmp(t, "ImportError") == 0) return "确认文件名（含 .impor 后缀）与相对路径正确；可用 impor list-modules 查看当前可发现的模块。";
     if (strcmp(t, "RecursionError") == 0) return "检查递归的终止条件是否会到达；也可以把递归改写成循环。";
-    if (strcmp(t, "OverflowError") == 0) return "改用更小的数值范围，或拆成多步计算并检查边界。";
+    if (strcmp(t, "OverflowError") == 0) return "缩小数值范围，或把大数拆成多步并检查边界；确实需要任意精度时用 `impor run 脚本.impor --big`（C 产物按 int64 编译，不提供大整数）。";
     if (strcmp(t, "MemoryError") == 0) return "减少一次申请的元素数量，或改用分批处理。";
     if (strcmp(t, "FFIArchError") == 0) return "32 位产物请加载 32 位库，64 位产物请加载 64 位库；64 位库用 --c-source 以 cl / gcc -m64 编译。";
     if (strcmp(t, "FFIAccessError") == 0) return "在源码同目录或上层的 .impor/ffi_allow.json 的 allow 数组登记库文件名，然后重新 build（清单会烘焙进产物）。";
@@ -257,14 +454,14 @@ static void rt_trace_pop(void) {
 }
 static void rt_trace_print(void) {
     int i;
-    printf("调用栈（自顶向下）:\n");
-    if (g_trace_n == 0) { printf("  <main>\n"); return; }
+    fprintf(stderr, "调用栈（自顶向下）:\n");
+    if (g_trace_n == 0) { fprintf(stderr, "  <main>\n"); return; }
     for (i = g_trace_n - 1; i >= 0; i--) {
         if (g_trace_line[i] > 0)
-            printf("%s %s（第%d行）\n", i == g_trace_n - 1 ? " ->" : "   ",
-                   g_trace[i], g_trace_line[i]);
+            fprintf(stderr, "%s %s（第%d行）\n", i == g_trace_n - 1 ? " ->" : "   ",
+                    g_trace[i], g_trace_line[i]);
         else
-            printf("%s %s\n", i == g_trace_n - 1 ? " ->" : "   ", g_trace[i]);
+            fprintf(stderr, "%s %s\n", i == g_trace_n - 1 ? " ->" : "   ", g_trace[i]);
     }
 }
 static const char *rt_err_code(const char *t) {
@@ -286,12 +483,13 @@ static const char *rt_err_code(const char *t) {
 }
 static void rt_report_error(void) {
     const char *t = g_err_type[0] ? g_err_type : "Error";
+    const char *c = rt_err_code(g_err_type);
     if (g_cur_line < 1 && g_trace_n > 0) g_cur_line = g_trace_line[g_trace_n - 1];
-    printf("运行错误: 第%d行: %s: %s [%s]\n", g_cur_line, t,
-           g_err_msg, rt_err_code(g_err_type));
-    printf("  为什么： %s\n", rt_diag_why(t));
-    printf("  修复： %s\n", rt_diag_fix(t));
+    fprintf(stderr, "运行错误: 第%d行: %s: %s [%s]\n", g_cur_line, t, g_err_msg, c);
     rt_print_snippet();
+    fprintf(stderr, "  为什么： %s\n", rt_diag_why(t));
+    fprintf(stderr, "  修复： %s\n", rt_diag_fix(t));
+    fprintf(stderr, "  文档： docs/errors.md#%s\n", c);
     rt_trace_print();
 }
 static const char *rt_abort_type(const char *m) {
@@ -310,11 +508,13 @@ static const char *rt_abort_type(const char *m) {
 }
 static void rt_report_abort(const char *msg) {
     const char *t = rt_abort_type(msg);
+    const char *c = rt_err_code(t);
     if (g_cur_line < 1 && g_trace_n > 0) g_cur_line = g_trace_line[g_trace_n - 1];
-    printf("运行错误: 第%d行: %s: %s [%s]\n", g_cur_line, t, msg ? msg : "", rt_err_code(t));
-    printf("  为什么： %s\n", rt_diag_why(t));
-    printf("  修复： %s\n", rt_diag_fix(t));
+    fprintf(stderr, "运行错误: 第%d行: %s: %s [%s]\n", g_cur_line, t, msg ? msg : "", c);
     rt_print_snippet();
+    fprintf(stderr, "  为什么： %s\n", rt_diag_why(t));
+    fprintf(stderr, "  修复： %s\n", rt_diag_fix(t));
+    fprintf(stderr, "  文档： docs/errors.md#%s\n", c);
     rt_trace_print();
 }
 
@@ -340,13 +540,13 @@ static void rt_throw_again(void) {
     exit(1);
 }
 
-static Val v_null(void) { Val v; v.t = V_NULL; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
-static Val v_int(long long x) { Val v; v.t = V_INT; v.i = x; v.f = 0; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
-static Val v_float(double x) { Val v; v.t = V_FLOAT; v.i = 0; v.f = x; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
-static Val v_bool(int b) { Val v; v.t = V_BOOL; v.i = b ? 1 : 0; v.f = 0; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
-static Val v_str(const char *s) { Val v; v.t = V_STR; v.i = 0; v.f = 0; v.s = strdup(s ? s : ""); v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
+static Val v_null(void) { Val v; v.t = V_NULL; v.i = 0; return v; }
+static Val v_int(long long x) { Val v; v.t = V_INT; v.i = x; return v; }
+static Val v_float(double x) { Val v; v.t = V_FLOAT; v.f = x; return v; }
+static Val v_bool(int b) { Val v; v.t = V_BOOL; v.i = b ? 1 : 0; return v; }
+static Val v_str(const char *s) { Val v; v.t = V_STR; v.s = strdup(s ? s : ""); return v; }
 /* v3.2：字符串字面量走驻留池（相同常量复用同一块内存；该指针不会被 rt_val_free 释放） */
-static Val v_str_lit(const char *s) { Val v; v.t = V_STR; v.i = 0; v.f = 0; v.s = rt_intern(s); v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
+static Val v_str_lit(const char *s) { Val v; v.t = V_STR; v.s = rt_intern(s); return v; }
 
 /* v3.2：mem() / gc() —— C 侧内存统计与托管状态（ctrans 内建映射） */
 static Val rt_mem(void) {
@@ -361,12 +561,12 @@ static Val rt_gc(void) {
     printf("自动内存回收：C 后端由运行时托管（数组登记，退出统一释放；常量驻留），无需手动回收\n");
     return v_int(0);
 }
-static Val v_arr(void) { Val v; v.t = V_ARR; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
-static Val v_obj(Obj *o) { Val v; v.t = V_OBJ; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; v.o = o; v.fn = NULL; return v; }
+static Val v_arr(void) { Val v; v.t = V_ARR; v.a = NULL; return v; }
+static Val v_obj(Obj *o) { Val v; v.t = V_OBJ; v.o = o; return v; }
 /* v4.2：字典复用 Arr 存储，items 按 [key0, val0, key1, val1, ...] 成对排列 */
-static Val v_dict(void) { Val v; v.t = V_DICT; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = NULL; return v; }
+static Val v_dict(void) { Val v; v.t = V_DICT; v.a = NULL; return v; }
 /* v4.2：一等函数值（闭包） */
-static Val v_fn(Fn *f) { Val v; v.t = V_FUNC; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL; v.o = NULL; v.fn = f; return v; }
+static Val v_fn(Fn *f) { Val v; v.t = V_FUNC; v.fn = f; return v; }
 static Val *rt_box_new(Val v) {
     Val *b = (Val *)malloc(sizeof(Val));
     if (!b) rt_abort("内存不足");
@@ -430,6 +630,12 @@ static long long rt_int(Val v) {
     return 0;
 }
 static const char *rt_str_of(Val v) { return v.t == V_STR && v.s ? v.s : ""; }
+/* patch8：Python 的浮点 % 结果符号跟随除数，C 的 fmod 跟随被除数，必须校正 */
+static double rt_fmod_py(double a, double b) {
+    double r = fmod(a, b);
+    if (r != 0.0 && ((r < 0.0) != (b < 0.0))) r += b;
+    return r;
+}
 
 /* ================= v3.3：UTF-8 字符语义 + int64 溢出检测 ================ */
 /* 字符数：按 UTF-8 编码单元计数，与解释器 len("你好")==2 对齐 */
@@ -521,39 +727,160 @@ static size_t rt_u8c_at(const char *s, long long idx) {
     return rt_u8c_off;
 }
 
-/* 64 位有符号整数溢出检测（与解释器 Python 任意整数不同：C 侧溢出时报错） */
-static long long rt_ck_add(long long a, long long b) {
-    if (b > 0 ? a > LLONG_MAX - b : a < LLONG_MIN - b)
-        rt_abort("整数溢出：超出 64 位有符号整数范围");
+/* 64 位有符号整数溢出检测（与解释器 Python 任意整数不同：C 侧溢出时报错）
+ * 4.7：加 inline 与 __builtin_expect —— 溢出是异常路径，正常路径必须能被
+ * 内联进循环且分支高度可预测，否则 1e8 级循环会为“可能的溢出”多付 30%+。 */
+static inline long long rt_ck_add(long long a, long long b) {
+    if (__builtin_expect(b > 0 ? a > LLONG_MAX - b : a < LLONG_MIN - b, 0))
+        rt_abort("整数溢出：超出 64 位有符号整数范围（加法）");
     return a + b;
 }
-static long long rt_ck_sub(long long a, long long b) {
-    if (b < 0 ? a > LLONG_MAX + b : a < LLONG_MIN + b)
-        rt_abort("整数溢出：超出 64 位有符号整数范围");
+static inline long long rt_ck_sub(long long a, long long b) {
+    if (__builtin_expect(b < 0 ? a > LLONG_MAX + b : a < LLONG_MIN + b, 0))
+        rt_abort("整数溢出：超出 64 位有符号整数范围（减法）");
     return a - b;
 }
-static long long rt_ck_mul(long long a, long long b) {
+static inline long long rt_ck_mul(long long a, long long b) {
     if (a == 0 || b == 0) return 0;
-    if (a == -1 && b == LLONG_MIN) rt_abort("整数溢出：超出 64 位有符号整数范围");
-    if (b == -1 && a == LLONG_MIN) rt_abort("整数溢出：超出 64 位有符号整数范围");
+    if (a == -1 && b == LLONG_MIN) rt_abort("整数溢出：超出 64 位有符号整数范围（乘法）");
+    if (b == -1 && a == LLONG_MIN) rt_abort("整数溢出：超出 64 位有符号整数范围（乘法）");
     if (a > 0) {
-        if (b > 0) { if (a > LLONG_MAX / b) rt_abort("整数溢出：超出 64 位有符号整数范围"); }
-        else { if (b < LLONG_MIN / a) rt_abort("整数溢出：超出 64 位有符号整数范围"); }
+        if (b > 0) { if (a > LLONG_MAX / b) rt_abort("整数溢出：超出 64 位有符号整数范围（乘法）"); }
+        else { if (b < LLONG_MIN / a) rt_abort("整数溢出：超出 64 位有符号整数范围（乘法）"); }
     } else {
-        if (b > 0) { if (a < LLONG_MIN / b) rt_abort("整数溢出：超出 64 位有符号整数范围"); }
-        else { if (b < LLONG_MAX / a) rt_abort("整数溢出：超出 64 位有符号整数范围"); }
+        if (b > 0) { if (a < LLONG_MIN / b) rt_abort("整数溢出：超出 64 位有符号整数范围（乘法）"); }
+        else { if (b < LLONG_MAX / a) rt_abort("整数溢出：超出 64 位有符号整数范围（乘法）"); }
     }
     return a * b;
+}
+
+/*/* patch8：浮点打印按 Python repr 的口径（最短可往返 + 指数两位 + 整数补 .0）。
+ * 旧实现是 snprintf("%.12g")：0.1+0.2 会打成 0.3（丢精度），1e16 打成 1e+016，
+ * 与解释器不一致——对拍 c30_float_repr 就是这么挂的。
+ * 三条坑（都实测过）：
+ *  1) 不能用 %.*f 出定点结果：MSVCRT 的 %f 末位会错（-698301.6521509961 -> …962）；
+ *  2) 不能用 powl：本机 MinGW 没有 powl 实现（隐式声明，调用得到垃圾值）；
+ *  3) 不能用 %.0e 取数量级：它会先舍入到 1 位（952510.2 -> 1e+006，多一位）。
+ * 所以：数量级取 %.17e 的指数；位数用 %.*e 的最短可往返，再对末位做 ±1 邻位微调，
+ * 用 long double 手工乘 10 的幂挑出离真值最近的那个。 */
+/*/* patch8：浮点打印按 Python repr 的口径（最短可往返 + 指数两位 + 整数补 .0）。
+ * 旧实现是 snprintf("%.12g")：0.1+0.2 会打成 0.3（丢精度），1e16 打成 1e+016，
+ * 与解释器不一致——对拍 c30_float_repr 就是这么挂的。
+ * 实测踩过的坑（都别再用）：
+ *  1) %.*f 的末位会错（MSVCRT）：-698301.6521509961 被打成 …962；
+ *  2) powl 在本机 MinGW 没有实现（隐式声明，调用拿到垃圾值），long double 运算也不可靠；
+ *  3) tcc 的 win32 运行库没有 strtoll；
+ *  4) %.0e 会先舍入到 1 位（952510.2 直接变 1e+006，数量级多一位）。
+ * 现在的做法：一次 "%.20e" 取 21 位（前 17 位是准的，后几位当保护位），
+ * 自己在十进制串上做第 p 位的四舍五入，再用 strtod 校验能否还原同一个 double，
+ * 第一个能还原的 p 就是 Python 的最短位数。全程只依赖 snprintf/strtod。 */
+static void rt_fmt_double(double d, char *buf, size_t n) {
+    char full[96];
+    char digits[28];
+    char cand[64];
+    int p, exp10 = 0, neg = 0, dlen = 0;
+    size_t dn = 0, k = 0, i;
+    if (d != d) { snprintf(buf, n, "nan"); return; }
+    if (d == 0.0) { snprintf(buf, n, (1.0 / d < 0) ? "-0.0" : "0.0"); return; }
+    if (d > 1.7976931348623157e308) { snprintf(buf, n, "inf"); return; }
+    if (d < -1.7976931348623157e308) { snprintf(buf, n, "-inf"); return; }
+    if (d < 0) { neg = 1; d = -d; }
+    snprintf(full, sizeof full, "%.20e", d);          /* 例如 9.52510211185840190e+005 */
+    {
+        char *e = strchr(full, 'e');
+        exp10 = e ? (int)atoi(e + 1) : 0;             /* atoi 在 tcc 里可用 */
+        if (e) *e = 0;
+        for (const char *q = full; *q; q++) {
+            if (*q == '-' || *q == '+') continue;
+            if (*q == '.') continue;
+            if (dlen + 2 < (int)sizeof digits) digits[dlen++] = *q;
+        }
+        digits[dlen] = 0;
+    }
+    for (p = 1; p <= 17; p++) {
+        char tdig[28];
+        int carry, j;
+        memcpy(tdig, digits, (size_t)p);
+        tdig[p] = 0;
+        carry = (digits[p] >= '5');
+        j = p - 1;
+        while (carry && j >= 0) {
+            if (tdig[j] == '9') { tdig[j] = '0'; j--; }
+            else { tdig[j] = (char)(tdig[j] + 1); carry = 0; }
+        }
+        if (carry) {                                  /* 999… -> 1000…：数量级 +1 */
+            tdig[0] = '1';
+            for (j = 1; j < p; j++) tdig[j] = '0';
+            exp10 += 1;
+        }
+        /* 组串校验往返 */
+        {
+            size_t m = 0;
+            if (neg) cand[m++] = '-';
+            cand[m++] = tdig[0];
+            if (p > 1) {
+                cand[m++] = '.';
+                for (j = 1; j < p; j++) cand[m++] = tdig[j];
+            }
+            snprintf(cand + m, sizeof cand - m, "e%c%02d", exp10 < 0 ? '-' : '+',
+                     exp10 < 0 ? -exp10 : exp10);
+        }
+        if (strtod(cand, NULL) == (neg ? -d : d)) {
+            /* 去掉尾部多余的 0（最短表示不含它们）；全 0 时保留一位 */
+            dn = (size_t)p;
+            while (dn > 1 && tdig[dn - 1] == '0') dn--;
+            memcpy(digits, tdig, dn);
+            digits[dn] = 0;
+            break;
+        }
+        if (carry) exp10 -= 1;                        /* 这次进位没成，还原指数 */
+    }
+    if (p > 17) { snprintf(buf, n, "%.17e", neg ? -d : d); return; }
+    if (neg && k + 1 < n) buf[k++] = '-';
+    if (exp10 < -4 || exp10 >= 16) {
+        if (k + 1 < n) buf[k++] = digits[0];
+        if (dn > 1) {
+            if (k + 1 < n) buf[k++] = '.';
+            for (i = 1; i < dn; i++) if (k + 1 < n) buf[k++] = digits[i];
+        }
+        if (k + 4 < n)
+            k += snprintf(buf + k, n - k, "e%c%02d", exp10 < 0 ? '-' : '+',
+                          exp10 < 0 ? -exp10 : exp10);
+    } else if (exp10 >= 0) {
+        size_t ip = (size_t)(exp10 + 1);
+        for (i = 0; i < ip; i++) {
+            if (k + 1 < n) buf[k++] = (i < dn) ? digits[i] : '0';
+        }
+        if (k + 1 < n) buf[k++] = '.';
+        if (dn > ip) {
+            for (i = ip; i < dn; i++) if (k + 1 < n) buf[k++] = digits[i];
+        } else {
+            if (k + 1 < n) buf[k++] = '0';
+        }
+    } else {
+        if (k + 1 < n) buf[k++] = '0';
+        if (k + 1 < n) buf[k++] = '.';
+        for (i = 0; i < (size_t)(-exp10 - 1); i++) if (k + 1 < n) buf[k++] = '0';
+        for (i = 0; i < dn; i++) if (k + 1 < n) buf[k++] = digits[i];
+    }
+    if (k >= n) k = n - 1;
+    buf[k] = 0;
+    if (!strchr(buf, 'e')) {
+        char *dot = strchr(buf, '.');
+        if (dot) {
+            char *end = buf + strlen(buf) - 1;
+            while (end > dot + 1 && *end == '0') *end-- = 0;
+        } else {
+            size_t m2 = strlen(buf);
+            if (m2 + 2 < n) { buf[m2] = '.'; buf[m2 + 1] = '0'; buf[m2 + 2] = 0; }
+        }
+    }
 }
 
 /* 数值格式化（对齐 Impor str()：整数 float 显示 .0） */
 static void rt_fmt_num(Val v, char *buf, size_t n) {
     if (v.t == V_FLOAT) {
-        snprintf(buf, n, "%.12g", v.f);
-        if (!strchr(buf, '.') && !strchr(buf, 'e') && !strchr(buf, 'E')) {
-            size_t m = strlen(buf);
-            if (m + 2 < n) { buf[m] = '.'; buf[m + 1] = '0'; buf[m + 2] = '\0'; }
-        }
+        rt_fmt_double(v.f, buf, n);
     } else {
         snprintf(buf, n, "%lld", v.i);
     }
@@ -659,7 +986,7 @@ static Val rt_add(Val a, Val b) {
         if (!buf) rt_abort("内存不足");
         memcpy(buf, sa.s ? sa.s : "", na);
         memcpy(buf + na, sb.s ? sb.s : "", nb + 1);
-        r.t = V_STR; r.i = 0; r.f = 0; r.a = NULL; r.s = buf; r.o = NULL; r.fn = NULL;
+        r.t = V_STR; r.s = buf;
         return r;
     }
     if (a.t == V_FLOAT || b.t == V_FLOAT) return v_float(rt_num(a) + rt_num(b));
@@ -725,18 +1052,23 @@ static Val rt_range(Val n) {
     return r;
 }
 static Val rt_arr_get(Val a, Val b) {
-    if (a.t != V_ARR || !a.a) rt_abort("下标访问需要数组");
+    if (a.t != V_ARR || !a.a) rt_throw("TypeError", "下标访问需要数组");
     long long i = rt_int(b);
-    if (i < 0 || i >= a.a->n) rt_abort("list index out of range");
+    /* v4.1：越界改为 rt_throw，让 try/catch 能捕获（与解释器一致） */
+    if (i < 0 || i >= a.a->n) rt_throw("IndexError", "list index out of range");
     return a.a->items[i];
 }
 static Val rt_arr_set(Val a, Val b, Val c) {
     if (a.t == V_DICT) return rt_dict_set(a, b, c);
-    if (a.t != V_ARR || !a.a) rt_abort("下标赋值需要数组");
+    if (a.t != V_ARR || !a.a) rt_throw("TypeError", "下标赋值需要数组");
     long long i = rt_int(b);
-    if (i < 0 || i >= a.a->n) rt_abort("list index out of range");
+    if (i < 0 || i >= a.a->n) rt_throw("IndexError", "list index out of range");
+    /* 先复制再释放：c 可能正是槽里那个值（如 a[0] = a[0]、
+       d["k"] = arrappend(d["k"], x)——arrappend 原地改并返回同一引用），
+       先 free 会让 rt_val_dup 读到已释放内存。 */
+    Val dup = rt_val_dup(c);
     rt_val_free(a.a->items[i]);
-    a.a->items[i] = rt_val_dup(c);
+    a.a->items[i] = dup;
     return c;
 }
 
@@ -763,8 +1095,10 @@ static Val rt_dict_set(Val d, Val k, Val v) {
     if (d.t != V_DICT || !d.a) rt_throw("TypeError", "字典赋值需要字典对象");
     for (long long i = 0; i + 1 < d.a->n; i += 2) {
         if (rt_key_eq(d.a->items[i], k)) {
+            /* 先复制再释放：v 可能引用旧值本身（含 arrappend 原地改后返回同一引用） */
+            Val dup = rt_val_dup(v);
             rt_val_free(d.a->items[i + 1]);
-            d.a->items[i + 1] = rt_val_dup(v);
+            d.a->items[i + 1] = dup;
             return v;
         }
     }
@@ -965,8 +1299,8 @@ static Val rt_objset(Obj *o, const char *name, Val v) {
 
 /* v4.2：模块对象。属性表是一个普通字典（导出名 -> 值） */
 static Val v_mod(Mod *m) {
-    Val v; v.t = V_MODULE; v.i = 0; v.f = 0; v.s = NULL; v.a = NULL;
-    v.o = (Obj *)m; v.fn = NULL;
+    Val v; v.t = V_MODULE;
+    v.o = (Obj *)m;
     return v;
 }
 static Val rt_module_new(Val namev, Val attrs) {
@@ -1013,6 +1347,20 @@ static Val rt_err_obj(void) {
     rt_objset(o, "msg", v_str(g_err_msg));
     return v_obj(o);
 }
+
+/* ================= v4.1：自定义异常与类型化 catch =================
+   exception Foo 只在编译期登记名字；raise Foo("消息") 直接落成
+   rt_throw("Foo", "消息")，catch Foo e 用 rt_err_matches("Foo") 过滤。
+   类型不匹配时 rt_rethrow() 把异常抛给外一层 try，语义与解释器一致。 */
+static int rt_err_matches(const char *t) {
+    if (!t || !t[0]) return 1;
+    return strcmp(g_err_type, t) == 0;
+}
+static void rt_rethrow(int level) {
+    if (level > 0) longjmp(g_jmp_stack[level - 1], 1);
+    rt_report_error();
+    exit(1);
+}
 static Val obj_call(Obj *o, const char *name, Val *args, int n) {
     (void)n;
     if (!o) rt_abort("空对象调用方法");
@@ -1034,6 +1382,18 @@ static Val obj_call(Obj *o, const char *name, Val *args, int n) {
 }
 
 /* v4.2：统一方法分派入口（类实例 / 字典 / 字符串 / 数组） */
+/* v4.3.2：按字节区间造一个字符串。调用方负责保证区间落在 UTF-8 字符边界上
+   （strstr 命中的分隔符前后天然是边界）。 */
+static Val rt_vstr_range(const char *p, size_t len) {
+    char *b = (char *)malloc(len + 1);
+    Val r;
+    if (!b) rt_abort("内存不足");
+    memcpy(b, p, len);
+    b[len] = '\0';
+    r.t = V_STR; r.s = b;
+    return r;
+}
+
 static Val rt_method(Val self, const char *name, Val *args, int n) {
     const char *m = name ? name : "";
     if (self.t == V_OBJ) return obj_call(self.o, m, args, n);
@@ -1123,11 +1483,13 @@ static Val rt_method(Val self, const char *name, Val *args, int n) {
                 Val r = v_str(b); free(b); return r;
             }
         }
-        if (strcmp(m, "starts_with") == 0 || strcmp(m, "startsWith") == 0) {
+        if (strcmp(m, "starts_with") == 0 || strcmp(m, "startsWith") == 0
+            || strcmp(m, "startswith") == 0) {
             if (n < 1) return v_bool(0);
             return v_bool(strncmp(s, rt_str_of(args[0]), strlen(rt_str_of(args[0]))) == 0);
         }
-        if (strcmp(m, "ends_with") == 0 || strcmp(m, "endsWith") == 0) {
+        if (strcmp(m, "ends_with") == 0 || strcmp(m, "endsWith") == 0
+            || strcmp(m, "endswith") == 0) {
             size_t sl, al;
             if (n < 1) return v_bool(0);
             sl = strlen(s); al = strlen(rt_str_of(args[0]));
@@ -1138,6 +1500,48 @@ static Val rt_method(Val self, const char *name, Val *args, int n) {
             if (n < 1) return v_int(-1);
             hit = strstr(s, rt_str_of(args[0]));
             return v_int(hit ? rt_u8len_prefix(s, hit) : -1);
+        }
+        if (strcmp(m, "split") == 0) {
+            /* v4.3.2：此前字符串 split 完全缺失，`use std.text` 的程序编 exe
+               必抛 E1006。这里补上与解释器一致的语义：带分隔符按分隔符切；
+               不带参数按连续空白切并丢弃空段；第二参数是 maxsplit。 */
+            Val r = v_arr();
+            r.a = arr_new(4);   /* v_arr() 只置类型，容器要单独分配 */
+            if (n < 1) {
+                const char *p = s;
+                while (*p) {
+                    const char *q;
+                    while (*p == ' ' || *p == '\t' || *p == '\n'
+                           || *p == '\r' || *p == '\v' || *p == '\f') p++;
+                    if (!*p) break;
+                    q = p;
+                    while (*q && !(*q == ' ' || *q == '\t' || *q == '\n'
+                                   || *q == '\r' || *q == '\v' || *q == '\f')) q++;
+                    arr_push(r.a, rt_vstr_range(p, (size_t)(q - p)));
+                    p = q;
+                }
+                return r;
+            } else {
+                const char *sep = rt_str_of(args[0]);
+                size_t sl = strlen(sep);
+                const char *p = s;
+                long long left = (n >= 2) ? rt_int(args[1]) : -1;
+                if (sl == 0) {
+                    rt_throw("ValueError", "split 的分隔符不能为空");
+                    return r;
+                }
+                while (1) {
+                    const char *hit = strstr(p, sep);
+                    if (!hit || left == 0) {
+                        arr_push(r.a, rt_vstr_range(p, strlen(p)));
+                        break;
+                    }
+                    arr_push(r.a, rt_vstr_range(p, (size_t)(hit - p)));
+                    p = hit + sl;
+                    if (left > 0) left--;
+                }
+                return r;
+            }
         }
         rt_throw("AttributeError", "字符串无此方法");
         return v_null();
@@ -1277,7 +1681,7 @@ static Val rt_index(Val c, Val i) {
         if (!buf) rt_abort("内存不足");
         memcpy(buf, p, w);
         buf[w] = '\0';
-        r.t = V_STR; r.i = 0; r.f = 0; r.a = NULL; r.s = buf; r.o = NULL; r.fn = NULL; r.fn = NULL; r.o = NULL;
+        r.t = V_STR; r.s = buf;
         return r;
     }
     return rt_arr_get(c, i);
@@ -1363,7 +1767,7 @@ static Val rt_str_repeat(const char *s, long long n) {
     p = buf;
     for (k = 0; k < n; k++) { memcpy(p, s, len); p += len; }
     *p = '\0';
-    r.t = V_STR; r.i = 0; r.f = 0; r.a = NULL; r.s = buf;
+    r.t = V_STR; r.s = buf;
     return r;
 }
 static Val rt_sub(Val a, Val b) {
@@ -1391,18 +1795,18 @@ static Val rt_div(Val a, Val b) {
 static Val rt_mod(Val a, Val b) {
     if (a.t == V_FLOAT || b.t == V_FLOAT) {
         double d = rt_num(b);
-        if (d == 0) rt_abort("integer division or modulo by zero");
-        return v_float(fmod(rt_num(a), d));
+        if (d == 0) rt_throw("ZeroDivisionError", "integer division or modulo by zero");
+        return v_float(rt_fmod_py(rt_num(a), d));
     }
     long long d = rt_int(b);
-    if (d == 0) rt_abort("integer modulo by zero");
+    if (d == 0) rt_throw("ZeroDivisionError", "integer modulo by zero");
     long long r = rt_int(a) % d;
     if (r != 0 && ((r < 0) != (d < 0))) r += d;  /* Python 取正模语义 */
     return v_int(r);
 }
 static Val rt_neg(Val a) {
     if (a.t == V_FLOAT) return v_float(-a.f);
-    if (rt_int(a) == LLONG_MIN) rt_abort("整数溢出：超出 64 位有符号整数范围");
+    if (rt_int(a) == LLONG_MIN) rt_abort("整数溢出：超出 64 位有符号整数范围（取负）");
     return v_int(-rt_int(a));
 }
 static Val rt_not(Val a) { return v_bool(!rt_truth(a)); }
@@ -1569,6 +1973,18 @@ static Val rt_type(Val v) {
     return v_str("unknown");
 }
 
+/* 4.9.1：`x have <类型名>` —— 运行期类型判定，返回布尔。
+   判定口径与解释器 typename() 一致：bool 是独立类型，1 have float 为假。
+   "object" / "instance" 是给类的通用判定（任意实例都为真）。 */
+static Val rt_have(Val v, const char *tn) {
+    Val t = rt_type(v);
+    const char *s = (t.t == V_STR && t.s) ? t.s : "";
+    if (!tn) return v_bool(0);
+    if (strcmp(tn, "object") == 0 || strcmp(tn, "instance") == 0)
+        return v_bool(v.t == V_OBJ);
+    return v_bool(strcmp(s, tn) == 0);
+}
+
 /* ---------- 字符串工具（ASCII 版；中文原样保留） ---------- */
 static Val rt_trim(Val v) {
     const char *s = v.t == V_STR && v.s ? v.s : rt_str_of(v);
@@ -1581,34 +1997,29 @@ static Val rt_trim(Val v) {
     buf[n] = '\0';
     return v_str(buf);
 }
-static Val rt_upper(Val v) {
-    const char *s = rt_str_of(v);
-    char *buf = strdup(s);
-    if (!buf) rt_abort("内存不足");
-    for (char *p = buf; *p; p++)
-        if (*p >= 'a' && *p <= 'z') *p -= 32;
-    return v_str(buf);
-}
-static Val rt_lower(Val v) {
-    const char *s = rt_str_of(v);
-    char *buf = strdup(s);
-    if (!buf) rt_abort("内存不足");
-    for (char *p = buf; *p; p++)
-        if (*p >= 'A' && *p <= 'Z') *p += 32;
-    return v_str(buf);
-}
+static Val rt_uc_map(Val v, int to_upper);   /* 4.5：定义在文件末尾（Unicode 简单大小写） */
+static Val rt_ord(Val v);                    /* 4.5：码点转换，定义在文件末尾 */
+static Val rt_chr(Val v);
+static Val rt_upper(Val v) { return rt_uc_map(v, 1); }
+static Val rt_lower(Val v) { return rt_uc_map(v, 0); }
 static Val rt_strpad(Val v, Val w, Val ch) {
     const char *s = rt_str_of(v);
     long long width = rt_int(w);
     const char *pad = rt_str_of(ch);
-    size_t n = strlen(s);
-    if (width <= 0 || (long long)n >= width) return v_str(s);
-    long long cnt = width - (long long)n;
-    char *buf = (char *)malloc((size_t)width + 1);
+    size_t n = strlen(s);              /* 字节长度，用于拷贝 */
+    long long chars = rt_u8len(s);     /* 4.5：按字符数比较，与解释器 rjust 一致 */
+    long long cnt;
+    size_t plen;
+    char *buf;
+    if (!pad[0]) pad = " ";
+    plen = strlen(pad);
+    if (width <= 0 || chars >= width) return v_str(s);
+    cnt = width - chars;
+    buf = (char *)malloc((size_t)cnt * plen + n + 1);
     if (!buf) rt_abort("内存不足");
-    for (long long k = 0; k < cnt; k++) buf[k] = pad[0];
-    memcpy(buf + cnt, s, n);
-    buf[width] = '\0';
+    for (long long k = 0; k < cnt; k++) memcpy(buf + (size_t)k * plen, pad, plen);
+    memcpy(buf + (size_t)cnt * plen, s, n);
+    buf[(size_t)cnt * plen + n] = '\0';
     return v_str(buf);
 }
 static Val rt_strcut(Val v, Val st, Val ed) {
@@ -1631,7 +2042,7 @@ static Val rt_strcut(Val v, Val st, Val ed) {
     if (!buf) rt_abort("内存不足");
     memcpy(buf, s + boff, eoff - boff);
     buf[eoff - boff] = '\0';
-    r.t = V_STR; r.i = 0; r.f = 0; r.a = NULL; r.s = buf;
+    r.t = V_STR; r.s = buf;
     return r;
 }
 
@@ -2008,12 +2419,23 @@ static Val rt_system(Val cmd) {
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
     wchar_t wcl[8192];
-    if (MultiByteToWideChar(CP_UTF8, 0, rt_str_of(cmd), -1, wcl, 8192) <= 0)
+    wchar_t wsh[8192 + 64];
+    const char *cs = rt_str_of(cmd);
+    BOOL ok;
+    DWORD code = 0;
+    if (MultiByteToWideChar(CP_UTF8, 0, cs, -1, wcl, 8192) <= 0)
         return v_int(-1);
-    if (!CreateProcessW(NULL, wcl, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+    /* 统一走 cmd.exe /c，与 POSIX system() 的语义对齐：
+       - .bat/.cmd 不是 PE，CreateProcessW 直调必然失败（这就是自举链跑不动的原因）；
+       - echo/cd/set 之类是 cmd 内建命令，根本不是可执行文件；
+       - 单个 exe + 参数经 cmd 转发后行为不变，退出码也照样透传。
+       以前这里直调 CreateProcessW，`system("build.bat")` 只能拿到 -1。 */
+    if (swprintf(wsh, 8192 + 64, L"cmd.exe /c \"%ls\"", wcl) < 0)
+        return v_int(-1);
+    ok = CreateProcessW(NULL, wsh, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+    if (!ok)
         return v_int(-1);
     WaitForSingleObject(pi.hProcess, INFINITE);
-    DWORD code = 0;
     GetExitCodeProcess(pi.hProcess, &code);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
@@ -2082,13 +2504,27 @@ static void rt_json_enc_dict(Val v, RtBuf *b) {
     }
     rt_buf_addc(b, '}');
 }
+/* v4.1：浮点序列化取“最短且能原样读回”的写法。
+   之前固定 %.17g 会把 6.6 写成 6.5999999999999996，与解释器 json.dumps 不同。 */
+static void rt_fmt_shortest_double(double d, char *buf, size_t cap) {
+    int p;
+    for (p = 15; p <= 17; p++) {
+        snprintf(buf, cap, "%.*g", p, d);
+        if (strtod(buf, NULL) == d) break;
+    }
+    /* Python 的浮点 repr 一定带小数点：1024 要写成 1024.0 */
+    if (!strchr(buf, '.') && !strchr(buf, 'e') && !strchr(buf, 'E')) {
+        size_t n = strlen(buf);
+        if (n + 3 <= cap) { buf[n] = '.'; buf[n + 1] = '0'; buf[n + 2] = '\0'; }
+    }
+}
 static void rt_json_enc(Val v, RtBuf *b) {
     char tmp[64];
     switch (v.t) {
         case V_NULL: rt_buf_add(b, "null"); break;
         case V_BOOL: rt_buf_add(b, v.i ? "true" : "false"); break;
         case V_INT: snprintf(tmp, sizeof(tmp), "%lld", v.i); rt_buf_add(b, tmp); break;
-        case V_FLOAT: snprintf(tmp, sizeof(tmp), "%.17g", v.f); rt_buf_add(b, tmp); break;
+        case V_FLOAT: rt_fmt_shortest_double(v.f, tmp, sizeof(tmp)); rt_buf_add(b, tmp); break;
         case V_STR: rt_json_escape(b, v.s ? v.s : ""); break;
         case V_ARR: rt_json_enc_arr(v, b); break;
         case V_DICT: rt_json_enc_dict(v, b); break;
@@ -2531,3 +2967,613 @@ static Val rt_ffi_call(Val lib, Val func, Val args, Val ret, Val argtypes) {
     return v_null();
 }
 
+
+/* ================= v4.2 并发：线程 / 互斥锁 / 原子量 =================
+   与 impor/rt_concurrency.py 一一对应：句柄是整数、atomic_* 返回旧值、
+   thread_join 返回线程函数结果。改一侧必须同步另一侧。
+   共享可变容器（数组/字典/对象）跨线程使用时必须由调用方用 mutex 包住，
+   运行库不做引用计数，也不提供 GC 屏障。 */
+
+#define RT_MAX_THREADS 256
+#define RT_MAX_MUTEXES 64
+#define RT_MAX_ATOMS 128
+#define RT_MAX_CONDS 64
+
+typedef struct {
+    int used, joined, done;
+    Fn *fn;
+    Val result;
+#if defined(_WIN32)
+    HANDLE th;
+#else
+    pthread_t th;
+    int th_valid;
+#endif
+} RtThreadSlot;
+
+typedef struct {
+    int used;
+#if defined(_WIN32)
+    CRITICAL_SECTION cs;
+#else
+    pthread_mutex_t m;
+#endif
+} RtMutexSlot;
+
+typedef struct {
+    int used;
+    long long v;
+} RtAtomSlot;
+
+typedef struct {
+    int used;
+#if defined(_WIN32)
+#if defined(__TINYC__)
+    /* 内置 tcc 的 win32 头文件没有 CONDITION_VARIABLE（Vista+ API），
+       32 位端退化为「代际计数 + 1 ms 轮询」：语义仍是挂起后唤醒、不会丢通知，
+       但唤醒粒度是 1 ms，不宣称「真阻塞」。 */
+    volatile int gen;
+#else
+    CONDITION_VARIABLE cv;
+#endif
+#else
+    pthread_cond_t c;
+#endif
+} RtCondSlot;
+
+static RtThreadSlot g_threads[RT_MAX_THREADS];
+static RtMutexSlot g_mutexes[RT_MAX_MUTEXES];
+static RtAtomSlot g_atoms[RT_MAX_ATOMS];
+static RtCondSlot g_conds[RT_MAX_CONDS];
+
+static RtThreadSlot *rt_thread_slot(Val h, const char *what) {
+    long long i;
+    if (h.t != V_INT) rt_abort(what);
+    i = h.i - 1;
+    if (i < 0 || i >= RT_MAX_THREADS || !g_threads[i].used) rt_abort(what);
+    return &g_threads[i];
+}
+
+#if defined(_WIN32)
+static DWORD WINAPI rt_thread_entry(LPVOID arg)
+#else
+static void *rt_thread_entry(void *arg)
+#endif
+{
+    RtThreadSlot *s = (RtThreadSlot *)arg;
+    rt_tls();                     /* 本线程独立的跳转栈 / 错误槽 */
+    s->result = s->fn ? rt_call(v_fn(s->fn), NULL, 0) : v_null();
+    s->done = 1;
+#if defined(_WIN32)
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
+static Val rt_thread_spawn(Val fn) {
+    int i;
+    RtThreadSlot *s;
+    if (fn.t != V_FUNC || !fn.fn) rt_abort("thread_spawn 需要函数（无参闭包）");
+    rt_lock_mem();
+    for (i = 0; i < RT_MAX_THREADS; i++) if (!g_threads[i].used) break;
+    if (i >= RT_MAX_THREADS) { rt_unlock_mem(); rt_abort("线程数超过上限 256"); }
+    s = &g_threads[i];
+    memset(s, 0, sizeof(*s));
+    s->used = 1;
+    s->fn = fn.fn;
+    rt_unlock_mem();
+#if defined(_WIN32)
+    s->th = CreateThread(NULL, 0, rt_thread_entry, s, 0, NULL);
+    if (!s->th) { s->used = 0; rt_abort("CreateThread 失败"); }
+#else
+    if (pthread_create(&s->th, NULL, rt_thread_entry, s) != 0) {
+        s->used = 0;
+        rt_abort("pthread_create 失败");
+    }
+    s->th_valid = 1;
+#endif
+    return v_int(i + 1);
+}
+
+static Val rt_thread_join(Val h) {
+    RtThreadSlot *s = rt_thread_slot(h, "thread_join 的句柄无效");
+    if (!s->joined) {
+#if defined(_WIN32)
+        if (s->th) {
+            WaitForSingleObject(s->th, INFINITE);
+            CloseHandle(s->th);
+            s->th = NULL;
+        }
+#else
+        if (s->th_valid) {
+            pthread_join(s->th, NULL);
+            s->th_valid = 0;
+        }
+#endif
+        s->joined = 1;
+    }
+    return s->result;
+}
+
+static Val rt_thread_alive(Val h) {
+    RtThreadSlot *s = rt_thread_slot(h, "thread_alive 的句柄无效");
+    return v_bool(!s->done);
+}
+
+static Val rt_thread_id(void) {
+    RtTls *t = rt_tls();
+    if (!t->tid) t->tid = rt_next_tid();
+    return v_int(t->tid);
+}
+
+static Val rt_cpu_count(void) {
+#if defined(_WIN32)
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    return v_int((long long)(si.dwNumberOfProcessors ? si.dwNumberOfProcessors : 1));
+#else
+    long n = sysconf(_SC_NPROCESSORS_ONLN);
+    return v_int(n > 0 ? (long long)n : 1);
+#endif
+}
+
+/* 退出前等所有线程收尾，避免 rt_shutdown 释放数组时还有线程在跑 */
+static void rt_wait_all_threads(void) {
+    int i;
+    for (i = 0; i < RT_MAX_THREADS; i++) {
+        RtThreadSlot *s = &g_threads[i];
+        if (!s->used || s->joined) continue;
+#if defined(_WIN32)
+        if (s->th) { WaitForSingleObject(s->th, INFINITE); CloseHandle(s->th); s->th = NULL; }
+#else
+        if (s->th_valid) { pthread_join(s->th, NULL); s->th_valid = 0; }
+#endif
+        s->joined = 1;
+    }
+}
+
+static RtMutexSlot *rt_mutex_slot(Val h, const char *what) {
+    long long i;
+    if (h.t != V_INT) rt_abort(what);
+    i = h.i - 1;
+    if (i < 0 || i >= RT_MAX_MUTEXES || !g_mutexes[i].used) rt_abort(what);
+    return &g_mutexes[i];
+}
+
+static Val rt_mutex_new(void) {
+    int i;
+    for (i = 0; i < RT_MAX_MUTEXES; i++) {
+        if (!g_mutexes[i].used) {
+            g_mutexes[i].used = 1;
+#if defined(_WIN32)
+            InitializeCriticalSection(&g_mutexes[i].cs);
+#else
+            pthread_mutex_init(&g_mutexes[i].m, NULL);
+#endif
+            return v_int(i + 1);
+        }
+    }
+    rt_abort("互斥锁数量超过上限 64");
+    return v_null();
+}
+
+static Val rt_mutex_lock(Val h) {
+    RtMutexSlot *m = rt_mutex_slot(h, "mutex_lock 的句柄无效");
+#if defined(_WIN32)
+    EnterCriticalSection(&m->cs);
+#else
+    pthread_mutex_lock(&m->m);
+#endif
+    return v_int(0);
+}
+
+static Val rt_mutex_unlock(Val h) {
+    RtMutexSlot *m = rt_mutex_slot(h, "mutex_unlock 的句柄无效");
+#if defined(_WIN32)
+    LeaveCriticalSection(&m->cs);
+#else
+    pthread_mutex_unlock(&m->m);
+#endif
+    return v_int(0);
+}
+
+static Val rt_mutex_trylock(Val h) {
+    RtMutexSlot *m = rt_mutex_slot(h, "mutex_trylock 的句柄无效");
+#if defined(_WIN32)
+    return v_bool(TryEnterCriticalSection(&m->cs) != 0);
+#else
+    return v_bool(pthread_mutex_trylock(&m->m) == 0);
+#endif
+}
+
+/* ---- v4.3.1 条件变量：把轮询等待换成挂起/唤醒 ----
+ * 口径与 impor/rt_concurrency.py 一致：
+ *   - 句柄是整数 id，与锁/线程句柄不通用；
+ *   - cond_wait 必须由已持有 mutex 的线程调用：内部先释放锁、挂起，
+ *     被唤醒后重新拿回锁才返回；cond_wait_ms 超时返回 false；
+ *   - cond_notify 唤醒一个，cond_notify_all 唤醒全部；无等待者时通知丢失
+ *     （条件变量不是信号量，条件状态要调用方自己记住）。
+ * Windows 用 CONDITION_VARIABLE + SleepConditionVariableCS（原子释放 CS），
+ * POSIX 用 pthread_cond_t + pthread_cond_wait / timedwait。
+ */
+static RtCondSlot *rt_cond_slot(Val h, const char *what) {
+    long long i;
+    if (h.t != V_INT) rt_abort(what);
+    i = h.i - 1;
+    if (i < 0 || i >= RT_MAX_CONDS || !g_conds[i].used) rt_abort(what);
+    return &g_conds[i];
+}
+
+static Val rt_cond_new(void) {
+    int i;
+    for (i = 0; i < RT_MAX_CONDS; i++) {
+        if (!g_conds[i].used) {
+            g_conds[i].used = 1;
+#if defined(_WIN32)
+#if defined(__TINYC__)
+            g_conds[i].gen = 0;
+#else
+            InitializeConditionVariable(&g_conds[i].cv);
+#endif
+#else
+            pthread_cond_init(&g_conds[i].c, NULL);
+#endif
+            return v_int(i + 1);
+        }
+    }
+    rt_abort("条件变量数量超过上限 64");
+    return v_null();
+}
+
+static Val rt_cond_wait(Val ch, Val mh) {
+    RtCondSlot *c = rt_cond_slot(ch, "cond_wait 的条件变量句柄无效");
+    RtMutexSlot *m = rt_mutex_slot(mh, "cond_wait 的互斥锁句柄无效");
+#if defined(_WIN32)
+#if defined(__TINYC__)
+    int g = c->gen;
+    LeaveCriticalSection(&m->cs);
+    while (c->gen == g) Sleep(1);
+    EnterCriticalSection(&m->cs);
+#else
+    if (!SleepConditionVariableCS(&c->cv, &m->cs, INFINITE))
+        rt_abort("cond_wait 等待失败");
+#endif
+#else
+    pthread_cond_wait(&c->c, &m->m);
+#endif
+    return v_int(0);
+}
+
+static Val rt_cond_wait_ms(Val ch, Val mh, Val ms) {
+    RtCondSlot *c = rt_cond_slot(ch, "cond_wait_ms 的条件变量句柄无效");
+    RtMutexSlot *m = rt_mutex_slot(mh, "cond_wait_ms 的互斥锁句柄无效");
+    long long t = 0;
+    if (ms.t == V_INT) t = ms.i; else if (ms.t == V_FLOAT) t = (long long)ms.f;
+    if (t < 0) t = 0;
+#if defined(_WIN32)
+#if defined(__TINYC__)
+    int g = c->gen;
+    long long waited = 0;
+    LeaveCriticalSection(&m->cs);
+    while (c->gen == g && waited < t) { Sleep(1); waited += 1; }
+    EnterCriticalSection(&m->cs);
+    return v_bool(c->gen != g);
+#else
+    if (!SleepConditionVariableCS(&c->cv, &m->cs, (DWORD)t)) {
+        if (GetLastError() == ERROR_TIMEOUT) return v_bool(0);
+        rt_abort("cond_wait_ms 等待失败");
+    }
+#endif
+#else
+    if (t == 0) {
+        pthread_cond_wait(&c->c, &m->m);
+    } else {
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += t / 1000;
+        ts.tv_nsec += (t % 1000) * 1000000L;
+        if (ts.tv_nsec >= 1000000000L) { ts.tv_sec += 1; ts.tv_nsec -= 1000000000L; }
+        if (pthread_cond_timedwait(&c->c, &m->m, &ts) != 0) return v_bool(0);
+    }
+#endif
+    return v_bool(1);
+}
+
+static Val rt_cond_notify(Val ch) {
+    RtCondSlot *c = rt_cond_slot(ch, "cond_notify 的条件变量句柄无效");
+#if defined(_WIN32)
+#if defined(__TINYC__)
+    c->gen = c->gen + 1;
+#else
+    WakeConditionVariable(&c->cv);
+#endif
+#else
+    pthread_cond_signal(&c->c);
+#endif
+    return v_int(0);
+}
+
+static Val rt_cond_notify_all(Val ch) {
+    RtCondSlot *c = rt_cond_slot(ch, "cond_notify_all 的条件变量句柄无效");
+#if defined(_WIN32)
+#if defined(__TINYC__)
+    c->gen = c->gen + 1;
+#else
+    WakeAllConditionVariable(&c->cv);
+#endif
+#else
+    pthread_cond_broadcast(&c->c);
+#endif
+    return v_int(0);
+}
+
+static RtAtomSlot *rt_atom_slot(Val h, const char *what) {
+    long long i;
+    if (h.t != V_INT) rt_abort(what);
+    i = h.i - 1;
+    if (i < 0 || i >= RT_MAX_ATOMS || !g_atoms[i].used) rt_abort(what);
+    return &g_atoms[i];
+}
+
+static Val rt_atomic_new(Val v) {
+    int i;
+    long long init = 0;
+    if (v.t == V_INT) init = v.i;
+    else if (v.t == V_FLOAT) init = (long long)v.f;
+    else if (v.t == V_BOOL) init = v.i ? 1 : 0;
+    for (i = 0; i < RT_MAX_ATOMS; i++) {
+        if (!g_atoms[i].used) {
+            g_atoms[i].used = 1;
+            g_atoms[i].v = init;
+            return v_int(i + 1);
+        }
+    }
+    rt_abort("原子量数量超过上限 128");
+    return v_null();
+}
+
+static Val rt_atomic_load(Val a) {
+    RtAtomSlot *s = rt_atom_slot(a, "atomic_load 的句柄无效");
+    long long cur;
+    rt_lock_stat();
+    cur = s->v;
+    rt_unlock_stat();
+    return v_int(cur);
+}
+
+static Val rt_atomic_store(Val a, Val v) {
+    RtAtomSlot *s = rt_atom_slot(a, "atomic_store 的句柄无效");
+    long long nv = (v.t == V_FLOAT) ? (long long)v.f : v.i;
+    long long old;
+    rt_lock_stat();
+    old = s->v;
+    s->v = nv;
+    rt_unlock_stat();
+    return v_int(old);
+}
+
+static Val rt_atomic_add(Val a, Val n) {
+    RtAtomSlot *s = rt_atom_slot(a, "atomic_add 的句柄无效");
+    long long d = (n.t == V_FLOAT) ? (long long)n.f : n.i;
+    long long old;
+    rt_lock_stat();
+    old = s->v;
+    s->v = old + d;
+    rt_unlock_stat();
+    return v_int(old);
+}
+
+static Val rt_atomic_sub(Val a, Val n) {
+    RtAtomSlot *s = rt_atom_slot(a, "atomic_sub 的句柄无效");
+    long long d = (n.t == V_FLOAT) ? (long long)n.f : n.i;
+    long long old;
+    rt_lock_stat();
+    old = s->v;
+    s->v = old - d;
+    rt_unlock_stat();
+    return v_int(old);
+}
+
+static Val rt_atomic_exchange(Val a, Val v) {
+    return rt_atomic_store(a, v);
+}
+
+static Val rt_atomic_cas(Val a, Val expect, Val nv) {
+    RtAtomSlot *s = rt_atom_slot(a, "atomic_cas 的句柄无效");
+    long long ov = (expect.t == V_FLOAT) ? (long long)expect.f : expect.i;
+    long long wv = (nv.t == V_FLOAT) ? (long long)nv.f : nv.i;
+    int ok = 0;
+    rt_lock_stat();
+    if (s->v == ov) {
+        s->v = wv;
+        ok = 1;
+    }
+    rt_unlock_stat();
+    return v_bool(ok);
+}
+
+
+/* ===== 4.5.0：IR 下降后端通用助手 =====
+ * `impor/cir.py` 把 IR 的三地址码指令映射到这些函数上。放在文件末尾，
+ * 保证引用的 rt_* 都已定义；ctrans 不调用它们，静态函数未使用不影响编译。
+ */
+
+/* ** 运算：整数走快速幂并检查溢出，任一侧是浮点则用 pow */
+static Val rt_pow_impor(Val a, Val b) {
+    if (a.t == V_FLOAT || b.t == V_FLOAT)
+        return v_float(pow(rt_num(a), rt_num(b)));
+    long long base = rt_int(a), e = rt_int(b);
+    if (e < 0) {
+        if (base == 0) rt_throw("DivisionByZero", "0 的负数次幂未定义");
+        return v_float(pow((double)base, (double)e));
+    }
+    long long acc = 1;
+    while (e > 0) {
+        if (e & 1) acc = rt_ck_mul(acc, base);
+        base = rt_ck_mul(base, base);
+        e >>= 1;
+    }
+    return v_int(acc);
+}
+
+/* 一元 +：数值原样，字符串/其它类型按解释器口径返回原值 */
+static Val rt_pos_impor(Val v) { return v; }
+
+/* 下标写入：dict 走键值表，其余走数组（IR 的 SETINDEX 不区分容器种类） */
+static Val rt_setindex(Val c, Val i, Val v) {
+    if (c.t == V_DICT) return rt_dict_set(c, i, v);
+    return rt_arr_set(c, i, v);
+}
+
+/* for 循环迭代：长度与第 i 个元素，容器种类在运行期决定 */
+static long long rt_iter_n(Val c) {
+    if (c.t == V_ARR) return c.a ? c.a->n : 0;
+    if (c.t == V_STR) return rt_u8len(c.s ? c.s : "");
+    if (c.t == V_DICT) return c.a ? c.a->n / 2 : 0;
+    return 0;
+}
+
+/* dict 迭代按「键」进行（对齐解释器 for k in d）；数组/字符串原样返回 */
+static Val rt_iter_keys(Val c) {
+    if (c.t == V_DICT) return rt_dict_keys(c);
+    return c;
+}
+
+static Val rt_iter_at(Val c, long long i) {
+    if (c.t == V_STR) {
+        size_t clen = 0;
+        const char *q = rt_u8_at(c.s ? c.s : "", i, &clen);
+        if (!q) return v_null();
+        return rt_vstr_range(q, clen);
+    }
+    return rt_index(c, v_int(i));
+}
+
+
+/* range(start, stop[, step])：IR 里 range 是普通调用，需要多参数版本 */
+static Val rt_range3(Val s, Val e, Val st) {
+    long long start = rt_int(s), stop = rt_int(e), step = rt_int(st);
+    if (step == 0) rt_throw("ValueError", "range 的步长不能为 0");
+    Arr *a = arr_new(8);
+    long long i;
+    if (step > 0) {
+        for (i = start; i < stop; i += step) arr_push(a, v_int(i));
+    } else {
+        for (i = start; i > stop; i += step) arr_push(a, v_int(i));
+    }
+    Val v = v_arr();
+    v.a = a;
+    return v;
+}
+
+/* ===== 4.5.0：Unicode 简单大小写映射（同 impor/unicode_case.py 的表） =====
+/* 只覆盖 1:1 映射；二分查找，未命中的码点原样保留。 */
+#define RT_UC_N 420
+static const unsigned int rt_uc_upper_from[] = {
+    0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F, 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x00E0, 0x00E1, 0x00E2, 0x00E3, 0x00E4, 0x00E5, 0x00E6, 0x00E7, 0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x00EC, 0x00ED, 0x00EE, 0x00EF, 0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF, 0x0101, 0x0103, 0x0105, 0x0107, 0x0109, 0x010B, 0x010D, 0x010F, 0x0111, 0x0113, 0x0115, 0x0117, 0x0119, 0x011B, 0x011D, 0x011F, 0x0121, 0x0123, 0x0125, 0x0127, 0x0129, 0x012B, 0x012D, 0x012F, 0x0131, 0x0133, 0x0135, 0x0137, 0x013A, 0x013C, 0x013E, 0x0140, 0x0142, 0x0144, 0x0146, 0x0148, 0x014B, 0x014D, 0x014F, 0x0151, 0x0153, 0x0155, 0x0157, 0x0159, 0x015B, 0x015D, 0x015F, 0x0161, 0x0163, 0x0165, 0x0167, 0x0169, 0x016B, 0x016D, 0x016F, 0x0171, 0x0173, 0x0175, 0x0177, 0x017A, 0x017C, 0x017E, 0x017F, 0x0180, 0x0183, 0x0185, 0x0188, 0x018C, 0x0192, 0x0195, 0x0199, 0x019A, 0x019E, 0x01A1, 0x01A3, 0x01A5, 0x01A8, 0x01AD, 0x01B0, 0x01B4, 0x01B6, 0x01B9, 0x01BD, 0x01BF, 0x01C5, 0x01C6, 0x01C8, 0x01C9, 0x01CB, 0x01CC, 0x01CE, 0x01D0, 0x01D2, 0x01D4, 0x01D6, 0x01D8, 0x01DA, 0x01DC, 0x01DD, 0x01DF, 0x01E1, 0x01E3, 0x01E5, 0x01E7, 0x01E9, 0x01EB, 0x01ED, 0x01EF, 0x01F2, 0x01F3, 0x01F5, 0x01F9, 0x01FB, 0x01FD, 0x01FF, 0x0201, 0x0203, 0x0205, 0x0207, 0x0209, 0x020B, 0x020D, 0x020F, 0x0211, 0x0213, 0x0215, 0x0217, 0x0219, 0x021B, 0x021D, 0x021F, 0x0223, 0x0225, 0x0227, 0x0229, 0x022B, 0x022D, 0x022F, 0x0231, 0x0233, 0x023C, 0x023F, 0x0240, 0x0242, 0x0247, 0x0249, 0x024B, 0x024D, 0x024F, 0x0371, 0x0373, 0x0377, 0x037B, 0x037C, 0x037D, 0x03AC, 0x03AD, 0x03AE, 0x03AF, 0x03B1, 0x03B2, 0x03B3, 0x03B4, 0x03B5, 0x03B6, 0x03B7, 0x03B8, 0x03B9, 0x03BA, 0x03BB, 0x03BC, 0x03BD, 0x03BE, 0x03BF, 0x03C0, 0x03C1, 0x03C2, 0x03C3, 0x03C4, 0x03C5, 0x03C6, 0x03C7, 0x03C8, 0x03C9, 0x03CA, 0x03CB, 0x03CC, 0x03CD, 0x03CE, 0x03D0, 0x03D1, 0x03D5, 0x03D6, 0x03D7, 0x03D9, 0x03DB, 0x03DD, 0x03DF, 0x03E1, 0x03E3, 0x03E5, 0x03E7, 0x03E9, 0x03EB, 0x03ED, 0x03EF, 0x03F0, 0x03F1, 0x03F2, 0x03F3, 0x03F5, 0x03F8, 0x03FB, 0x0430, 0x0431, 0x0432, 0x0433, 0x0434, 0x0435, 0x0436, 0x0437, 0x0438, 0x0439, 0x043A, 0x043B, 0x043C, 0x043D, 0x043E, 0x043F, 0x0440, 0x0441, 0x0442, 0x0443, 0x0444, 0x0445, 0x0446, 0x0447, 0x0448, 0x0449, 0x044A, 0x044B, 0x044C, 0x044D, 0x044E, 0x044F, 0x0450, 0x0451, 0x0452, 0x0453, 0x0454, 0x0455, 0x0456, 0x0457, 0x0458, 0x0459, 0x045A, 0x045B, 0x045C, 0x045D, 0x045E, 0x045F, 0x0461, 0x0463, 0x0465, 0x0467, 0x0469, 0x046B, 0x046D, 0x046F, 0x0471, 0x0473, 0x0475, 0x0477, 0x0479, 0x047B, 0x047D, 0x047F, 0x0481, 0x048B, 0x048D, 0x048F, 0x0491, 0x0493, 0x0495, 0x0497, 0x0499, 0x049B, 0x049D, 0x049F, 0x04A1, 0x04A3, 0x04A5, 0x04A7, 0x04A9, 0x04AB, 0x04AD, 0x04AF, 0x04B1, 0x04B3, 0x04B5, 0x04B7, 0x04B9, 0x04BB, 0x04BD, 0x04BF, 0x04C2, 0x04C4, 0x04C6, 0x04C8, 0x04CA, 0x04CC, 0x04CE, 0x04CF, 0x04D1, 0x04D3, 0x04D5, 0x04D7, 0x04D9, 0x04DB, 0x04DD, 0x04DF, 0x04E1, 0x04E3, 0x04E5, 0x04E7, 0x04E9, 0x04EB, 0x04ED, 0x04EF, 0x04F1, 0x04F3, 0x04F5, 0x04F7, 0x04F9, 0x04FB, 0x04FD, 0x04FF, 0xFF41, 0xFF42, 0xFF43, 0xFF44, 0xFF45, 0xFF46, 0xFF47, 0xFF48, 0xFF49, 0xFF4A, 0xFF4B, 0xFF4C, 0xFF4D, 0xFF4E, 0xFF4F, 0xFF50, 0xFF51, 0xFF52, 0xFF53, 0xFF54, 0xFF55, 0xFF56, 0xFF57, 0xFF58, 0xFF59, 0xFF5A
+};
+static const unsigned int rt_uc_upper_to[] = {
+    0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F, 0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005A, 0x00C0, 0x00C1, 0x00C2, 0x00C3, 0x00C4, 0x00C5, 0x00C6, 0x00C7, 0x00C8, 0x00C9, 0x00CA, 0x00CB, 0x00CC, 0x00CD, 0x00CE, 0x00CF, 0x00D0, 0x00D1, 0x00D2, 0x00D3, 0x00D4, 0x00D5, 0x00D6, 0x00D8, 0x00D9, 0x00DA, 0x00DB, 0x00DC, 0x00DD, 0x00DE, 0x0178, 0x0100, 0x0102, 0x0104, 0x0106, 0x0108, 0x010A, 0x010C, 0x010E, 0x0110, 0x0112, 0x0114, 0x0116, 0x0118, 0x011A, 0x011C, 0x011E, 0x0120, 0x0122, 0x0124, 0x0126, 0x0128, 0x012A, 0x012C, 0x012E, 0x0049, 0x0132, 0x0134, 0x0136, 0x0139, 0x013B, 0x013D, 0x013F, 0x0141, 0x0143, 0x0145, 0x0147, 0x014A, 0x014C, 0x014E, 0x0150, 0x0152, 0x0154, 0x0156, 0x0158, 0x015A, 0x015C, 0x015E, 0x0160, 0x0162, 0x0164, 0x0166, 0x0168, 0x016A, 0x016C, 0x016E, 0x0170, 0x0172, 0x0174, 0x0176, 0x0179, 0x017B, 0x017D, 0x0053, 0x0243, 0x0182, 0x0184, 0x0187, 0x018B, 0x0191, 0x01F6, 0x0198, 0x023D, 0x0220, 0x01A0, 0x01A2, 0x01A4, 0x01A7, 0x01AC, 0x01AF, 0x01B3, 0x01B5, 0x01B8, 0x01BC, 0x01F7, 0x01C4, 0x01C4, 0x01C7, 0x01C7, 0x01CA, 0x01CA, 0x01CD, 0x01CF, 0x01D1, 0x01D3, 0x01D5, 0x01D7, 0x01D9, 0x01DB, 0x018E, 0x01DE, 0x01E0, 0x01E2, 0x01E4, 0x01E6, 0x01E8, 0x01EA, 0x01EC, 0x01EE, 0x01F1, 0x01F1, 0x01F4, 0x01F8, 0x01FA, 0x01FC, 0x01FE, 0x0200, 0x0202, 0x0204, 0x0206, 0x0208, 0x020A, 0x020C, 0x020E, 0x0210, 0x0212, 0x0214, 0x0216, 0x0218, 0x021A, 0x021C, 0x021E, 0x0222, 0x0224, 0x0226, 0x0228, 0x022A, 0x022C, 0x022E, 0x0230, 0x0232, 0x023B, 0x2C7E, 0x2C7F, 0x0241, 0x0246, 0x0248, 0x024A, 0x024C, 0x024E, 0x0370, 0x0372, 0x0376, 0x03FD, 0x03FE, 0x03FF, 0x0386, 0x0388, 0x0389, 0x038A, 0x0391, 0x0392, 0x0393, 0x0394, 0x0395, 0x0396, 0x0397, 0x0398, 0x0399, 0x039A, 0x039B, 0x039C, 0x039D, 0x039E, 0x039F, 0x03A0, 0x03A1, 0x03A3, 0x03A3, 0x03A4, 0x03A5, 0x03A6, 0x03A7, 0x03A8, 0x03A9, 0x03AA, 0x03AB, 0x038C, 0x038E, 0x038F, 0x0392, 0x0398, 0x03A6, 0x03A0, 0x03CF, 0x03D8, 0x03DA, 0x03DC, 0x03DE, 0x03E0, 0x03E2, 0x03E4, 0x03E6, 0x03E8, 0x03EA, 0x03EC, 0x03EE, 0x039A, 0x03A1, 0x03F9, 0x037F, 0x0395, 0x03F7, 0x03FA, 0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0416, 0x0417, 0x0418, 0x0419, 0x041A, 0x041B, 0x041C, 0x041D, 0x041E, 0x041F, 0x0420, 0x0421, 0x0422, 0x0423, 0x0424, 0x0425, 0x0426, 0x0427, 0x0428, 0x0429, 0x042A, 0x042B, 0x042C, 0x042D, 0x042E, 0x042F, 0x0400, 0x0401, 0x0402, 0x0403, 0x0404, 0x0405, 0x0406, 0x0407, 0x0408, 0x0409, 0x040A, 0x040B, 0x040C, 0x040D, 0x040E, 0x040F, 0x0460, 0x0462, 0x0464, 0x0466, 0x0468, 0x046A, 0x046C, 0x046E, 0x0470, 0x0472, 0x0474, 0x0476, 0x0478, 0x047A, 0x047C, 0x047E, 0x0480, 0x048A, 0x048C, 0x048E, 0x0490, 0x0492, 0x0494, 0x0496, 0x0498, 0x049A, 0x049C, 0x049E, 0x04A0, 0x04A2, 0x04A4, 0x04A6, 0x04A8, 0x04AA, 0x04AC, 0x04AE, 0x04B0, 0x04B2, 0x04B4, 0x04B6, 0x04B8, 0x04BA, 0x04BC, 0x04BE, 0x04C1, 0x04C3, 0x04C5, 0x04C7, 0x04C9, 0x04CB, 0x04CD, 0x04C0, 0x04D0, 0x04D2, 0x04D4, 0x04D6, 0x04D8, 0x04DA, 0x04DC, 0x04DE, 0x04E0, 0x04E2, 0x04E4, 0x04E6, 0x04E8, 0x04EA, 0x04EC, 0x04EE, 0x04F0, 0x04F2, 0x04F4, 0x04F6, 0x04F8, 0x04FA, 0x04FC, 0x04FE, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25, 0xFF26, 0xFF27, 0xFF28, 0xFF29, 0xFF2A, 0xFF2B, 0xFF2C, 0xFF2D, 0xFF2E, 0xFF2F, 0xFF30, 0xFF31, 0xFF32, 0xFF33, 0xFF34, 0xFF35, 0xFF36, 0xFF37, 0xFF38, 0xFF39, 0xFF3A
+};
+#define RT_UC_LN 432
+static const unsigned int rt_uc_lower_from[] = {
+    0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F, 0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005A, 0x00C0, 0x00C1, 0x00C2, 0x00C3, 0x00C4, 0x00C5, 0x00C6, 0x00C7, 0x00C8, 0x00C9, 0x00CA, 0x00CB, 0x00CC, 0x00CD, 0x00CE, 0x00CF, 0x00D0, 0x00D1, 0x00D2, 0x00D3, 0x00D4, 0x00D5, 0x00D6, 0x00D8, 0x00D9, 0x00DA, 0x00DB, 0x00DC, 0x00DD, 0x00DE, 0x0100, 0x0102, 0x0104, 0x0106, 0x0108, 0x010A, 0x010C, 0x010E, 0x0110, 0x0112, 0x0114, 0x0116, 0x0118, 0x011A, 0x011C, 0x011E, 0x0120, 0x0122, 0x0124, 0x0126, 0x0128, 0x012A, 0x012C, 0x012E, 0x0132, 0x0134, 0x0136, 0x0139, 0x013B, 0x013D, 0x013F, 0x0141, 0x0143, 0x0145, 0x0147, 0x014A, 0x014C, 0x014E, 0x0150, 0x0152, 0x0154, 0x0156, 0x0158, 0x015A, 0x015C, 0x015E, 0x0160, 0x0162, 0x0164, 0x0166, 0x0168, 0x016A, 0x016C, 0x016E, 0x0170, 0x0172, 0x0174, 0x0176, 0x0178, 0x0179, 0x017B, 0x017D, 0x0181, 0x0182, 0x0184, 0x0186, 0x0187, 0x0189, 0x018A, 0x018B, 0x018E, 0x018F, 0x0190, 0x0191, 0x0193, 0x0194, 0x0196, 0x0197, 0x0198, 0x019C, 0x019D, 0x019F, 0x01A0, 0x01A2, 0x01A4, 0x01A6, 0x01A7, 0x01A9, 0x01AC, 0x01AE, 0x01AF, 0x01B1, 0x01B2, 0x01B3, 0x01B5, 0x01B7, 0x01B8, 0x01BC, 0x01C4, 0x01C5, 0x01C7, 0x01C8, 0x01CA, 0x01CB, 0x01CD, 0x01CF, 0x01D1, 0x01D3, 0x01D5, 0x01D7, 0x01D9, 0x01DB, 0x01DE, 0x01E0, 0x01E2, 0x01E4, 0x01E6, 0x01E8, 0x01EA, 0x01EC, 0x01EE, 0x01F1, 0x01F2, 0x01F4, 0x01F6, 0x01F7, 0x01F8, 0x01FA, 0x01FC, 0x01FE, 0x0200, 0x0202, 0x0204, 0x0206, 0x0208, 0x020A, 0x020C, 0x020E, 0x0210, 0x0212, 0x0214, 0x0216, 0x0218, 0x021A, 0x021C, 0x021E, 0x0220, 0x0222, 0x0224, 0x0226, 0x0228, 0x022A, 0x022C, 0x022E, 0x0230, 0x0232, 0x023A, 0x023B, 0x023D, 0x023E, 0x0241, 0x0243, 0x0244, 0x0245, 0x0246, 0x0248, 0x024A, 0x024C, 0x024E, 0x0370, 0x0372, 0x0376, 0x037F, 0x0386, 0x0388, 0x0389, 0x038A, 0x038C, 0x038E, 0x038F, 0x0391, 0x0392, 0x0393, 0x0394, 0x0395, 0x0396, 0x0397, 0x0398, 0x0399, 0x039A, 0x039B, 0x039C, 0x039D, 0x039E, 0x039F, 0x03A0, 0x03A1, 0x03A3, 0x03A4, 0x03A5, 0x03A6, 0x03A7, 0x03A8, 0x03A9, 0x03AA, 0x03AB, 0x03CF, 0x03D8, 0x03DA, 0x03DC, 0x03DE, 0x03E0, 0x03E2, 0x03E4, 0x03E6, 0x03E8, 0x03EA, 0x03EC, 0x03EE, 0x03F4, 0x03F7, 0x03F9, 0x03FA, 0x03FD, 0x03FE, 0x03FF, 0x0400, 0x0401, 0x0402, 0x0403, 0x0404, 0x0405, 0x0406, 0x0407, 0x0408, 0x0409, 0x040A, 0x040B, 0x040C, 0x040D, 0x040E, 0x040F, 0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0416, 0x0417, 0x0418, 0x0419, 0x041A, 0x041B, 0x041C, 0x041D, 0x041E, 0x041F, 0x0420, 0x0421, 0x0422, 0x0423, 0x0424, 0x0425, 0x0426, 0x0427, 0x0428, 0x0429, 0x042A, 0x042B, 0x042C, 0x042D, 0x042E, 0x042F, 0x0460, 0x0462, 0x0464, 0x0466, 0x0468, 0x046A, 0x046C, 0x046E, 0x0470, 0x0472, 0x0474, 0x0476, 0x0478, 0x047A, 0x047C, 0x047E, 0x0480, 0x048A, 0x048C, 0x048E, 0x0490, 0x0492, 0x0494, 0x0496, 0x0498, 0x049A, 0x049C, 0x049E, 0x04A0, 0x04A2, 0x04A4, 0x04A6, 0x04A8, 0x04AA, 0x04AC, 0x04AE, 0x04B0, 0x04B2, 0x04B4, 0x04B6, 0x04B8, 0x04BA, 0x04BC, 0x04BE, 0x04C0, 0x04C1, 0x04C3, 0x04C5, 0x04C7, 0x04C9, 0x04CB, 0x04CD, 0x04D0, 0x04D2, 0x04D4, 0x04D6, 0x04D8, 0x04DA, 0x04DC, 0x04DE, 0x04E0, 0x04E2, 0x04E4, 0x04E6, 0x04E8, 0x04EA, 0x04EC, 0x04EE, 0x04F0, 0x04F2, 0x04F4, 0x04F6, 0x04F8, 0x04FA, 0x04FC, 0x04FE, 0xFF21, 0xFF22, 0xFF23, 0xFF24, 0xFF25, 0xFF26, 0xFF27, 0xFF28, 0xFF29, 0xFF2A, 0xFF2B, 0xFF2C, 0xFF2D, 0xFF2E, 0xFF2F, 0xFF30, 0xFF31, 0xFF32, 0xFF33, 0xFF34, 0xFF35, 0xFF36, 0xFF37, 0xFF38, 0xFF39, 0xFF3A
+};
+static const unsigned int rt_uc_lower_to[] = {
+    0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F, 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007A, 0x00E0, 0x00E1, 0x00E2, 0x00E3, 0x00E4, 0x00E5, 0x00E6, 0x00E7, 0x00E8, 0x00E9, 0x00EA, 0x00EB, 0x00EC, 0x00ED, 0x00EE, 0x00EF, 0x00F0, 0x00F1, 0x00F2, 0x00F3, 0x00F4, 0x00F5, 0x00F6, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x0101, 0x0103, 0x0105, 0x0107, 0x0109, 0x010B, 0x010D, 0x010F, 0x0111, 0x0113, 0x0115, 0x0117, 0x0119, 0x011B, 0x011D, 0x011F, 0x0121, 0x0123, 0x0125, 0x0127, 0x0129, 0x012B, 0x012D, 0x012F, 0x0133, 0x0135, 0x0137, 0x013A, 0x013C, 0x013E, 0x0140, 0x0142, 0x0144, 0x0146, 0x0148, 0x014B, 0x014D, 0x014F, 0x0151, 0x0153, 0x0155, 0x0157, 0x0159, 0x015B, 0x015D, 0x015F, 0x0161, 0x0163, 0x0165, 0x0167, 0x0169, 0x016B, 0x016D, 0x016F, 0x0171, 0x0173, 0x0175, 0x0177, 0x00FF, 0x017A, 0x017C, 0x017E, 0x0253, 0x0183, 0x0185, 0x0254, 0x0188, 0x0256, 0x0257, 0x018C, 0x01DD, 0x0259, 0x025B, 0x0192, 0x0260, 0x0263, 0x0269, 0x0268, 0x0199, 0x026F, 0x0272, 0x0275, 0x01A1, 0x01A3, 0x01A5, 0x0280, 0x01A8, 0x0283, 0x01AD, 0x0288, 0x01B0, 0x028A, 0x028B, 0x01B4, 0x01B6, 0x0292, 0x01B9, 0x01BD, 0x01C6, 0x01C6, 0x01C9, 0x01C9, 0x01CC, 0x01CC, 0x01CE, 0x01D0, 0x01D2, 0x01D4, 0x01D6, 0x01D8, 0x01DA, 0x01DC, 0x01DF, 0x01E1, 0x01E3, 0x01E5, 0x01E7, 0x01E9, 0x01EB, 0x01ED, 0x01EF, 0x01F3, 0x01F3, 0x01F5, 0x0195, 0x01BF, 0x01F9, 0x01FB, 0x01FD, 0x01FF, 0x0201, 0x0203, 0x0205, 0x0207, 0x0209, 0x020B, 0x020D, 0x020F, 0x0211, 0x0213, 0x0215, 0x0217, 0x0219, 0x021B, 0x021D, 0x021F, 0x019E, 0x0223, 0x0225, 0x0227, 0x0229, 0x022B, 0x022D, 0x022F, 0x0231, 0x0233, 0x2C65, 0x023C, 0x019A, 0x2C66, 0x0242, 0x0180, 0x0289, 0x028C, 0x0247, 0x0249, 0x024B, 0x024D, 0x024F, 0x0371, 0x0373, 0x0377, 0x03F3, 0x03AC, 0x03AD, 0x03AE, 0x03AF, 0x03CC, 0x03CD, 0x03CE, 0x03B1, 0x03B2, 0x03B3, 0x03B4, 0x03B5, 0x03B6, 0x03B7, 0x03B8, 0x03B9, 0x03BA, 0x03BB, 0x03BC, 0x03BD, 0x03BE, 0x03BF, 0x03C0, 0x03C1, 0x03C3, 0x03C4, 0x03C5, 0x03C6, 0x03C7, 0x03C8, 0x03C9, 0x03CA, 0x03CB, 0x03D7, 0x03D9, 0x03DB, 0x03DD, 0x03DF, 0x03E1, 0x03E3, 0x03E5, 0x03E7, 0x03E9, 0x03EB, 0x03ED, 0x03EF, 0x03B8, 0x03F8, 0x03F2, 0x03FB, 0x037B, 0x037C, 0x037D, 0x0450, 0x0451, 0x0452, 0x0453, 0x0454, 0x0455, 0x0456, 0x0457, 0x0458, 0x0459, 0x045A, 0x045B, 0x045C, 0x045D, 0x045E, 0x045F, 0x0430, 0x0431, 0x0432, 0x0433, 0x0434, 0x0435, 0x0436, 0x0437, 0x0438, 0x0439, 0x043A, 0x043B, 0x043C, 0x043D, 0x043E, 0x043F, 0x0440, 0x0441, 0x0442, 0x0443, 0x0444, 0x0445, 0x0446, 0x0447, 0x0448, 0x0449, 0x044A, 0x044B, 0x044C, 0x044D, 0x044E, 0x044F, 0x0461, 0x0463, 0x0465, 0x0467, 0x0469, 0x046B, 0x046D, 0x046F, 0x0471, 0x0473, 0x0475, 0x0477, 0x0479, 0x047B, 0x047D, 0x047F, 0x0481, 0x048B, 0x048D, 0x048F, 0x0491, 0x0493, 0x0495, 0x0497, 0x0499, 0x049B, 0x049D, 0x049F, 0x04A1, 0x04A3, 0x04A5, 0x04A7, 0x04A9, 0x04AB, 0x04AD, 0x04AF, 0x04B1, 0x04B3, 0x04B5, 0x04B7, 0x04B9, 0x04BB, 0x04BD, 0x04BF, 0x04CF, 0x04C2, 0x04C4, 0x04C6, 0x04C8, 0x04CA, 0x04CC, 0x04CE, 0x04D1, 0x04D3, 0x04D5, 0x04D7, 0x04D9, 0x04DB, 0x04DD, 0x04DF, 0x04E1, 0x04E3, 0x04E5, 0x04E7, 0x04E9, 0x04EB, 0x04ED, 0x04EF, 0x04F1, 0x04F3, 0x04F5, 0x04F7, 0x04F9, 0x04FB, 0x04FD, 0x04FF, 0xFF41, 0xFF42, 0xFF43, 0xFF44, 0xFF45, 0xFF46, 0xFF47, 0xFF48, 0xFF49, 0xFF4A, 0xFF4B, 0xFF4C, 0xFF4D, 0xFF4E, 0xFF4F, 0xFF50, 0xFF51, 0xFF52, 0xFF53, 0xFF54, 0xFF55, 0xFF56, 0xFF57, 0xFF58, 0xFF59, 0xFF5A
+};
+
+static unsigned int rt_uc_lookup(const unsigned int *from, const unsigned int *to,
+                                 int n, unsigned int cp) {
+    int lo = 0, hi = n - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        if (from[mid] == cp) return to[mid];
+        if (from[mid] < cp) lo = mid + 1; else hi = mid - 1;
+    }
+    return cp;
+}
+
+/* UTF-8 解码一个码点；*len 返回字节数 */
+static unsigned int rt_uc_decode(const unsigned char *p, int *len) {
+    unsigned int cp;
+    if (p[0] < 0x80) { *len = 1; return p[0]; }
+    if ((p[0] & 0xE0) == 0xC0) { cp = p[0] & 0x1F; *len = 2; }
+    else if ((p[0] & 0xF0) == 0xE0) { cp = p[0] & 0x0F; *len = 3; }
+    else if ((p[0] & 0xF8) == 0xF0) { cp = p[0] & 0x07; *len = 4; }
+    else { *len = 1; return p[0]; }
+    {
+        int i;
+        for (i = 1; i < *len; i++) {
+            if ((p[i] & 0xC0) != 0x80) { *len = 1; return p[0]; }
+            cp = (cp << 6) | (p[i] & 0x3F);
+        }
+    }
+    return cp;
+}
+
+static void rt_uc_encode(unsigned int cp, char *out, int *n) {
+    if (cp < 0x80) { out[0] = (char)cp; *n = 1; }
+    else if (cp < 0x800) {
+        out[0] = (char)(0xC0 | (cp >> 6));
+        out[1] = (char)(0x80 | (cp & 0x3F)); *n = 2;
+    } else if (cp < 0x10000) {
+        out[0] = (char)(0xE0 | (cp >> 12));
+        out[1] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        out[2] = (char)(0x80 | (cp & 0x3F)); *n = 3;
+    } else {
+        out[0] = (char)(0xF0 | (cp >> 18));
+        out[1] = (char)(0x80 | ((cp >> 12) & 0x3F));
+        out[2] = (char)(0x80 | ((cp >> 6) & 0x3F));
+        out[3] = (char)(0x80 | (cp & 0x3F)); *n = 4;
+    }
+}
+
+static Val rt_uc_map(Val v, int to_upper) {
+    const char *s = rt_str_of(v);
+    size_t blen = strlen(s);
+    char *buf = (char *)malloc(blen * 2 + 1);
+    size_t o = 0;
+    const unsigned char *p = (const unsigned char *)s;
+    if (!buf) rt_abort("内存不足");
+    while (*p) {
+        int clen = 1, elen = 1;
+        unsigned int cp = rt_uc_decode(p, &clen);
+        unsigned int out;
+        char enc[4];
+        if (to_upper) out = rt_uc_lookup(rt_uc_upper_from, rt_uc_upper_to, RT_UC_N, cp);
+        else out = rt_uc_lookup(rt_uc_lower_from, rt_uc_lower_to, RT_UC_LN, cp);
+        rt_uc_encode(out, enc, &elen);
+        memcpy(buf + o, enc, (size_t)elen);
+        o += (size_t)elen;
+        p += clen;
+    }
+    buf[o] = '\0';
+    {
+        Val r = v_str(buf);
+        free(buf);
+        return r;
+    }
+}
+
+/* 4.5：ord / chr —— 与解释器同口径（按 Unicode 码点，不是字节偏移）。
+   依赖上面的 rt_uc_decode / rt_uc_encode，因此定义在本文件末尾。 */
+static Val rt_ord(Val v) {
+    const unsigned char *p = (const unsigned char *)rt_str_of(v);
+    int len = 1;
+    if (!p[0]) rt_abort("ord 的参数不能是空串");
+    return v_int((long long)rt_uc_decode(p, &len));
+}
+
+static Val rt_chr(Val v) {
+    long long cp = rt_int(v);
+    char enc[4];
+    char buf[8];
+    int n = 1;
+    if (cp < 0 || cp > 0x10FFFF) rt_abort("chr 的码点超出范围（0..1114111）");
+    rt_uc_encode((unsigned int)cp, enc, &n);
+    memcpy(buf, enc, (size_t)n);
+    buf[n] = 0;
+    return v_str(buf);
+}

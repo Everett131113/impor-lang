@@ -2,7 +2,7 @@ important<<DAY<<english("English"):
 // fib.impor — 经典递归：斐波那契数列
 // 运行：impor run fib.impor
 
-func fib(n)
+def fib(n)
     if n < 2
         return n
     return fib(n - 1) + fib(n - 2)
@@ -11,7 +11,7 @@ for i in range(0, 12)
     print("fib(", i, ") =", fib(i))
 
 // 用数组缓存加速（动态规划版）
-func fib_fast(n)
+def fib_fast(n)
     var dp = arrfill(n + 1, 0)
     if n >= 1
         dp[1] = 1

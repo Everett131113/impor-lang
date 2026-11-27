@@ -115,9 +115,16 @@ ERROR_CODES = {
     "ImportError": "E1010",
     "ModuleNotFound": "E1015",
     "RecursionError": "E1011",
+    "RecursionDeep": "E1011",
     "OverflowError": "E1012",
     "MemoryError": "E1013",
     "ContractError": "E1014",
+    # 4.1 稳定性内核（资源闸门）：全部是「预算耗尽」，不是语法或类型问题
+    "StepLimit": "E1020",
+    "TimeLimit": "E1021",
+    "MemoryLimit": "E1022",
+    "OutputLimit": "E1023",
+    "AllocLimit": "E1024",
     "RuntimeError": "E1099",
 }
 
@@ -135,6 +142,7 @@ SYNTAX_CODES = {
 }
 
 _SYNTAX_CODE_RULES = [
+    (r"已删除的历史写法", "E2002"),
     (r"默认参数|变参|可变参数|缺省参数", "E2007"),
     (r"尚未实现|当前版本不支持|v3\.x 计划|需要块写法", "E2001"),
     (r"表达式缺失|缺少表达式|需要一个值或表达式", "E2003"),
@@ -157,11 +165,16 @@ ERROR_TITLES = {
     "E1008": ("NameError", "名字未定义", "print(nope)"),
     "E1009": ("ConstError", "修改了 const", "const A = 1\nA = 2"),
     "E1010": ("ImportError", "模块/名字导入失败", "import no_such_mod"),
-    "E1011": ("RecursionError", "递归过深", "func f()\n    return f()\nf()"),
+    "E1011": ("RecursionError", "递归过深", "def f()\n    return f()\nf()"),
     "E1012": ("OverflowError", "整数溢出", "var x = 9223372036854775807 + 1"),
     "E1013": ("MemoryError", "内存不足", "var a = list(1000000000)"),
-    "E1014": ("ContractError", "接口契约不满足", "interface S { func area() { return 0 } }\nclass A implements S { }"),
+    "E1014": ("ContractError", "接口契约不满足", "interface S { def area() { return 0 } }\nclass A implements S { }"),
     "E1015": ("ModuleNotFound", "模块文件不存在", "import no_such_mod"),
+    "E1020": ("StepLimit", "执行步数超过上限（疑似死循环）", "var i = 0\nwhile true\n    set i = i + 1"),
+    "E1021": ("TimeLimit", "运行时间超过上限（卡住）", "while true\n    sleep(1)"),
+    "E1022": ("MemoryLimit", "进程内存超过上限", "var keep = list()\nwhile true\n    arrappend(keep, arrfill(400000, 0))"),
+    "E1023": ("OutputLimit", "输出量超过上限（刷屏）", "while true\n    print(1)"),
+    "E1024": ("AllocLimit", "单次分配超过上限", "var a = arrfill(50000000, 0)"),
     "E1099": ("RuntimeError", "未分类运行错误", "print(1)"),
 }
 
@@ -216,6 +229,37 @@ def syntax_code(message):
 
 # (正则, 为什么, 修复)；按顺序匹配第一条命中的规则
 _RULES = [
+    (r"StepLimit|步数达到上限|执行步数",
+     "稳定模式按「语句条数」给预算，`while true` / 条件永不收敛的循环会先耗尽预算。"
+     "这一层不判断程序对不对，只保证「有限预算内必停」，不会把终端永久占住。",
+     "先检查循环条件是否真的会变（`set i = i + 1` 是否在会执行到的分支里）；"
+     "长任务确实需要更多步数时显式放宽 `--max-steps`，并自担风险。"),
+    (r"TimeLimit|运行时间 .* 超过上限",
+     "墙钟闸门按真实时间计。脚本可能卡在等待（输入/网络/原生调用），"
+     "也可能只是单步很慢；预算耗尽即熔断，不再无限等。",
+     "确认是否在等外部资源；需要长时间运行的任务用 `--max-seconds` 放宽，"
+     "或把长任务拆成多段执行。"),
+    (r"MemoryLimit|进程内存 .* 达到上限|内存上限",
+     "内存闸门采样进程工作集（RSS）。容器在不断累积（数组只增不减、缓存不清理）时，"
+     "增长到上限附近就会被拒绝，而不是等操作系统直接杀进程。",
+     "检查循环里是否每次都在新建容器而没有释放；把中间结果及时清空，"
+     "或显式放宽 `--max-memory`（单位 MB）。"),
+    (r"OutputLimit|输出已写",
+     "输出闸门统计所有 `print` 落点。刷屏会把终端/日志/管道拖死，"
+     "所以输出量本身也要有预算。",
+     "删掉循环里的调试打印；确实要大量输出时写文件而不是刷终端，"
+     "或用 `--max-output` 显式放宽（单位 KB）。"),
+    (r"AllocLimit|单次分配",
+     "分配闸门在真正分配之前检查元素数（O(1) 先算长度）。"
+     "一次要一个巨型容器时，检查本身不会先把内存吃掉。",
+     "分批处理（一次几万元素，处理完就释放），或改用迭代/流式写法；"
+     "确需大容器时放宽 `--max-alloc`。"),
+    (r"`print` 无括号|print 无括号",
+     "print 是内建函数，不是语句关键字；无括号写法在 v4.0.0 已删除。继续放行会被拆成两条无副作用表达式，表现为 rc=0、零输出。",
+     "改成唯一写法 print(表达式[, 表达式...])；例如 print(\"hello\") 或 print(x)。"),
+    (r"已删除的历史写法",
+     "这个写法属于 v3.x 的兼容层，v4.0.0 已在词法/语法层物理删除，不再降级为其他 AST。",
+     "按错误里的提示改成唯一写法：func → def、let/local → var、loop → while true、then → 冒号或大括号块、unless → if not、裸 print → print(...)。"),
     (r"尚未实现（v3\.x|当前版本不支持|不再静默接受",
      "这个保留字/语法还没有在当前发布线实现。Impor 选择明确拒绝，而不是静默忽略后继续执行。",
      "删除该写法，改用已实现的等价写法；不要依赖它当前会产生任何效果。"),
@@ -238,7 +282,7 @@ _RULES = [
      "同一代码块的缩进层级不一致（常见于空格与 Tab 混用）。",
      "同一代码块统一用 4 个空格缩进，并让同级语句左对齐。"),
     (r"未定义|NameError|未定义变量|找不到名字",
-     "Impor 不做隐式全局：名字必须先用 var / const / func / import 声明，之后才能使用。",
+     "Impor 不做隐式全局：名字必须先用 var / const / def / import 声明，之后才能使用。",
      "先用 var x = ... 声明，或用 import 引入；同时检查拼写与大小写是否一致。"),
     (r"函数需要 .* 个参数|参数个数|CallError.*参数",
      "调用时传入的实参个数与函数定义不一致。",
@@ -246,6 +290,11 @@ _RULES = [
     (r"不是可调用对象|不可调用",
      "这个表达式的结果不是函数或类，不能加括号调用。",
      "检查是否被同名变量覆盖（例如用内建名当变量名），或确认函数已经定义、导入成功。"),
+    (r"OverflowError|整数溢出|E1012",
+     "交付层把整数固定为 int64（−9223372036854775808 ~ 9223372036854775807）。"
+     "加减乘越界时报错中止，而不是像 C 那样静默回绕成一个错误的值。",
+     "缩小数值范围，或把大数拆成多步并检查边界；确实需要任意精度时用 "
+     "`impor run 脚本.impor --big`（C 产物按 int64 编译，不提供大整数）。"),
     (r"ZeroDivisionError|除以 0|除数为 0|division by zero",
      "除数是 0，数学上没有定义，运行无法继续。",
      "在除法前判断除数（if b != 0 { ... }），或先检查数据来源是否可能为 0。"),

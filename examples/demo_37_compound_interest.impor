@@ -3,5 +3,5 @@ important<<DAY<<english("English"):
 var principal = 10000
 var rate = 0.05
 for year in range(1, 6)
-    set principal = principal * (1 + rate)
+    set principal = principal *(1 + rate)
     print("第", year, "年余额:", principal)

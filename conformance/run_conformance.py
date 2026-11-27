@@ -29,7 +29,9 @@ CASES_DIR = os.path.join(ROOT, "conformance", "cases")
 IMPORC = os.path.join(ROOT, "impor", "imporc.exe")
 ARGFILE = os.path.join(ROOT, "imporc_args.txt")
 PY = sys.executable or "python"
-TIMEOUT = 120
+# v4.3.2：120s 在慢机 / 并发压测下会误判 TIMEOUT（实测过一次 99/100，
+# 单独重跑 100/100）。单次调用给到 240s，失败仍然计入失败，不放宽判定口径。
+TIMEOUT = 240
 
 
 def _norm(text):
@@ -77,25 +79,35 @@ def run_imporc(case, workdir):
         shutil.copyfile(case, local_case)
     except OSError as exc:
         return "BUILD_FAIL", "", "copy case failed: %s" % exc
-    original = b""
+    # imporc 从“当前目录”读 imporc_args.txt。放到全局仓库 cwd 会和并行任务
+    # 撞车（例如测试套件和 tools/support_matrix.py 同时跑），因此每个用例
+    # 用自己的临时目录当 cwd，参数文件天然隔离。
+    argfile = os.path.join(workdir, "imporc_args.txt")
+    b = None
     try:
-        with open(ARGFILE, "rb") as f:
-            original = f.read()
-    except OSError:
-        pass
-    try:
-        with io.open(ARGFILE, "w", encoding="utf-8", newline="\n") as f:
-            # imporc_args.txt 按空格切分参数；路径用双引号包裹，避免含空格的目录被截断
-            f.write('build "%s" -o "%s"' % (local_case, exe))
-        b = subprocess.run([IMPORC], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=TIMEOUT, cwd=ROOT)
+        # 新拷贝的文件偶尔被 Windows 安全软件锁住，imporc 的 fileread 会失败；
+        # 这是环境抖动，不是语义差异，重试几次即可。
+        for attempt in range(3):
+            with io.open(argfile, "w", encoding="utf-8", newline="\n") as f:
+                # imporc_args.txt 按空格切分参数；路径用双引号包裹，避免含空格的目录被截断
+                f.write('build "%s" -o "%s"' % (local_case, exe))
+            b = subprocess.run([IMPORC], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=TIMEOUT, cwd=workdir)
+            if os.path.isfile(exe):
+                break
+            err = (b.stdout or "") + (b.stderr or "")
+            if "fileread" not in err and "无法打开文件" not in err:
+                break
+            time.sleep(1.5)
     finally:
-        # v3.0：恢复原参数文件，避免污染后续 imporc.cmd 调用
         try:
-            with open(ARGFILE, "wb") as f:
-                f.write(original)
+            os.remove(argfile)
         except OSError:
             pass
+        # v4.3.2：不再读写仓库根目录的 imporc_args.txt。
+        # imporc 已按 cwd 读参数（这里 cwd=workdir），旧代码仍然
+        # "读出原文 → 写 → 恢复" 全局文件，两个 conformance 同时跑时
+        # 会互相覆盖，造成假失败。每个用例只碰自己的临时目录。
     if not os.path.isfile(exe):
         return "BUILD_FAIL", "", _norm(b.stdout) + _norm(b.stderr)
     return _run_exe(exe)

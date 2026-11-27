@@ -1,0 +1,17 @@
+# 内联用例 1：三层嵌套调用，应全部在调用点展开
+def sq(x : int) -> int {
+    return x * x
+}
+
+def twice(x : int) -> int {
+    return x * 2
+}
+
+def add1(x : int) -> int {
+    return x + 1
+}
+
+var i : int = 3
+var sum : int = add1(twice(sq(i)))
+print("sum=" + str(sum))
+print(sum)

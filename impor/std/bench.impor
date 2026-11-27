@@ -1,0 +1,41 @@
+// std/bench.impor — 计时工具（clock() 走宿主单调时钟，三端有映射）
+// 口径：返回的毫秒数受宿主精度影响，比较同一台机器上的相对差异才有意义。
+
+def now_ms() {
+    return clock()
+}
+
+def elapsed_ms(t0) {
+    return clock() - t0
+}
+
+def time_once(f) {
+    var t0 = clock()
+    f()
+    return clock() - t0
+}
+
+def time_repeat(f, n) {
+    var t0 = clock()
+    var i = 0
+    while i < n {
+        f()
+        set i = i + 1
+    }
+    var total = clock() - t0
+    if n <= 0 {
+        return 0
+    }
+    return total / n
+}
+
+def report(name, ms) {
+    print(name + "：" + str(ms) + " ms")
+    return ms
+}
+
+export now_ms
+export elapsed_ms
+export time_once
+export time_repeat
+export report

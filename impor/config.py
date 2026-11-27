@@ -118,6 +118,27 @@ def sandbox_default_from_config(cfg):
     return bool(proj.get("sandbox_default", False))
 
 
+def int_mode_from_config(cfg):
+    """读项目声明的整数语义：`"int64"` / `"big"`；没声明返回 None（沿用默认 big）。
+
+    写法（impor.toml）：
+        [project]
+        int_mode = "int64"     # 本工程按 C 后端语义跑：越界报 E1012
+        int_mode = "big"       # 任意精度（默认）
+    用途：让"同一份源码在不同后端得到同一答案"变成项目级约定，而不是每次手动加 --int64。
+    """
+    if not cfg:
+        return None
+    for section in ("project", "runtime"):
+        sec = cfg.get(section) or {}
+        val = str(sec.get("int_mode", "") or "").strip().lower()
+        if val in ("int64", "strict", "strict-int"):
+            return "int64"
+        if val in ("big", "bignum", "arbitrary"):
+            return "big"
+    return None
+
+
 def apply_config(interp, start_dir=None):
     """找到配置则应用到解释器（搜索路径、沙盒、包缓存），返回配置 dict 或 None。"""
     found = find_config(start_dir)
@@ -136,6 +157,16 @@ def apply_config(interp, start_dir=None):
     cache_dir = pkg_cache_dir()
     if os.path.isdir(cache_dir) and cache_dir not in interp.module_search_paths:
         interp.module_search_paths.append(cache_dir)
+    # v4.0.1：每个已安装包目录各自也加入搜索路径。
+    # 原因：缓存根只能解析 <pkg>/__pkg__.impor；旧式包（<pkg>/<name>.impor）必须以包目录为根才能 import。
+    if os.path.isdir(cache_dir):
+        try:
+            for _n in sorted(os.listdir(cache_dir)):
+                _p = os.path.join(cache_dir, _n)
+                if os.path.isdir(_p) and _p not in interp.module_search_paths:
+                    interp.module_search_paths.append(_p)
+        except OSError:
+            pass
     return cfg
 
 

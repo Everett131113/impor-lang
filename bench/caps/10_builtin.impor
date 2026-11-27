@@ -1,0 +1,4 @@
+// 内建：int() / str() 转换
+var n = int("42")
+print(n + 1, str(42) + "!")
+# EXPECT: 43 42!

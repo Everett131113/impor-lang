@@ -16,7 +16,7 @@ print("两点角度:", angle(0, 0, 1, 1), "度")
 
 // 颜色
 var red = rgb(255, 0, 0)
-var mixed = rgb(300, 100, 50)  // 自动裁剪到 0-255
+var mixed = rgb(300, 100, 50) // 自动裁剪到 0-255
 print("红色:", red, "hex:", red.hex)
 print("混合色:", mixed)
 

@@ -1,0 +1,36 @@
+// std/units.impor — 可读化的字节/时长格式化
+
+def human_bytes(n) {
+    var units = ["B", "KB", "MB", "GB", "TB"]
+    var v = n
+    var i = 0
+    while v >= 1024 and i < 4 {
+        set v = v / 1024
+        set i = i + 1
+    }
+    return str(v) + " " + units[i]
+}
+
+def human_ms(ms) {
+    if ms < 1000 {
+        return str(ms) + " ms"
+    }
+    var s = ms / 1000
+    if s < 60 {
+        return str(s) + " s"
+    }
+    var m = s / 60
+    var rs = s - m * 60
+    return str(m) + " min " + str(rs) + " s"
+}
+
+def percent(part, whole) {
+    if whole == 0 {
+        return "0%"
+    }
+    return str(part * 100 / whole) + "%"
+}
+
+export human_bytes
+export human_ms
+export percent

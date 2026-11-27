@@ -91,21 +91,22 @@ class TestEnglishKeywords(unittest.TestCase):
 
     def test_count(self):
         from impor.lexer import KEYWORDS
-        self.assertEqual(len(KEYWORDS), 58)  # v3.8.4 起含 yield / with
+        self.assertEqual(len(KEYWORDS), 55)  # v4.0.0 删除 func / loop / local
         self.assertFalse(any(any("\u4e00" <= ch <= "\u9fff" for ch in w) for w in KEYWORDS))
 
     def test_aliases(self):
         out = run_impor(
-            'fn 加(a, b) { return a + b }\n'
-            'let 速度 = 100\n'
-            'local 名字 = "impor"\n'
-            'if 1 > 0 { print("big") } elif 2 > 1 { print("elif-ok") } else { print("no") }\n'
+            'def 加(a, b) { return a + b }\n'
+            'var 速度 = 100\n'
+            'var 名字 = "impor"\n'
+            'if 1 > 0 { print("big") } elseif 2 > 1 { print("elif-ok") } else { print("no") }\n'
             'static PI = 3.14\n'
             'readonly 上限 = 999\n'
             'print(加(1, 2), 速度, 名字, PI, 上限)\n')
         self.assertEqual(out[-1], "3 100 impor 3.14 999")
         self.assertIn("big", out)
 
+    @unittest.skip("v4.0.0 已删除 for each/of；等价写法是 for x in")
     def test_repeat_each(self):
         out = run_impor(
             'repeat 3 { print("r", __r) }\n'
@@ -147,8 +148,8 @@ class TestEnglishKeywords(unittest.TestCase):
         out = run_impor(
             'class 点 {\n'
             '  var x = 0\n'
-            '  func 设(x) { this.x = x }\n'
-            '  func 取() { return this.x }\n'
+            '  def 设(x) { this.x = x }\n'
+            '  def 取() { return this.x }\n'
             '}\n'
             'var p = new 点()\n'
             'p.设(42)\n'
@@ -165,14 +166,14 @@ class TestEnglishKeywords(unittest.TestCase):
                 Parser(tokenize("var %s = 1\n" % kw)).program()
         # v3.7.1 解封的 11 个 + v3.7.2 降级的 6 个软关键字。
         for kw in ("record", "template", "final", "of", "do",
-                   "let", "each", "lambda", "macro",
+                   "each", "lambda", "macro",
                    "static", "readonly", "async", "await", "this", "defer"):
             Parser(tokenize("var %s = 1\nprint(%s)\n" % (kw, kw))).program()
 
     def test_aliases_c_backend(self):
         rc, exe, rout = build_exe(
-            'fn 加(a, b) { return a + b }\n'
-            'let 速度 = 100\n'
+            'def 加(a, b) { return a + b }\n'
+            'var 速度 = 100\n'
             'if 1 > 0 { print("c-big") } elif 2 > 1 { print("c-elif") } else { print("no") }\n'
             'repeat 2 { print("c-rep", __r) }\n'
             'static PI = 3.14\n'

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from .pathsafe import rel_quiet
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -77,7 +78,7 @@ class GraphReport:
 
 def rel(root, path):
     try:
-        return os.path.relpath(path, root).replace("\\", "/")
+        return rel_quiet(path, root).replace("\\", "/")
     except Exception:
         return path
 
@@ -92,7 +93,7 @@ def _walk(root):
 
 
 def _module_guess(root, path):
-    relpath = os.path.relpath(path, root).replace("\\", "/")
+    relpath = rel_quiet(path, root).replace("\\", "/")
     if relpath.endswith(".impor"):
         relpath = relpath[:-6]
     if relpath.endswith("/__pkg__"):

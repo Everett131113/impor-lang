@@ -1,0 +1,23 @@
+import sqlite3_bind as db
+
+var shim = "impor_bind_sqlite3.dll"
+var native = "D:\\编程软件\\python3.9\\DLLs\\sqlite3.dll"
+
+print("native exists:", fileexists(native))
+print("load:", db.load(shim, native))
+print("version:", db.version())
+
+var h = db.open(":memory:")
+print("open:", h)
+
+print("create rc:", db.exec(h, "CREATE TABLE t(id INTEGER PRIMARY KEY, name TEXT, score REAL)"))
+print("insert rc:", db.exec(h, "INSERT INTO t(name, score) VALUES ('甲', 91.5), ('乙', 78), ('丙', NULL)"))
+
+var res = db.query(h, "SELECT id, name, score FROM t ORDER BY id")
+print("cols:", res["cols"])
+print("rows:", res["rows"])
+print("count:", len(res["rows"]))
+
+var bad = db.query(h, "SELECT * FROM no_such_table")
+print("bad error:", bad["error"])
+print("close:", db.close(h))

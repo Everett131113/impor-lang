@@ -1,0 +1,65 @@
+// std/log.impor — 分级日志（纯 Impor，三端一致）
+// 用法：import std.log as log  →  log.info("服务启动")
+// 口径：只负责格式化与级别过滤，不写文件、不联网；输出走 print，由调用方重定向。
+
+var LEVEL = 2 // 0=debug 1=info 2=warn 3=error
+var NAME = "impor"
+
+def set_level(n) {
+    set LEVEL = n
+    return LEVEL
+}
+
+def set_name(s) {
+    set NAME = s
+    return NAME
+}
+
+def level_name(n) {
+    if n == 0 {
+        return "DEBUG"
+    }
+    if n == 1 {
+        return "INFO"
+    }
+    if n == 2 {
+        return "WARN"
+    }
+    if n == 3 {
+        return "ERROR"
+    }
+    return "TRACE"
+}
+
+def emit(n, msg) {
+    if n < LEVEL {
+        return false
+    }
+    print("[" + NAME + "][" + level_name(n) + "] " + str(msg))
+    return true
+}
+
+def debug(msg) {
+    return emit(0, msg)
+}
+
+def info(msg) {
+    return emit(1, msg)
+}
+
+def warn(msg) {
+    return emit(2, msg)
+}
+
+def error(msg) {
+    return emit(3, msg)
+}
+
+export set_level
+export set_name
+export level_name
+export emit
+export debug
+export info
+export warn
+export error

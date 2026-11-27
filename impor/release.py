@@ -31,21 +31,37 @@ def _read(path):
 
 
 def _check_version():
-    """五处版本文件 + 站点 update.json 必须同版。"""
+    """版本一致性：`VERSION` 是唯一真源，其余文件必须"继承它或等于它"。
+
+    4.5.0 修：此前这里假定每个文件都写死 `__version__ = "x.y.z"`，但仓库早已改成
+    "升版只改 VERSION"（`Impor.py` 调 `_read_version()`、`pyproject` 用 dynamic、
+    `impor/__init__.py` 从 `.version` 导入）。结果门禁把正确的仓库判成「三处缺失」——
+    门禁与实现对不上，比不做门禁更糟。现在改成：能继承的认继承，写死的必须等于 VERSION。
+    """
+    root_v = _read(os.path.join(ROOT, "VERSION")).strip()
     targets = [
-        ("Impor.py", r'__version__\s*=\s*"([^"]+)"'),
-        ("impor/__init__.py", r'__version__\s*=\s*"([^"]+)"'),
-        ("pyproject.toml", r'^version\s*=\s*"([^"]+)"'),
-        ("vscode-impor/package.json", r'"version"\s*:\s*"([^"]+)"'),
-        ("bootstrap/imporc.impor", r"v([0-9]+\.[0-9]+\.[0-9]+)"),
+        ("Impor.py", r'__version__\s*=\s*"([^"]+)"', r"__version__\s*=\s*_read_version\(\)"),
+        ("impor/__init__.py", r'__version__\s*=\s*"([^"]+)"', r"from\s+\.version\s+import\s+__version__"),
+        ("pyproject.toml", r'^version\s*=\s*"([^"]+)"', r'version\s*=\s*\{[^}]*VERSION'),
+        ("vscode-impor/package.json", r'"version"\s*:\s*"([^"]+)"', None),
+        ("bootstrap/imporc.impor", r"v([0-9]+\.[0-9]+\.[0-9]+)", None),
     ]
-    found = {}
-    for rel, pattern in targets:
+    found = {"VERSION": root_v or "<missing>"}
+    ok = bool(root_v)
+    for rel, lit, inherit in targets:
         text = _read(os.path.join(ROOT, rel))
-        m = re.search(pattern, text, re.MULTILINE)
-        found[rel] = m.group(1) if m else "<missing>"
-    values = set(found.values())
-    return (len(values) == 1 and "<missing>" not in values, found)
+        if inherit and re.search(inherit, text):
+            found[rel] = "继承 VERSION"
+            continue
+        m = re.search(lit, text, re.MULTILINE)
+        if not m:
+            found[rel] = "<missing>"
+            ok = False
+            continue
+        found[rel] = m.group(1)
+        if m.group(1) != root_v:
+            ok = False
+    return ok, found
 
 
 def _check_required():

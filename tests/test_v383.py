@@ -12,19 +12,19 @@ IMPOR_PY = os.path.join(ROOT, "Impor.py")
 IMPORC = os.path.join(ROOT, "impor", "imporc.exe")
 TCC = os.path.join(ROOT, "impor", "tcc", "win32", "tcc.exe")
 
-LIB_SRC = """export func add(a: int, b: int) -> int {
+LIB_SRC = """export def add(a: int, b: int) -> int {
     return a + b
 }
 
-export func greet(name: str) -> str {
+export def greet(name: str) -> str {
     return "Hello, " + name
 }
 
-export func twice(n: size_t) -> size_t {
+export def twice(n: size_t) -> size_t {
     return n * 2
 }
 
-export func same_handle(h: handle) -> handle {
+export def same_handle(h: handle) -> handle {
     return h
 }
 """
@@ -122,7 +122,7 @@ class TestImporcGate(unittest.TestCase):
         self.assertIn("BOM_OK", run.stdout)
 
     def test_single_line_brace_block_builds(self):
-        proc, out = self._build("brace", "func one() { return 1 }\nprint(one())\n")
+        proc, out = self._build("brace", "def one() { return 1 }\nprint(one())\n")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue(os.path.isfile(out), proc.stdout + proc.stderr)
         run = _run([out], self.tmp, timeout=30)

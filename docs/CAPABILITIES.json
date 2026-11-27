@@ -1,0 +1,203 @@
+{
+  "generated": "2026-11-26T20:10:32",
+  "python": "3.13.18",
+  "cases": {
+    "01_int.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "ok",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "9223372036854775807",
+        "4"
+      ],
+      "note": {
+        "wasm": "1062 字节",
+        "opt": "rc=1 impor: 运行错误: 第5行: BackendError: 优化编译器后端暂不支持内建调用 range（第 5 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  4 │ var h = 0\n  5 │ for i in range(5)\n    │ ^^^^^^^^\n  6 │     h = h + i % 3\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第5行: BackendError: 原生后端暂不支持内建调用 range（第 5 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  4 │ var h = 0\n  5 │ for i in range(5)\n    │ ^^^^^^^^\n  6 │     h = h + i % 3\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 2.26
+    },
+    "02_float.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "ok",
+      "opt": "ok",
+      "native64": "unsupported",
+      "expect": [
+        "3.75",
+        "3.375"
+      ],
+      "note": {
+        "wasm": "995 字节",
+        "native64": "build rc=1 impor: 运行错误: BackendError: 原生后端本版暂不支持浮点（变量 a）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 2.35
+    },
+    "03_str.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "ok",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "abcd 4",
+        "xxx"
+      ],
+      "note": {
+        "wasm": "1039 字节",
+        "opt": "rc=1 impor: 运行错误: 第3行: BackendError: 优化编译器后端暂不支持内建调用 len（第 3 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ var s = \"ab\" + \"cd\"\n  3 │ print(s, len(s))\n    │ ^^^^^^^^\n  4 │ print(\"x\" * 3)\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第3行: BackendError: 原生后端暂不支持内建调用 len（第 3 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ var s = \"ab\" + \"cd\"\n  3 │ print(s, len(s))\n    │ ^^^^^^^^\n  4 │ print(\"x\" * 3)\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 3.88
+    },
+    "04_list.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "ok",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "3 5"
+      ],
+      "note": {
+        "wasm": "1031 字节",
+        "opt": "rc=1 impor: 运行错误: 第3行: BackendError: 优化编译器后端暂不支持内建调用 len（第 3 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ var a = [1, 2, 3]\n  3 │ print(len(a), a[1] + a[2])\n    │ ^^^^^^^^\n  4 │ # EXPECT: 3 5\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第2行: BackendError: 原生后端暂不支持指令 LIST（__main__，第 2 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  1 │ // 列表：字面量 / 长度 / 下标读取\n  2 │ var a = [1, 2, 3]\n    │ ^^^^^^^^\n  3 │ print(len(a), a[1] + a[2])\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 4.34
+    },
+    "05_dict.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "ok",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "7 2"
+      ],
+      "note": {
+        "wasm": "1057 字节",
+        "opt": "rc=1 impor: 运行错误: 第3行: BackendError: 优化编译器后端暂不支持内建调用 len（第 3 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ var d = {\"k\": 7, \"j\": 2}\n  3 │ print(d[\"k\"], len(d))\n    │ ^^^^^^^^\n  4 │ # EXPECT: 7 2\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第2行: BackendError: 原生后端暂不支持指令 DICT（__main__，第 2 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  1 │ // 字典：字面量 / 键查 / 条目数\n  2 │ var d = {\"k\": 7, \"j\": 2}\n    │ ^^^^^^^^\n  3 │ print(d[\"k\"], len(d))\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 4.72
+    },
+    "06_class.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "unsupported",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "7"
+      ],
+      "note": {
+        "wasm": "1023 字节",
+        "vm": "rc=1 impor: 运行错误: 第2行: BackendError: VM 后端暂不支持 class 定义（第 2 行）；请改用 `impor run` 执行 [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "opt": "rc=1 impor: 运行错误: 第7行: BackendError: 优化编译器后端暂不支持指令 NEW（__main__，第 7 行）；请改用 `impor run` 执行 [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  6 │         return self.x\n  7 │ var p = new P(7)\n    │ ^^^^^^^^\n  8 │ print(p.get())\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第7行: BackendError: 原生后端暂不支持指令 NEW（__main__，第 7 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  6 │         return self.x\n  7 │ var p = new P(7)\n    │ ^^^^^^^^\n  8 │ print(p.get())\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 5.04
+    },
+    "07_closure.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "unsupported",
+      "vm": "ok",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "11 13"
+      ],
+      "note": {
+        "wasm": "无法生成语句：Def",
+        "opt": "rc=1 impor: 运行错误: 第3行: BackendError: 优化编译器后端暂不支持该语法（07_closure.impor:3:1: IR 暂不支持 嵌套 def（IR 只支持顶层函数；嵌套函数需要闭包表示））；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ def make(n)\n  3 │     def add(k)\n    │ ^^^^^^^^\n  4 │         nonlocal set n = n + k\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第3行: BackendError: 原生后端暂不支持该语法（07_closure.impor:3:1: IR 暂不支持 嵌套 def（IR 只支持顶层函数；嵌套函数需要闭包表示））；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ def make(n)\n  3 │     def add(k)\n    │ ^^^^^^^^\n  4 │         nonlocal set n = n + k\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 3.69
+    },
+    "08_generic.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "unsupported",
+      "vm": "ok",
+      "opt": "ok",
+      "native64": "unsupported",
+      "expect": [
+        "9 b"
+      ],
+      "note": {
+        "wasm": "泛型函数 max2<T> 不在 WASM 后端内（需单态化，请用 C 后端）",
+        "native64": "build rc=1 impor: 运行错误: 第6行: BackendError: 原生后端本版 print 仅支持 int/bool/str/none（第 6 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  5 │     return b\n  6 │ print(max2(9, 2), max2(\"a\", \"b\"))\n    │ ^^^^^^^^\n  7 │ # EXPECT: 9 b\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 3.94
+    },
+    "09_exception.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "unsupported",
+      "vm": "unsupported",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "1",
+        "caught neg"
+      ],
+      "note": {
+        "wasm": "无法生成语句：Raise",
+        "vm": "rc=1 impor: 运行错误: 第2行: BackendError: VM 后端暂不支持 exception 声明（第 2 行）；请改用 `impor run` 执行 [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "opt": "rc=1 impor: 运行错误: 第7行: BackendError: 优化编译器后端暂不支持指令 TRY_BEGIN（__main__，第 7 行）；请改用 `impor run` 执行 [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  6 │     return n\n  7 │ try\n    │ ^^^\n  8 │     print(check(1))\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第7行: BackendError: 原生后端暂不支持指令 TRY_BEGIN（__main__，第 7 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  6 │     return n\n  7 │ try\n    │ ^^^\n  8 │     print(check(1))\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 4.75
+    },
+    "10_builtin.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "unsupported",
+      "vm": "ok",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "43 42!"
+      ],
+      "note": {
+        "wasm": "调用目标不在 WASM 后端内：int",
+        "opt": "rc=1 impor: 运行错误: 第2行: BackendError: 优化编译器后端暂不支持内建调用 int（第 2 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  1 │ // 内建：int() / str() 转换\n  2 │ var n = int(\"42\")\n    │ ^^^^^^^^\n  3 │ print(n + 1, str(42) + \"!\")\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第2行: BackendError: 原生后端暂不支持内建调用 int（第 2 行）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  1 │ // 内建：int() / str() 转换\n  2 │ var n = int(\"42\")\n    │ ^^^^^^^^\n  3 │ print(n + 1, str(42) + \"!\")\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 3.59
+    },
+    "11_have.impor": {
+      "interp": "ok",
+      "native": "ok",
+      "wasm": "ok",
+      "vm": "unsupported",
+      "opt": "unsupported",
+      "native64": "unsupported",
+      "expect": [
+        "3",
+        "False",
+        "True",
+        "True",
+        "True",
+        "True 7 True"
+      ],
+      "note": {
+        "wasm": "1291 字节",
+        "vm": "rc=1 impor: 运行错误: 第3行: BackendError: VM 后端暂不支持 have 类型判定（第 3 行）；请改用 `impor run` 执行 [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  为什么： 操作数的类型不匹配；Impor 不做隐式类型转换。\n  修复： 用 str() / num() / int() / float() 显式转换后再运算，或修正其中一个操作数。\n  文档： docs/errors.md#E1099",
+        "opt": "rc=1 impor: 运行错误: 第3行: BackendError: 优化编译器后端暂不支持该语法（11_have.impor:3:6: IR 暂不支持 TypeTest）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ var a = 3\n  3 │ if a have int:\n    │ ^^^^^^^^\n  4 │     print(a)\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099",
+        "native64": "build rc=1 impor: 运行错误: 第3行: BackendError: 原生后端暂不支持该语法（11_have.impor:3:6: IR 暂不支持 TypeTest）；请改用 `impor run` [E1099]\n    （设 IMPOR_DEBUG=1 可查看完整调试栈）\n  2 │ var a = 3\n  3 │ if a have int:\n    │ ^^^^^^^^\n  4 │     print(a)\n  为什么： Impor 执行到这一步时遇到了未预期的情况。\n  修复： 检查该行的输入与状态；若怀疑是编译器内部问题，设 IMPOR_DEBUG=1 查看完整调试栈。\n  文档： docs/errors.md#E1099"
+      },
+      "seconds": 5.36
+    }
+  }
+}

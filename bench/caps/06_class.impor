@@ -1,0 +1,9 @@
+// 类：构造 / 字段写入 / 方法调用
+class P
+    def __init__(x)
+        set self.x = x
+    def get()
+        return self.x
+var p = new P(7)
+print(p.get())
+# EXPECT: 7

@@ -23,9 +23,11 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import tkinter as tk
 from . import editor_pane, editor_dialogs, editor_groups, editor_panels, editor_runtime
 from . import ai_assist, largefile
+from . import i18n
 from .editor_pane import EditorPane
 from .editor_dialogs import CommandPalette, Finder, AboutDialog, ExampleBrowser
 from .editor_groups import EditorGroupsMixin
@@ -36,7 +38,7 @@ from tkinter import ttk, filedialog, messagebox
 
 from . import __version__
 from .icons import apply_window_icon
-from .lexer import KEYWORDS, BUILTIN_NAMES
+from .lexer import KEYWORDS, BUILTIN_NAMES, HIGHLIGHT_KEYWORDS
 from .parser import Parser
 from .analysis import analyze, style_lint
 from .typecheck import check_source, infer_expression
@@ -48,10 +50,28 @@ from .builtins import BUILTIN_DOCS
 from .symbol_index import ProjectIndex
 from .keymap import Keymap
 from .observability import note_swallowed
+from .pathsafe import rel_quiet
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INSTALL_ROOT = ROOT_DIR
 CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".impor_studio.json")
+
+
+def _align_eol(text, pane):
+    """对齐文件末尾换行（4.7.3）。
+
+    Tk Text 的 `end` 天然带一个换行，`get_content()` 原样返回时，
+    一个「末尾没有换行」的文件每保存一次就会多出一个空行（CRLF 下 +2 字节）。
+    这里按打开时记下的真实结尾还原：原本有换行就保证有，原本没有就去掉那个补的。
+    """
+    if text is None:
+        return text
+    # 写盘时换行由 open(newline=...) 统一生成；正文里绝不能残留 \r，
+    # 否则 CRLF 文件会被写成 \r\r\n（每行多 1 字节，肉眼是「多一个空行」）。
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    if bool(getattr(pane, "_ends_nl", True)):
+        return text if text.endswith("\n") else text + "\n"
+    return text[:-1] if text.endswith("\n") else text
 
 SPYP_SUFFIX = ".impor"
 SPYP_FILETYPES = [("Impor 脚本", "*.impor"), ("文本", "*.txt"), ("所有文件", "*.*")]
@@ -219,10 +239,10 @@ print(arr)
 print("最大:", max_arr(arr), "最小:", min_arr(arr), "和:", sum_arr(arr))
 '''),
     ("4. 函数与闭包", f'''{HEADER_MARK}
-func add(x, y)
+def add(x, y)
     return x + y
 
-func make_counter(start)
+def make_counter(start)
     def inc()
         nonlocal set start = start + 1
         return start
@@ -286,7 +306,7 @@ print(s)
 print("切割:", strcut("abcdef", 1, 4))
 '''),
     ("10. 斐波那契", f'''{HEADER_MARK}
-func fib(n)
+def fib(n)
     if n < 2
         return n
     return fib(n - 1) + fib(n - 2)
@@ -431,6 +451,7 @@ from .editor_widgets import (
 class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
     def __init__(self, root):
         enable_dpi_awareness()
+        i18n.install_tk()
         self.root = root
         apply_window_icon(self.root, root=True)
         self.root.title(f"Impor (I++) {__version__} · Code Studio")
@@ -446,6 +467,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 self.cfg = json.load(f)
         except Exception:
             self.cfg = {}
+        self.lang = i18n.set_language(self.cfg.get("language") or i18n.ZH_CN)
         self.font_family = str(self.cfg.get("font_family") or self.mono)
         self.mono = self.font_family
         self.show_minimap = bool(self.cfg.get("minimap", True))
@@ -535,6 +557,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         self.active_pane = None
         self._queue = queue.Queue()
         self._running = False
+        self._stop_requested = False
         self._interp = None
         self._debug_mode = False
         self._sandbox_mode = False
@@ -570,7 +593,10 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         self._nav_silent = False
         self._exc_filter = ""
         self.autosave = bool(self.cfg.get("autosave", True))
-        self._recovery_dir = os.path.join(ROOT_DIR, ".impor_recovery")
+        # 4.7.3：崩溃恢复副本固定在用户目录，不跟 workspace 走——
+        # workspace 可能是只读目录/网络盘，写不进去就等于「崩溃兜底」静默失效；
+        # 放在 ~/.impor 下还有一个好处：换项目重开也能把上次没存的内容捞回来。
+        self._recovery_dir = os.path.join(os.path.expanduser("~"), ".impor", "recovery")
         try:
             os.makedirs(self._recovery_dir, exist_ok=True)
         except Exception:
@@ -615,7 +641,8 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         self._restore_session()
         self._poll_queue()
         self._tick_memory()
-        self.root.after(30000, self._autosave_tick)
+        self._after_safe(30000, self._autosave_tick)
+        self._after_safe(3000, self._recovery_tick)
         self._file_mtimes = {}
         self._external_warned = set()
         self.root.after(1200, self._watch_files)
@@ -904,6 +931,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 folds[p.path] = sorted(p._folded)
         cfg = {
             "theme": self.theme_name,
+            "language": getattr(self, "lang", i18n.ZH_CN),
             "font_size": self.font_size,
             "indent_width": self.indent_width,
             "word_wrap": self.word_wrap,
@@ -1009,6 +1037,9 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
 
         right = tk.Frame(bar, bg=THEME["titlebar"])
         right.pack(side=tk.RIGHT, padx=12)
+        self.btn_lang = FlatButton(right, i18n.button_label(), command=self.show_language_menu,
+                                   width=82)
+        self.btn_lang.pack(side=tk.RIGHT, padx=4, pady=11)
         FlatButton(right, "⌘ 命令面板", command=self.open_palette, width=112).pack(side=tk.RIGHT, padx=4, pady=11)
         FlatButton(right, "内核3.0 预览", command=self.launch_kernel3_preview,
                    width=104).pack(side=tk.RIGHT, padx=4, pady=11)
@@ -1016,6 +1047,45 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         self.btn_sandbox.pack(side=tk.RIGHT, padx=4, pady=11)
         self.btn_debug = FlatButton(right, "调试: 关", command=self.toggle_debug, width=84)
         self.btn_debug.pack(side=tk.RIGHT, padx=4, pady=11)
+
+    # ---------- 界面语言 ----------
+    def show_language_menu(self):
+        """单独“语言”按钮：三选一，立即切换并记住偏好。"""
+        menu = tk.Menu(self.root, tearoff=0, bg=THEME["panel"], fg=THEME["fg"],
+                       activebackground=THEME["accent_soft"],
+                       activeforeground=THEME["fg_bright"])
+        for code in i18n.LANGUAGES:
+            mark = "✓ " if code == self.lang else "   "
+            menu.add_command(
+                label=mark + i18n.language_name(code),
+                command=lambda c=code: self.set_language(c))
+        try:
+            x = self.btn_lang.winfo_rootx()
+            y = self.btn_lang.winfo_rooty() + self.btn_lang.winfo_height() + 4
+            menu.tk_popup(x, y)
+        finally:
+            menu.grab_release()
+
+    def set_language(self, code):
+        code = i18n.normalize_language(code)
+        if code == self.lang:
+            return
+        self.lang = i18n.set_language(code)
+        self.cfg["language"] = self.lang
+        self._save_config()
+        i18n.retranslate(self.root)
+        # 自绘按钮不在 Tk 文本参数里，单独重绘；源文案始终保留“语言”。
+        self.btn_lang.set_text("语言")
+        try:
+            self.update_status()
+        except Exception:
+            pass
+        try:
+            self._apply_workspace_trust()
+            self._apply_workspace_title()
+        except Exception:
+            pass
+        self.toast("语言已切换：" + i18n.language_name(self.lang), "ok")
 
     # ---------- 工作区信任 ----------
     @staticmethod
@@ -1339,6 +1409,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         pane._encoding = "UTF-8 BOM" if bom else "UTF-8"
         pane._newline = newline
         pane._bom = bom
+        pane._ends_nl = raw.endswith(b"\n")
         if size > getattr(self, "large_file_kb", 2000) * 1024:
             pane._large_file = True
             self.toast("大文件模式：只高亮可视区，缩略图已降采样", "warn")
@@ -1402,25 +1473,27 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             enc = "utf-8-sig" if getattr(pane, "_bom", False) else "utf-8"
             nl = "\r\n" if getattr(pane, "_newline", "LF") == "CRLF" else "\n"
             full = pane.get_content() if getattr(pane, "get_content", None) else pane.text.get("1.0", "end-1c")
+            full = _align_eol(full, pane)
             # 3.2.1：先写同目录临时文件再原子替换，避免断电/崩溃留下半截文件。
             tmp_fd, tmp_path = tempfile.mkstemp(prefix=".impor_save_", dir=os.path.dirname(pane.path) or ".")
             try:
                 with os.fdopen(tmp_fd, "w", encoding=enc, newline=nl) as f:
                     f.write(full)
                 os.replace(tmp_path, pane.path)
-            except Exception:
+            except Exception as exc:
+                note_swallowed("editor.save", exc)
                 try:
                     os.unlink(tmp_path)
-                except Exception:
-                    pass
+                except Exception as exc2:
+                    note_swallowed("editor.save.tmp_cleanup", exc2)
                 raise
             try:
                 from .security import AuditLog
                 AuditLog(getattr(self, "workspace", os.path.dirname(pane.path))).write(
                     "file.save", path=os.path.abspath(pane.path), bytes=len(full),
                     atomic=True)
-            except Exception:
-                pass
+            except Exception as exc:
+                note_swallowed("editor.save.audit", exc)
             pane._dirty = False
             try:
                 self._file_mtimes[pane.path] = os.path.getmtime(pane.path)
@@ -1446,6 +1519,92 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         except Exception as e:
             messagebox.showerror("保存失败", str(e))
 
+    # ---------- 4.7.3 崩溃安全：定时器保护 + 恢复副本 ----------
+    def _after_safe(self, ms, fn, *args):
+        """定时器链保护：一次 tick 抛异常不再让整条 after 链静默断掉。
+
+        默认 Tk 的 after 回调抛异常只会交给 report_callback_exception，
+        链本身不会重排——自动保存/高亮/文件监视会就此永久失效且无任何提示。
+        """
+        def _wrapped():
+            try:
+                fn(*args)
+            except Exception as exc:
+                try:
+                    note_swallowed("editor.after:%s" % getattr(fn, "__name__", "?"), exc)
+                except Exception:
+                    pass
+                try:
+                    from .stability import write_crash_log
+                    write_crash_log(exc, where="editor.after")
+                except Exception:
+                    pass
+                try:
+                    self.root.after(ms, _wrapped)
+                except Exception:
+                    pass
+
+        try:
+            return self.root.after(ms, _wrapped)
+        except Exception:
+            return None
+
+    def _recovery_path(self):
+        """恢复副本目录：先本地 .impor_recovery，装到只读目录时退到 ~/.impor/recovery。
+
+        4.7.3：不再依赖 __init__ 里那次 makedirs —— 目录不在就等于「崩溃兜底」失效，
+        而失败还被静默吞掉。这里每写一次都确保目录真的存在。
+        """
+        for d in (getattr(self, "_recovery_dir", None)
+                  or os.path.join(os.path.expanduser("~"), ".impor", "recovery"),
+                  os.path.join(ROOT_DIR, ".impor_recovery")):
+            try:
+                os.makedirs(d, exist_ok=True)
+                return d
+            except Exception:
+                continue
+        return os.path.join(os.path.expanduser("~"), ".impor", "recovery")
+
+    def _flush_recovery(self, reason="auto"):
+        """把所有「未保存」标签写成恢复副本（.impor 正文 + .json 元信息）。
+
+        只写 `.impor_recovery`，绝不碰用户原文件。3 秒级落盘后，
+        即便进程被强杀/断电，最多丢最后 3 秒输入。
+        """
+        written = 0
+        rdir = self._recovery_path()
+        for pane in self.panes:
+            if not getattr(pane, "_dirty", False):
+                continue
+            try:
+                body = pane.text.get("1.0", "end-1c")
+            except Exception:
+                continue
+            base = os.path.join(rdir, "recover_%s" % id(pane))
+            try:
+                with open(base + ".impor", "w", encoding="utf-8", newline="\n") as f:
+                    f.write(body)
+                with open(base + ".json", "w", encoding="utf-8", newline="\n") as f:
+                    json.dump({"path": pane.path or "",
+                               "title": getattr(pane, "tab_title", "") or getattr(pane, "title", ""),
+                               "bom": bool(getattr(pane, "_bom", False)),
+                               "ends_nl": bool(getattr(pane, "_ends_nl", True)),
+                               "newline": getattr(pane, "_newline", "LF"),
+                               "reason": reason, "ts": time.time()},
+                              f, ensure_ascii=False)
+                written += 1
+            except Exception as exc:
+                note_swallowed("editor.recovery.write", exc)
+        return written
+
+    def _recovery_tick(self):
+        """3 秒一次：只写恢复副本。开销与脏标签数量成正比，不扫全盘。"""
+        try:
+            self._flush_recovery("tick")
+        except Exception:
+            pass
+        self._after_safe(3000, self._recovery_tick)
+
     def _autosave_tick(self):
         try:
             if self.autosave:
@@ -1456,6 +1615,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                         enc = "utf-8-sig" if getattr(pane, "_bom", False) else "utf-8"
                         nl = "\r\n" if getattr(pane, "_newline", "LF") == "CRLF" else "\n"
                         full = pane.get_content() if getattr(pane, "get_content", None) else pane.text.get("1.0", "end-1c")
+                        full = _align_eol(full, pane)
                         with open(pane.path, "w", encoding=enc, newline=nl) as f:
                             f.write(full)
                         pane._dirty = False
@@ -1464,20 +1624,21 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                         except Exception:
                             pass
                     else:
-                        p = os.path.join(self._recovery_dir, f"recover_{id(pane)}.impor")
+                        p = os.path.join(self._recovery_path(), f"recover_{id(pane)}.impor")
                         with open(p, "w", encoding="utf-8") as f:
                             f.write(pane.text.get("1.0", "end-1c"))
                 self.mark_dirty(None)
-        except Exception:
-            pass
-        self.root.after(30000, self._autosave_tick)
+        except Exception as exc:
+            note_swallowed("editor.autosave", exc)
+        self._after_safe(30000, self._autosave_tick)
 
     def restore_recovery(self):
         items = []
+        rdir = self._recovery_path()
         try:
-            for fn in sorted(os.listdir(self._recovery_dir)):
+            for fn in sorted(os.listdir(rdir)):
                 if fn.endswith(".impor"):
-                    p = os.path.join(self._recovery_dir, fn)
+                    p = os.path.join(rdir, fn)
                     items.append((fn, p))
         except Exception:
             pass
@@ -1488,10 +1649,30 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             try:
                 with open(p, encoding="utf-8") as f:
                     content = f.read()
-                self.open_new_tab(content=content, title="恢复-" + fn)
+                meta = {}
+                meta_path = p[:-len(".impor")] + ".json"
+                try:
+                    with open(meta_path, encoding="utf-8") as f:
+                        meta = json.load(f) or {}
+                except Exception:
+                    pass
+                title = meta.get("title") or os.path.basename(meta.get("path") or "") or ("恢复-" + fn)
+                pane = self.open_new_tab(content=content, title=str(title))
+                # 4.7.3：把原文件路径与编码特征一并接回，恢复后 Ctrl+S 可直接存回原文件。
+                if meta.get("path"):
+                    pane.path = str(meta["path"])
+                pane._bom = bool(meta.get("bom", False))
+                pane._newline = meta.get("newline", "LF")
+                pane._ends_nl = bool(meta.get("ends_nl", True))
+                pane._encoding = "UTF-8 BOM" if pane._bom else "UTF-8"
+                pane._dirty = True
                 os.remove(p)
-            except Exception:
-                pass
+                try:
+                    os.remove(meta_path)
+                except Exception:
+                    pass
+            except Exception as exc:
+                note_swallowed("editor.recovery.restore", exc)
         self.toast("已恢复 %d 个未保存文件" % len(items), "ok")
 
     def save_file_as(self):
@@ -1650,6 +1831,79 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
     def _set_out(self, text, kind="info"):
         self.out.insert(tk.END, text, kind)
         self.out.see(tk.END)
+        win = getattr(self, "_out_win", None)
+        if win is not None and win.winfo_exists():
+            self._out_win_text.insert(tk.END, text, kind)
+            self._out_win_text.see(tk.END)
+
+    def open_out_window(self):
+        """把输出弹到独立窗口，与底部输出实时同步（含颜色）。"""
+        win = getattr(self, "_out_win", None)
+        if win is not None and win.winfo_exists():
+            win.lift()
+            win.focus_force()
+            return
+        win = tk.Toplevel(self.root)
+        win.title("Impor 输出")
+        win.configure(bg=THEME["panel"])
+        win.geometry("780x460")
+        bar = tk.Frame(win, bg=THEME["panel_head"], height=32)
+        bar.pack(fill=tk.X)
+        bar.pack_propagate(False)
+        FlatButton(bar, "清空", command=self.clear_output, width=54,
+                   height=22).pack(side=tk.RIGHT, padx=(6, 10), pady=5)
+        txt = tk.Text(win, bg=THEME["editor"], fg=THEME["fg"], relief="flat",
+                      bd=0, font=(self.mono, 10), padx=10, pady=8, wrap="word")
+        txt.pack(fill=tk.BOTH, expand=True)
+        for tag, color in (("info", THEME["fg"]), ("ok", THEME["green"]),
+                           ("err", THEME["red"]), ("warn", THEME["yellow"]),
+                           ("dim", THEME["muted"])):
+            txt.tag_config(tag, foreground=color)
+        # 把已有输出原样复制，再按源控件的 tag 区间逐段补上颜色（内容一致，索引一一对应）
+        txt.insert("1.0", self.out.get("1.0", "end-1c"))
+        for tag_name in ("info", "ok", "err", "warn", "dim"):
+            ranges = self.out.tag_ranges(tag_name)
+            for i in range(0, len(ranges), 2):
+                txt.tag_add(tag_name,
+                            self.out.index(ranges[i]),
+                            self.out.index(ranges[i + 1]))
+        txt.see(tk.END)
+
+        def close_out_win():
+            self._out_win = None
+            self._out_win_text = None
+            win.destroy()
+
+        win.protocol("WM_DELETE_WINDOW", close_out_win)
+        self._out_win = win
+        self._out_win_text = txt
+
+    def run_in_console(self):
+        """在一个全新的系统控制台窗口里运行当前代码（像 Python 那样独立黑窗口）。"""
+        pane = self.current_pane()
+        if pane is None or not self._ensure_trusted("控制台运行"):
+            return
+        src = pane.text.get("1.0", "end-1c")
+        import tempfile
+        tmp = os.path.join(tempfile.gettempdir(), "impor_console_run.impor")
+        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(src)
+        bat = os.path.join(tempfile.gettempdir(), "impor_console_run.bat")
+        py = sys.executable
+        lines = [
+            "@echo off",
+            "chcp 65001 >nul",
+            'cd /d "%s"' % os.getcwd(),
+            'echo ^> 运行 %s' % (pane.path or "未命名"),
+            '"%s" -m impor run "%s"' % (py, tmp),
+            "echo.",
+            "echo 运行结束，按任意键关闭窗口 …",
+            "pause >nul",
+        ]
+        with open(bat, "w", encoding="utf-8", newline="\r\n") as fh:
+            fh.write("\n".join(lines))
+        # CREATE_NEW_CONSOLE = 0x10
+        subprocess.Popen(["cmd", "/c", bat], creationflags=0x10)
 
     def append_out(self, text, kind=None):
         if kind is None:
@@ -1919,7 +2173,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 total_err += 1 if issue.severity == "error" else 0
                 total_warn += 0 if issue.severity == "error" else 1
                 if shown < 300:
-                    rel = os.path.relpath(path, self.workspace)
+                    rel = rel_quiet(path, self.workspace)
                     self.problems.insert(
                         "end", f"{rel}:{issue.line}:{issue.col} [{issue.severity}] {issue.msg}\n",
                         "err" if issue.severity == "error" else "warn")
@@ -2190,6 +2444,9 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         self.out.delete("1.0", tk.END)
         self.problems.delete("1.0", tk.END)
         self.watch_tree.delete(*self.watch_tree.get_children())
+        win = getattr(self, "_out_win", None)
+        if win is not None and win.winfo_exists():
+            self._out_win_text.delete("1.0", tk.END)
         self._err_count = 0
         self._warn_count = 0
         self._refresh_problems()
@@ -2520,13 +2777,13 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
 
     def insert_snippet(self):
         snips = [
-            ("函数", 'func name(args):\n    # TODO\n    return 0\n'),
-            ("类", 'class Name:\n    func init():\n        # TODO\n'),
+            ("函数", 'def name(args):\n    # TODO\n    return 0\n'),
+            ("类", 'class Name:\n    def init():\n        # TODO\n'),
             ("条件", 'if cond:\n    # TODO\nelse:\n    # TODO\n'),
             ("循环", 'for i in 1..10:\n    print(i)\n'),
             ("异常", 'try:\n    # TODO\ncatch e:\n    print(e)\n'),
             ("测试", 'expect(actual, expected, "case")\n'),
-            ("接口", 'interface Name {\n    func method() {\n        return 0\n    }\n}\n'),
+            ("接口", 'interface Name {\n    def method() {\n        return 0\n    }\n}\n'),
             ("记录", 'record Name {\n    var x = 0\n}\n'),
             ("命名空间", 'namespace Name {\n    var x = 0\n}\n'),
             ("匿名函数", 'var f = lambda (x): x * 2\n'),
@@ -2666,7 +2923,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 lines = []
             for e in edits:
                 code = lines[e["line"] - 1] if 0 <= e["line"] - 1 < len(lines) else ""
-                tree.insert("", tk.END, values=(os.path.relpath(fp, self.workspace), e["line"], code.strip()[:120]))
+                tree.insert("", tk.END, values=(rel_quiet(fp, self.workspace), e["line"], code.strip()[:120]))
         bar = tk.Frame(win, bg=THEME["panel"])
         bar.pack(fill=tk.X, padx=10, pady=8)
         FlatButton(bar, "应用重命名", kind="primary", width=120,
@@ -2762,7 +3019,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             before = ""
             after = ""
             for fp, (old, new) in changes.items():
-                rel = os.path.relpath(fp, base)
+                rel = rel_quiet(fp, base)
                 before += "=== %s（修改前） ===\n%s\n" % (rel, old)
                 after += "=== %s（修改后） ===\n%s\n" % (rel, new)
             note = "将移动 %s → %s，并更新 %d 个文件的 import 引用" % (
@@ -3213,7 +3470,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 continue
             seen.add(key)
             tv.insert("", tk.END, text=sym.name,
-                      values=(sym.kind, os.path.relpath(sym.path, ROOT_DIR).replace("\\", "/"),
+                      values=(sym.kind, rel_quiet(sym.path, ROOT_DIR).replace("\\", "/"),
                               sym.line, n))
         tk.Label(win, text="判定规则：引用次数不超过声明次数（启发式，可能包含导出符号）",
                  bg=THEME["panel"], fg=THEME["muted"],
@@ -3247,7 +3504,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         elif isinstance(target, (list, tuple)):
             desc = " %d 个文件" % len(target)
         else:
-            desc = os.path.relpath(target, ROOT_DIR) if target else ""
+            desc = rel_quiet(target, ROOT_DIR) if target else ""
         self.append_out("$ python -m impor test %s\n" % desc)
         self._set_running(True)
         self.test_tree.delete(*self.test_tree.get_children())
@@ -3330,7 +3587,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             return
         target = min(defs, key=lambda s: (0 if s.path == os.path.abspath(pane.path or "") else 1, s.line))
         self.open_path_at(target.path, target.line)
-        self.toast("跳转到 %s:%d" % (os.path.relpath(target.path, self.workspace), target.line), "ok")
+        self.toast("跳转到 %s:%d" % (rel_quiet(target.path, self.workspace), target.line), "ok")
 
     def _hover_symbol(self):
         pane = self.current_pane()
@@ -3357,7 +3614,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             if getattr(sym, "typ", "") and sym.typ != "?":
                 text += "  : %s" % sym.typ
             text += "\n作用域 %s" % (sym.scope or "<module>")
-            text += "\n%s:%d" % (os.path.relpath(sym.path, self.workspace), sym.line)
+            text += "\n%s:%d" % (rel_quiet(sym.path, self.workspace), sym.line)
             if getattr(sym, "text", ""):
                 text += "\n" + sym.text[:180]
         try:
@@ -3497,7 +3754,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             seen.add(key)
             rows.append((os.path.abspath(path), line))
             tree.insert("", tk.END, text=str(len(rows)), values=(
-                kind, os.path.relpath(path, ROOT_DIR), line, code[:120]))
+                kind, rel_quiet(path, ROOT_DIR), line, code[:120]))
 
         for d in defs:
             try:
@@ -3607,7 +3864,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 name = stem.group(1)
                 defs = self.index.definition(name)
                 if defs:
-                    rel = os.path.relpath(defs[0].path, self.workspace)
+                    rel = rel_quiet(defs[0].path, self.workspace)
                     mod = os.path.splitext(os.path.basename(rel))[0]
                     header = 1 if lines and lines[0].strip().startswith("important<<") else 0
                     lines.insert(header, f"from {mod} import {name}")
@@ -4201,7 +4458,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         indent = re.match(r"[ \t]*", t.get(f"{start} linestart", start)).group(0)
         body_indent = indent + " " * max(2, getattr(self, "indent_width", 4))
         body = "\n".join(body_indent + ln.lstrip() if ln.strip() else "" for ln in sel.split("\n"))
-        block = f"{indent}func {name}():\n{body}\n"
+        block = f"{indent}def {name}():\n{body}\n"
         full = t.get("1.0", "end-1c")
         start_off = self._text_offset(full, start)
         end_off = self._text_offset(full, end)
@@ -4263,7 +4520,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             self.toast("没找到 " + word + " 的定义")
             return
         try:
-            rel = os.path.relpath(found, ROOT_DIR)
+            rel = rel_quiet(found, ROOT_DIR)
         except Exception:
             rel = os.path.basename(found)
         module = rel[:-6].replace(os.sep, ".") if rel.endswith(".impor") else rel
@@ -4340,7 +4597,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
 
     def _git_merge_text(self, path):
         """用三个 stage 跑 git merge-file --diff3，返回带 base 的冲突文本。"""
-        repo_path = os.path.relpath(os.path.abspath(path), ROOT_DIR).replace("\\", "/")
+        repo_path = rel_quiet(os.path.abspath(path), ROOT_DIR).replace("\\", "/")
         parts = []
         for stage in (2, 1, 3):  # ours, base, theirs
             r = self._git(["show", ":%d:%s" % (stage, repo_path)])
@@ -4523,7 +4780,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 messagebox.showerror("保存失败", str(exc), parent=win)
                 return
             if stage:
-                repo = repo_path or os.path.relpath(path, ROOT_DIR).replace("\\", "/")
+                repo = repo_path or rel_quiet(path, ROOT_DIR).replace("\\", "/")
                 r = self._git(["add", "--", repo])
                 if r.returncode != 0:
                     messagebox.showwarning("已保存，但 git add 失败",
@@ -4593,7 +4850,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         if not pane or not pane.path:
             self.toast("先打开一个已保存文件", "warn")
             return
-        hunks = self._git_hunks(os.path.relpath(pane.path, self.workspace))
+        hunks = self._git_hunks(rel_quiet(pane.path, self.workspace))
         if not hunks:
             self.toast("当前文件没有可暂存的差异", "warn")
             return
@@ -4702,7 +4959,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             state["path"] = path
             diff.configure(state="normal")
             diff.delete("1.0", "end")
-            rel = os.path.relpath(path, self.workspace).replace("\\", "/")
+            rel = rel_quiet(path, self.workspace).replace("\\", "/")
             r = self._git(["diff", "--", rel])
             text = r.stdout or ""
             if not text.strip():
@@ -4773,13 +5030,13 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
 
         def stage():
             if state["path"]:
-                rel = os.path.relpath(state["path"], ROOT_DIR)
+                rel = rel_quiet(state["path"], ROOT_DIR)
                 self._git(["add", "--", rel])
                 refresh()
 
         def unstage():
             if state["path"]:
-                rel = os.path.relpath(state["path"], ROOT_DIR)
+                rel = rel_quiet(state["path"], ROOT_DIR)
                 self._git(["reset", "HEAD", "--", rel])
                 refresh()
 
@@ -4892,10 +5149,10 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
 
     def quick_open(self):
         base = os.path.abspath(getattr(self, "workspace", "") or ROOT_DIR)
-        items = [(f"最近 · {os.path.relpath(p, base)}", p) for p in self._recent
+        items = [(f"最近 · {rel_quiet(p, base)}", p) for p in self._recent
                  if os.path.exists(p)]
         for p in self._walk_files((".impor", ".md", ".py", ".json")):
-            rel = os.path.relpath(p, base)
+            rel = rel_quiet(p, base)
             items.append((rel, p))
         Finder(self, "快速打开 · Ctrl+P", items, lambda p: self.open_path(p),
                "输入文件名或路径片段")
@@ -5000,7 +5257,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             return
         items = []
         for s in syms:
-            rel = os.path.relpath(s.path, self.workspace).replace("\\", "/")
+            rel = rel_quiet(s.path, self.workspace).replace("\\", "/")
             items.append((f"{rel}:{s.line}  {s.kind} {s.name}", (s.path, s.line)))
         Finder(self, "项目符号索引 · 全工作区", items,
                lambda t: self.open_path_at(t[0], t[1]), "跨文件函数、类、结构体与变量")
@@ -5022,7 +5279,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             except Exception:
                 n = 0
             d = ds[0]
-            rel = os.path.relpath(d.path, self.workspace).replace("\\", "/")
+            rel = rel_quiet(d.path, self.workspace).replace("\\", "/")
             items.append((f"{name}  {d.kind}  引用 {n}  {rel}:{d.line}", (d.path, d.line)))
         items.sort(key=lambda t: (-int(t[0].split("引用 ")[1].split("  ")[0]), t[0].lower()))
         Finder(self, "项目引用总览 · 按引用数排序", items,
@@ -5066,7 +5323,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             tree.column(col, width=width, stretch=(col in ("file", "msg")))
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
         for r in rows:
-            tree.insert("", tk.END, values=(r[0], os.path.relpath(r[1], self.workspace), r[2], r[4][:150]))
+            tree.insert("", tk.END, values=(r[0], rel_quiet(r[1], self.workspace), r[2], r[4][:150]))
 
         def jump(e=None):
             item = tree.focus()
@@ -5075,7 +5332,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             vals = tree.item(item, "values")
             rel = vals[1]
             for r in rows:
-                if os.path.relpath(r[1], self.workspace) == rel and str(r[2]) == str(vals[2]):
+                if rel_quiet(r[1], self.workspace) == rel and str(r[2]) == str(vals[2]):
                     self.open_path_at(r[1], r[2])
                     break
         tree.bind("<Double-Button-1>", jump)
@@ -5118,7 +5375,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             tree.column(col, width=width, stretch=(col == "file"))
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 8))
         for fp, now in found:
-            tree.insert("", tk.END, values=(os.path.relpath(fp, self.workspace), now, "UTF-8 · LF"))
+            tree.insert("", tk.END, values=(rel_quiet(fp, self.workspace), now, "UTF-8 · LF"))
         bar = tk.Frame(win, bg=THEME["panel"])
         bar.pack(fill=tk.X, padx=10, pady=8)
 
@@ -5186,7 +5443,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                        wrap="none", font=("Consolas", 9))
         diff.pack(fill=tk.BOTH, expand=True)
         for i, (fp, _, _) in enumerate(found):
-            tree.insert("", tk.END, iid=str(i), values=(os.path.relpath(fp, self.workspace),))
+            tree.insert("", tk.END, iid=str(i), values=(rel_quiet(fp, self.workspace),))
 
         def show(e=None):
             item = tree.focus()
@@ -5296,14 +5553,14 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             if reverse[name]:
                 for caller in sorted(reverse[name]):
                     cs = defs[caller]
-                    detail.insert("end", "  %s  %s:%d\n" % (caller, os.path.relpath(cs.path, self.workspace), cs.line))
+                    detail.insert("end", "  %s  %s:%d\n" % (caller, rel_quiet(cs.path, self.workspace), cs.line))
             else:
                 detail.insert("end", "  （没有调用者）\n", "dim")
             detail.insert("end", "\n→ 被调用（%s 调用谁）\n" % name, "hdr")
             if edges[name]:
                 for callee in sorted(edges[name]):
                     cs = defs[callee]
-                    detail.insert("end", "  %s  %s:%d\n" % (callee, os.path.relpath(cs.path, self.workspace), cs.line))
+                    detail.insert("end", "  %s  %s:%d\n" % (callee, rel_quiet(cs.path, self.workspace), cs.line))
             else:
                 detail.insert("end", "  （没有调用其他函数）\n", "dim")
             detail.tag_config("hdr", foreground=THEME["accent"])
@@ -5394,6 +5651,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             ("展开全部折叠", "", self.unfold_all),
             ("保存时自动格式化", "", lambda: self._toggle_auto_format()),
             ("编辑器设置", "", self.show_settings),
+            ("内部诊断（崩溃 / 被吞异常）", "", self.show_diagnostics),
             ("左右拆分视图", "Ctrl+\\", self.toggle_split_view),
             ("切换深色/浅色主题", "", self.toggle_theme),
             ("运行选中代码", "Ctrl+Shift+Return", self.run_selection),
@@ -5738,6 +5996,65 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         except Exception as e:
             messagebox.showerror("回滚失败", str(e), parent=self.root)
 
+    def show_diagnostics(self):
+        """4.7.3：内部诊断面板。
+
+        493 处 except 里被吞掉的异常以前只有写日志、没人看。这里把
+        「哪里最常吞」「崩溃现场」「最近记录」摊在一个窗口里，
+        并给出一键打开日志目录，让编辑器出问题时能自证而不是靠猜。
+        """
+        from .observability import swallowed_log_path, swallowed_tail, swallowed_counts
+        from .stability import crash_log_path, crash_log_tail
+        win = tk.Toplevel(self.root, bg=THEME["panel"])
+        apply_window_icon(win)
+        win.title("内部诊断 · 崩溃 / 被吞异常")
+        win.geometry("940x600")
+        win.transient(self.root)
+        head = tk.Frame(win, bg=THEME["panel_head"], height=34)
+        head.pack(fill=tk.X)
+        head.pack_propagate(False)
+        tk.Label(head, text="内部诊断", bg=THEME["panel_head"], fg=THEME["fg"],
+                 font=("Microsoft YaHei UI", 9, "bold")).pack(side=tk.LEFT, padx=12)
+        body = tk.Frame(win, bg=THEME["panel"])
+        body.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        txt = tk.Text(body, wrap="none", bg=THEME["editor"], fg=THEME["fg"],
+                      insertbackground=THEME["fg"], font=(self.mono, 9), relief="flat")
+        sb = tk.Scrollbar(body, command=txt.yview)
+        txt.configure(yscrollcommand=sb.set)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lines = []
+        try:
+            counts = swallowed_counts()
+            lines.append("=== 被吞异常高频区域（累计 %d 条）===" % sum(counts.values()))
+            if counts:
+                for area, n in sorted(counts.items(), key=lambda kv: -kv[1])[:15]:
+                    lines.append("  %6d  %s" % (n, area))
+            else:
+                lines.append("  （无记录）")
+            lines.append("")
+            cp = crash_log_path()
+            lines.append("=== 崩溃现场（%s）===" % cp)
+            lines.extend(crash_log_tail(20) or ["  （无）"])
+            lines.append("")
+            lines.append("=== 最近被吞异常（%s）===" % swallowed_log_path())
+            lines.extend(swallowed_tail(120) or ["  （无）"])
+        except Exception as exc:
+            lines.append("诊断信息读取失败：%r" % (exc,))
+        txt.insert("1.0", "\n".join(lines))
+        txt.configure(state="disabled")
+        foot = tk.Frame(win, bg=THEME["panel"])
+        foot.pack(fill=tk.X, padx=8, pady=(0, 8))
+
+        def open_dir():
+            try:
+                os.startfile(os.path.dirname(swallowed_log_path()))
+            except Exception:
+                pass
+
+        FlatButton(foot, "打开日志目录", command=open_dir, width=112).pack(side=tk.LEFT)
+        FlatButton(foot, "关闭", command=win.destroy, width=72).pack(side=tk.RIGHT)
+
     def show_settings(self):
         win = tk.Toplevel(self.root, bg=THEME["panel"])
         apply_window_icon(win)
@@ -5848,7 +6165,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
             self.sync_dir = os.path.abspath(os.path.expanduser(sync_path.get().strip())) \
                 if sync_path.get().strip() else getattr(self, "sync_dir", "")
             self.sync_strategy = {"本地优先": "local", "远端优先": "remote"}.get(
-                sync_strategy.get(), "newer")
+                i18n.untranslate(sync_strategy.get()), "newer")
 
         def do_push():
             _sync_apply_vars()
@@ -5936,9 +6253,11 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
                 kb = int(getattr(self, "large_file_kb", 2000) or 2000)
             self.large_file_kb = max(256, min(65536, kb))
             self.large_file_mode = {"自动分块": "auto", "始终完整打开": "full",
-                                    "打开时询问": "ask"}.get(large_mode.get(), "auto")
+                                    "打开时询问": "ask"}.get(
+                                        i18n.untranslate(large_mode.get()), "auto")
             self.mono = family.get().strip() or self.mono
-            new_theme = {"浅色": "light", "高对比": "hc"}.get(theme.get(), "dark")
+            new_theme = {"浅色": "light", "高对比": "hc"}.get(
+                i18n.untranslate(theme.get()), "dark")
             if new_theme != self.theme_name:
                 self.apply_theme(new_theme)
             else:
@@ -5972,6 +6291,7 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
         FlatButton(row, "恢复默认", command=restore_defaults, width=84).pack(side=tk.LEFT, padx=4)
         FlatButton(row, "打开配置", command=lambda: os.startfile(CONFIG_PATH), width=84
                    ).pack(side=tk.LEFT, padx=4)
+        i18n.retranslate(win)
 
 
     def show_about(self):
@@ -6347,8 +6667,14 @@ class App(EditorGroupsMixin, PanelsMixin, RuntimeMixin):
     # ---------- 关闭 ----------
     def on_close(self):
         dirty = [p for p in self.panes if p._dirty]
+        # 4.7.3：先把现场写进恢复副本，再问是否退出。用户误点「是」也能还原。
+        try:
+            if dirty:
+                self._flush_recovery("close")
+        except Exception as exc:
+            note_swallowed("editor.close.recovery", exc)
         if dirty:
-            if not messagebox.askyesno("退出", f"有 {len(dirty)} 个文件未保存，仍要退出吗？"):
+            if not messagebox.askyesno("退出", f"有 {len(dirty)} 个文件未保存，仍要退出吗？\n（已写入恢复副本，下次可从「恢复未保存文件」找回）"):
                 return
         self._save_config()
         self.stop_index_watcher()
@@ -6381,13 +6707,229 @@ for _m in _split_modules:
     _m.__dict__.update(_split_ns)
 
 
+def _editor_smoke(app, root):
+    """4.7.3：无交互冒烟——新建 → 写盘 → 回读 → 恢复副本，验证编辑器基本链路。
+
+    用 `IMPOR_EDITOR_SMOKE=1` 触发；返回进程退出码（0 通过）。
+    步骤轨迹写临时目录 impor-editor-smoke-trace.txt（卡住时能指出卡在哪）。
+    """
+    steps = []
+    trace_path = os.path.join(tempfile.gettempdir(), "impor-editor-smoke-trace.txt")
+
+    def trace(msg):
+        try:
+            with open(trace_path, "a", encoding="utf-8", newline="\n") as f:
+                f.write("%s %.3f %s\n" % (time.strftime("%H:%M:%S"), time.time() % 60, msg))
+        except Exception:
+            pass
+
+    trace("start")
+    tmpdir = tempfile.mkdtemp(prefix="impor-editor-smoke-")
+    tmp = os.path.join(tmpdir, "smoke.impor")
+    code = 1
+    try:
+        # 崩溃恢复闭环：用 IMPOR_EDITOR_EXPECT_RESTORE=<标记> 让冒烟先跑「重开恢复」
+        expect = (os.environ.get("IMPOR_EDITOR_EXPECT_RESTORE") or "").strip()
+        if expect:
+            trace("restore-start")
+            app.restore_recovery()
+            hit = None
+            for pn in list(app.panes):
+                try:
+                    body = pn.text.get("1.0", "end-1c")
+                except Exception:
+                    continue
+                if expect in body:
+                    hit = pn
+                    break
+            if hit is None:
+                raise RuntimeError("重开后未找回含 %s 的标签" % expect)
+            if not getattr(hit, "path", None):
+                raise RuntimeError("恢复后未接回原文件路径")
+            steps.append("restore")
+            trace("restore")
+        pane = app.open_new_tab(content='print("编辑器冒烟")\n', title="smoke.impor",
+                                path=tmp, force_full=True)
+        if pane is None:
+            raise RuntimeError("open_new_tab 返回 None")
+        steps.append("new-tab")
+        trace("new-tab")
+        app.save_file()
+        trace("saved")
+        with open(tmp, encoding="utf-8") as f:
+            got = f.read()
+        if "编辑器冒烟" not in got:
+            raise RuntimeError("保存后回读内容缺失（%d 字节）" % len(got))
+        steps.append("save-readback")
+        trace("save-readback")
+        pane._dirty = True
+        if app._flush_recovery("smoke") < 1:
+            raise RuntimeError("恢复副本未写入")
+        # 恢复副本里必须真有刚才的正文，否则「崩溃恢复」只是空文件
+        rec = os.path.join(app._recovery_path(), "recover_%s.impor" % id(pane))
+        with open(rec, encoding="utf-8") as f:
+            if "编辑器冒烟" not in f.read():
+                raise RuntimeError("恢复副本内容与编辑区不一致")
+        steps.append("recovery")
+        trace("recovery")
+        # 编码保真：BOM + CRLF 文件 保存后必须字节一致（不能被悄悄改写）
+        p2 = os.path.join(tmpdir, "crlf.impor")
+        with open(p2, "wb") as f:
+            f.write(b"\xef\xbb\xbf" + "var a = 1\r\nprint(a)\r\n".encode("utf-8"))
+        before = open(p2, "rb").read()
+        trace("crlf-written")
+        pane2 = app.open_new_tab(path=p2, force_full=True)
+        trace("crlf-opened")
+        if pane2 is None:
+            raise RuntimeError("打开 CRLF 文件失败")
+        if not getattr(pane2, "_bom", False):
+            raise RuntimeError("未识别 BOM")
+        if getattr(pane2, "_newline", "LF") != "CRLF":
+            raise RuntimeError("未识别 CRLF")
+        pane2._dirty = True
+        app.save_file()
+        trace("crlf-saved")
+        after = open(p2, "rb").read()
+        if after != before:
+            raise RuntimeError("BOM/CRLF 往返被改写（%d → %d 字节）"
+                               % (len(before), len(after)))
+        steps.append("encoding-roundtrip")
+        trace("encoding-roundtrip")
+        # 定时器链自愈：一次 tick 抛异常后必须仍被重排，否则自动保存会永久失效
+        hits = {"n": 0}
+
+        def _boom():
+            hits["n"] += 1
+            if hits["n"] == 1:
+                raise RuntimeError("smoke-after-boom")
+
+        app._after_safe(150, _boom)
+        deadline = time.time() + 1.5
+        while time.time() < deadline and hits["n"] < 2:
+            try:
+                root.update()
+            except Exception:
+                break
+            time.sleep(0.02)
+        if hits["n"] < 2:
+            raise RuntimeError("定时器链未自愈（只触发 %d 次）" % hits["n"])
+        steps.append("after-chain")
+        trace("after-chain")
+        # 可观测入口：诊断面板必须能打开且不阻塞（否则「被吞异常」等于没人看）
+        app.show_diagnostics()
+        diag_win = None
+        for ch in app.root.winfo_children():
+            if isinstance(ch, tk.Toplevel) and "诊断" in (ch.title() or ""):
+                diag_win = ch
+                break
+        if diag_win is None:
+            raise RuntimeError("诊断面板未能打开")
+        diag_win.destroy()
+        steps.append("diagnostics")
+        trace("diagnostics")
+        print("SMOKE PASS: " + ",".join(steps), flush=True)
+        trace("pass")
+        code = 0
+    except Exception as exc:
+        print("SMOKE FAIL: %s: %s" % (type(exc).__name__, exc), flush=True)
+        try:
+            import traceback
+            traceback.print_exc()
+        except Exception:
+            pass
+    finally:
+        try:
+            root.destroy()
+        except Exception:
+            pass
+    return code
+
+
+def _editor_crash_drill(app, root, marker):
+    """4.7.3：崩溃演练——做一个脏标签，写恢复副本后喊 ARMED，等外部强杀。
+
+    配合 tests/test_editor_headless.py：外部 kill -9 后检查 .impor_recovery
+    里仍有含 marker 的正文，再跑 IMPOR_EDITOR_EXPECT_RESTORE 验证重开能找回。
+    自愈超时 90s（万一没人来杀，不会留僵尸进程）。
+    """
+    trace_path = os.path.join(tempfile.gettempdir(), "impor-editor-drill-trace.txt")
+
+    def trace(msg):
+        try:
+            with open(trace_path, "a", encoding="utf-8", newline="\n") as f:
+                f.write("%s %s\n" % (time.strftime("%H:%M:%S"), msg))
+        except Exception:
+            pass
+    ddir = tempfile.mkdtemp(prefix="impor-drill-")
+    dpath = os.path.join(ddir, "drill.impor")
+
+    def arm():
+        try:
+            with open(dpath, "w", encoding="utf-8", newline="\n") as f:
+                f.write("var a = 0\n")
+            pane = app.open_new_tab(path=dpath, force_full=True)
+            pane.text.delete("1.0", "end")
+            pane.text.insert("1.0", "// %s\nvar a = 1\n" % marker)
+            pane._dirty = True
+            written = app._flush_recovery("drill")
+            trace("armed written=%d rdir=%s attr=%s ROOT_DIR=%s file=%s appmod=%s"
+                  % (written, app._recovery_path(), getattr(app, "_recovery_dir", None),
+                     ROOT_DIR, __file__, type(app).__module__))
+            print("DRILL ARMED %s PATH %s RDIR %s" % (marker, dpath, app._recovery_path()), flush=True)
+        except Exception as exc:
+            trace("arm-fail %r" % (exc,))
+            print("DRILL FAIL %r" % (exc,), flush=True)
+
+    root.after(1500, arm)
+    root.after(90000, root.destroy)
+
+
 def main():
     enable_dpi_awareness()
+    # 4.7.3：非 Tk 回调（后台线程 / 主线程兜底）的崩溃也进 crash.log
+    try:
+        from .stability import install_crash_hooks
+        install_crash_hooks()
+    except Exception:
+        pass
     try:
         root = tk.Tk()
     except Exception as e:
         print(f"错误：无法创建窗口（{e}）。请安装 tkinter：conda install tk")
         return 1
+    # 4.1：Tk 回调里的异常不再只打一行 traceback 就消失——写 crash.log，留现场。
+    from .stability import write_crash_log
+
+    def _tk_exception(exc_type, exc_value, exc_tb):
+        try:
+            path = write_crash_log(exc_value, where="editor.callback")
+            if path:
+                print("Impor 内部错误现场已写入 %s" % path, file=sys.stderr)
+        except Exception:
+            pass
+        try:
+            import traceback
+            traceback.print_exception(exc_type, exc_value, exc_tb)
+        except Exception:
+            pass
+
+    root.report_callback_exception = _tk_exception
+    # 4.7.3：崩溃演练（IMPOR_EDITOR_CRASH_DRILL=<标记>）——写出恢复副本后等待被强杀
+    drill = (os.environ.get("IMPOR_EDITOR_CRASH_DRILL") or "").strip()
+    if drill:
+        root.withdraw()
+        app = App(root)
+        _editor_crash_drill(app, root, drill)
+        root.mainloop()
+        return 0
+    # 4.7.3：无交互冒烟（IMPOR_EDITOR_SMOKE=1）——不显示窗口，跑完即退出。
+    if (os.environ.get("IMPOR_EDITOR_SMOKE") or "").strip().lower() in ("1", "true", "yes", "on"):
+        root.withdraw()
+        app = App(root)
+        result = {"code": 1}
+        root.after(900, lambda: result.__setitem__("code", _editor_smoke(app, root)))
+        root.mainloop()
+        return int(result["code"] or 0)
     # v3.6：先玩过场再进主界面（IMPOR_NO_SPLASH=1 可跳过）
     root.withdraw()
     from .splash import show_splash
@@ -6398,7 +6940,13 @@ def main():
     else:
         splash.set_on_done(lambda: _reveal_root(root))
         splash.start_animation()
-    root.mainloop()
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        return 0
+    except Exception as e:
+        write_crash_log(e, where="editor.mainloop")
+        return 1
     return 0
 
 

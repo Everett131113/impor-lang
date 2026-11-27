@@ -1,0 +1,104 @@
+// std/config.impor — 键值配置解析（ini 风格子集，纯 Impor）
+// 支持：`k = v`、`k=v`、`#` 注释、空行；值一律是字符串，读取时再转型。
+
+def has_key(d, k) {
+    for x in d {
+        if x == k {
+            return true
+        }
+    }
+    return false
+}
+
+def _trim(s) {
+    return trim(s)
+}
+
+def parse(text) {
+    var out = { }
+    var lines = lines_of(text)
+    for line in lines {
+        var s = _trim(line)
+        if len(s) == 0 {
+            continue
+        }
+        if s[0] == "#" {
+            continue
+        }
+        if s[0] == ";" {
+            continue
+        }
+        var p = strfind(s, "=")
+        if p < 0 {
+            continue
+        }
+        var key = _trim(strcut(s, 0, p))
+        var val = _trim(strcut(s, p + 1, len(s)))
+        out[key] = val
+    }
+    return out
+}
+
+def lines_of(text) {
+    var out = []
+    var start = 0
+    var i = 0
+    while i < len(text) {
+        if text[i] == "\n" {
+            arrappend(out, strcut(text, start, i))
+            set start = i + 1
+        }
+        set i = i + 1
+    }
+    arrappend(out, strcut(text, start, len(text)))
+    return out
+}
+
+def get(cfg, key, fallback) {
+    if has_key(cfg, key) {
+        return cfg[key]
+    }
+    return fallback
+}
+
+def get_int(cfg, key, fallback) {
+    if not has_key(cfg, key) {
+        return fallback
+    }
+    return int(cfg[key])
+}
+
+def require(cfg, key) {
+    // 说明：C 后端不支持 throw，这里缺失时返回空串；要严格失败请调用方 exit(2)。
+    if not has_key(cfg, key) {
+        return ""
+    }
+    return cfg[key]
+}
+
+def merge(base, extra) {
+    var out = { }
+    for k in base {
+        out[k] = base[k]
+    }
+    for k in extra {
+        out[k] = extra[k]
+    }
+    return out
+}
+
+def keys_of(cfg) {
+    var out = []
+    for k in cfg {
+        arrappend(out, k)
+    }
+    return out
+}
+
+export parse
+export lines_of
+export get
+export get_int
+export require
+export merge
+export keys_of

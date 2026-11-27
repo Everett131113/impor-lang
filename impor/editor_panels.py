@@ -18,6 +18,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .editor_theme import THEME, DARK_THEME, LIGHT_THEME, HIGH_CONTRAST_THEME
 from .editor_widgets import round_rect, FlatButton, TabStrip, ActivityBar, Minimap, MiniScrollbar
+from .pathsafe import rel_quiet
 
 
 class PanelsMixin:
@@ -40,6 +41,10 @@ class PanelsMixin:
             mark.bind("<Button-1>", lambda e, k=key: self.show_bottom(k))
             self.tabbar[key] = lbl
             self._tabbars[key] = mark
+        FlatButton(head, "控制台", command=self.run_in_console, width=64,
+                   height=22).pack(side=tk.RIGHT, padx=(0, 6), pady=5)
+        FlatButton(head, "独立窗口", command=self.open_out_window, width=72,
+                   height=22).pack(side=tk.RIGHT, padx=(0, 6), pady=5)
         FlatButton(head, "清空", command=self.clear_output, width=54, height=22).pack(
             side=tk.RIGHT, padx=10, pady=5)
         tk.Frame(parent, bg=THEME["border_soft"], height=1).pack(fill=tk.X)
@@ -357,7 +362,7 @@ class PanelsMixin:
             pass
         try:
             if pane.path:
-                rel = os.path.relpath(pane.path, ROOT_DIR).split(os.sep)
+                rel = rel_quiet(pane.path, ROOT_DIR).split(os.sep)
                 crumb = "   ›   ".join(rel)
             else:
                 crumb = "工作区   ›   " + pane.tab_title
@@ -446,7 +451,7 @@ class PanelsMixin:
 
         def copy_rel():
             try:
-                rel = os.path.relpath(path, self.workspace)
+                rel = rel_quiet(path, self.workspace)
                 self.root.clipboard_clear()
                 self.root.clipboard_append(rel)
                 self.toast("已复制相对路径：" + rel, "ok")
@@ -605,7 +610,7 @@ class PanelsMixin:
     def _workspace_root_spec(self, root, base):
         root = os.path.abspath(root)
         try:
-            rel = os.path.relpath(root, base)
+            rel = rel_quiet(root, base)
         except Exception:
             return root
         if rel == ".":

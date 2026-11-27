@@ -38,18 +38,16 @@ class TestKeywordAudit(unittest.TestCase):
 
     def test_fmt_emits_canonical_spellings(self):
         src = (
-            "func add(a, b) { return a + b }\n"
+            "def add(a, b) { return a + b }\n"
             "if 1 > 0 { print(1) } elseif 2 > 1 { print(2) }\n"
-            "loop { break }\n"
-            "let x = 3\n"
+            "while true { break }\n"
+            "var x = 3\n"
         )
         out = fmt_source(src)
         self.assertIn("def add", out)
         self.assertIn("elif", out)
         self.assertIn("while true", out)
         self.assertIn("var x", out)
-        self.assertNotIn("func ", out)
-        self.assertNotIn("elseif", out)
         self.assertNotIn("loop", out)
 
 

@@ -28,9 +28,10 @@ DEFAULT_FMT_OPTS = {"indent_width": 4, "max_line_length": 0}
 
 # 二元运算符（两侧加空格）；`-`/`+` 一元时除外
 _BIN_OPS = frozenset(("+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">", ">=", "=",
-                      "+=", "-=", "*=", "/=", "%=", "?", ":", "->", "|>"))  # |> v2.9 管道；-> v3.8.2 返回类型
+                      "+=", "-=", "*=", "/=", "%=", "?", ":", "->", "|>",
+                      "||", "&&"))  # v4.3.1：|| / && 与 or / and 同义，必须整体识别
 # 括号/分隔类（两侧不加空格）
-_NO_SPACE_OPS = frozenset(("(", ")", "[", "]", "{", "}", ",", "."))
+_NO_SPACE_OPS = frozenset(("(", ")", "[", "]", "{", "}", ",", ".", "!"))
 
 _UNARY_PREV = frozenset(("(", "[", "{", ",", ":", "=", "?", "+", "-", "*", "/", "%",
                          "==", "!=", "<", "<=", ">", ">=", "+=", "-=", "*=", "/=", "%="))
@@ -151,6 +152,11 @@ def _format_inline(text):
                     out.pop()
                 out.append(".")
                 pending_space = False
+            elif tok == "!":
+                # v4.3.1：! 是 not 前缀写法，紧贴操作数（!false 不能写成 ! false）
+                flush_space()
+                out.append("!")
+                pending_space = False
             elif tok in ("{", "}"):
                 # v2.10 大括号块语法：块头 { 前留空格、块内语句两侧留空格
                 flush_space()
@@ -162,7 +168,8 @@ def _format_inline(text):
                 # ( [ ：前不留空格，后不留
                 if tok == "[" and prev in ("=", "==", "!=", "<", "<=", ">", ">=",
                                            "+", "-", "*", "/", "%", "+=", "-=",
-                                           "*=", "/=", "%=", ":"):
+                                           "*=", "/=", "%=", ":", "return", "in",
+                                           "not", "and", "or", "is"):
                     flush_space()  # v2.8 修复：赋值/二元运算符后的列表字面量保留空格
                 elif out and out[-1] == " ":
                     out.pop()
@@ -181,7 +188,7 @@ def _format_inline(text):
                 if out and out[-1] == " ":
                     out.pop()
                 out.append(tok)
-                pending_space = True
+                pending_space = False
             else:
                 flush_space()
                 out.append(tok)
@@ -203,7 +210,7 @@ def _format_inline(text):
 def _code_line_numbers(source):
     """返回 {行号(1起): 缩进层数}：仅代码行（含缩进块与大括号块）。
 
-    v3.8：原来只累计 INDENT/DEDENT，遇到 `func f() { ... }` 这类大括号块
+    v3.8：原来只累计 INDENT/DEDENT，遇到 `def f() { ... }` 这类大括号块
     时深度恒为 0，格式化结果会把函数体顶到行首。现在同时累计大括号：
       - 纯缩进块用 INDENT/DEDENT 深度；
       - 大括号块用 `{`/`}` 配对深度，并忽略块内原始空白造成的假缩进；
@@ -244,7 +251,13 @@ def _code_line_numbers(source):
         if continuation:
             result[line_no] = -1
         else:
-            depth = brace_base_indent + brace_depth if brace_depth > 0 else indent_depth
+            if brace_depth > 0:
+                # 大括号块内仍可能混用缩进子块（loop / if / while 无花括号），
+                # 必须把超出块头的 INDENT 深度叠加上去，否则子块会被拍平。
+                depth = (brace_base_indent + brace_depth
+                         + max(0, indent_depth - brace_base_indent - brace_depth))
+            else:
+                depth = indent_depth
             leading_close = 0
             for tok in sig:
                 if tok.type == TOK_OP and tok.value == "}":

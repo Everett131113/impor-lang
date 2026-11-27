@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""API 基线：把已承诺的公开面冻结成 api_baseline.json。
+"""API 基线：把已承诺的公开面冻结成 tools/api_baseline.json。
 
 用法：
   python tools/api_baseline.py --init     # 首次生成基线（需提交）
@@ -20,7 +20,10 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-BASELINE = os.path.join(ROOT, "api_baseline.json")
+BASELINE = os.path.join(ROOT, "tools", "api_baseline.json")
+LEGACY_BASELINE = os.path.join(ROOT, "api_baseline.json")
+if not os.path.exists(BASELINE) and os.path.exists(LEGACY_BASELINE):
+    BASELINE = LEGACY_BASELINE
 
 
 def snapshot():

@@ -1,0 +1,6 @@
+// 字符串：拼接 / 长度 / 重复
+var s = "ab" + "cd"
+print(s, len(s))
+print("x" * 3)
+# EXPECT: abcd 4
+# EXPECT: xxx

@@ -16,6 +16,7 @@ Impor (I++) 内置函数库。
 
 import ctypes
 import json
+import math
 import os
 import re
 import sys
@@ -33,6 +34,12 @@ from .observability import note_swallowed
 def make_builtins(interp):
     gui_root = interp.gui_root
     sandbox_mode = interp.sandbox_mode
+
+    def _gate(elements, what, bytes_each=8):
+        """4.1：分配前过稳定性闸门。关闭时（stab=None）只是一个属性读取。"""
+        gov = getattr(interp, "stab", None)
+        if gov is not None:
+            gov.check_alloc(elements, what, bytes_each)
 
     def _check_sandbox(name):
         if sandbox_mode and name in ("open", "readln", "writeln", "filemv", "filecat"):
@@ -65,8 +72,14 @@ def make_builtins(interp):
     def builtin_range(start, end=None, step=1):
         try:
             if end is None:
+                # len(range(n)) 是 O(1)：先算长度再决定是否真的建列表
+                _gate(len(range(int(start))), "range(...)")
                 return list(range(int(start)))
-            return list(range(int(start), int(end), int(step)))
+            rng = range(int(start), int(end), int(step))
+            _gate(len(rng), "range(...)")
+            return list(rng)
+        except ImporException:
+            raise
         except Exception as e:
             raise wrap_py_error(e)
 
@@ -91,8 +104,14 @@ def make_builtins(interp):
             if it is None:
                 return []
             if isinstance(it, (int, float)):
-                return [0 for _ in range(int(it))]
+                n = int(it)
+                _gate(n, "list(n)")
+                return [0 for _ in range(n)]
+            if hasattr(it, "__len__"):
+                _gate(len(it), "list(...)")
             return list(it)
+        except ImporException:
+            raise
         except Exception as e:
             raise wrap_py_error(e)
 
@@ -186,8 +205,10 @@ def make_builtins(interp):
     def builtin_randstr(n):
         import random
         import string
+        n = int(n)
+        _gate(n, "randstr(n)", bytes_each=4)
         pool = string.ascii_letters + string.digits
-        return "".join(random.choice(pool) for _ in range(int(n)))
+        return "".join(random.choice(pool) for _ in range(n))
 
     def builtin_seed(n):
         import random
@@ -198,16 +219,35 @@ def make_builtins(interp):
         return str(s).strip()
 
     def builtin_upper(s):
-        return str(s).upper()
+        # 4.5：与 C 运行时共用一张表（impor/unicode_case.py）。若直接用 Python 的
+        # str.upper()，ß→SS 这类一对多映射会让解释器与 exe 的字节不一致。
+        from .unicode_case import upper as _uc_upper
+        return _uc_upper(str(s))
 
     def builtin_lower(s):
-        return str(s).lower()
+        from .unicode_case import lower as _uc_lower
+        return _uc_lower(str(s))
 
     def builtin_strpad(s, w, ch):
+        _gate(int(w), "strpad 的宽度")
         return str(s).rjust(int(w), str(ch)[:1])
 
     def builtin_strcut(s, st, ed):
         return str(s)[int(st):int(ed)]
+
+    # ---------- 4.5：码点转换（与 C 运行时 rt_ord/rt_chr 同口径） ----------
+    def builtin_ord(s):
+        # 返回首字符的 Unicode 码点；与 `s[i]` 的按码点切片口径一致。
+        t = str(s)
+        if len(t) == 0:
+            raise ImporException("ValueError", "ord 的参数不能是空串", 0)
+        return ord(t[0])
+
+    def builtin_chr(n):
+        cp = int(n)
+        if cp < 0 or cp > 0x10FFFF:
+            raise ImporException("ValueError", "chr 的码点超出范围（0..1114111）", 0)
+        return chr(cp)
 
     def builtin_strfind(s, sub, start=0):
         """strfind(s, sub, start=0)：返回子串首次出现的字符下标，找不到返回 -1。"""
@@ -219,6 +259,10 @@ def make_builtins(interp):
 
     def builtin_filelines(path):
         """filelines(path)：读文件并按行切分；读完不保留整块文本。"""
+        try:
+            _gate(os.path.getsize(str(path)), "filelines 读取的文件", bytes_each=1)
+        except OSError:
+            pass
         with open(str(path), "r", encoding="utf-8", errors="replace") as f:
             return f.read().splitlines()
 
@@ -245,12 +289,16 @@ def make_builtins(interp):
         return arr.index(val) if val in arr else -1
 
     def builtin_arrfill(sz, v):
-        return [v for _ in range(int(sz))]
+        n = int(sz)
+        _gate(n, "arrfill(sz, v)")
+        return [v for _ in range(n)]
 
     def builtin_arrdup(arr):
+        _gate(len(arr), "arrdup(...)")
         return list(arr)
 
     def builtin_arrrev(arr):
+        _gate(len(arr), "arrrev(...)")
         return list(reversed(arr))
 
     def builtin_shuffle(arr):
@@ -266,6 +314,90 @@ def make_builtins(interp):
 
     def builtin_sum_arr(arr):
         return sum(arr)
+
+    # ---------- 5.2 新增：字符串补充 ----------
+    def builtin_strsplit(s, sep=None, maxsplit=-1):
+        """strsplit(s[, sep[, maxsplit]])：按分隔符切串；无分隔符按连续空白切。"""
+        text = str(s)
+        if sep is None:
+            return text.split(maxsplit=int(maxsplit))
+        return text.split(str(sep), int(maxsplit))
+
+    def builtin_strcount(s, sub):
+        """strcount(s, sub)：子串出现次数（不重叠）。"""
+        return str(s).count(str(sub))
+
+    def builtin_strstart(s, prefix):
+        """strstart(s, prefix)：是否以 prefix 开头。"""
+        return str(s).startswith(str(prefix))
+
+    def builtin_strend(s, suffix):
+        """strend(s, suffix)：是否以 suffix 结尾。"""
+        return str(s).endswith(str(suffix))
+
+    # ---------- 5.2 新增：数组补充 ----------
+    def builtin_arrinsert(arr, idx, val):
+        """arrinsert(arr, i, v)：在位置 i 插入，返回新数组。"""
+        out = list(arr)
+        out.insert(int(idx), val)
+        return out
+
+    def builtin_arrremove(arr, val):
+        """arrremove(arr, v)：删除首个等于 v 的元素，返回新数组；不存在报错。"""
+        out = list(arr)
+        try:
+            out.remove(val)
+        except ValueError:
+            raise ImporException("ValueError", "arrremove 找不到元素：%s" % str(val), 0)
+        return out
+
+    def builtin_arrsort(arr, reverse=False):
+        """arrsort(arr[, reverse])：排序后的新数组，不改原数组。"""
+        return sorted(arr, reverse=bool(reverse))
+
+    def builtin_arrcount(arr, val):
+        """arrcount(arr, v)：等于 v 的元素个数。"""
+        return arr.count(val)
+
+    # ---------- 5.2 新增：数值补充 ----------
+    def builtin_round(x, ndigits=None):
+        """round(x[, n])：四舍六入五成双；不带 n 返回整数。"""
+        if ndigits is None:
+            return round(x)
+        return round(x, int(ndigits))
+
+    def builtin_floor(x):
+        """floor(x)：向下取整。"""
+        return math.floor(x)
+
+    def builtin_ceil(x):
+        """ceil(x)：向上取整。"""
+        return math.ceil(x)
+
+    # ---------- 5.2 新增：逻辑 / 函数式 / 组合 ----------
+    def builtin_any(arr):
+        """any(arr)：任一元素为真返回 true。"""
+        return any(arr)
+
+    def builtin_all(arr):
+        """all(arr)：全部元素为真返回 true。"""
+        return all(arr)
+
+    def builtin_map(fn, arr):
+        """map(fn, arr)：对每个元素调用 fn，收集结果。"""
+        return [fn(x) for x in arr]
+
+    def builtin_filter(fn, arr):
+        """filter(fn, arr)：保留 fn(x) 为真的元素。"""
+        return [x for x in arr if fn(x)]
+
+    def builtin_zip(*arrs):
+        """zip(a, b, ...)：按位置组合，长度取最短。"""
+        return [list(group) for group in zip(*arrs)]
+
+    def builtin_enumerate(arr):
+        """enumerate(arr)：每项变成 [下标, 值]。"""
+        return [[i, x] for i, x in enumerate(arr)]
 
     # ---------- 游戏工具 ----------
     def builtin_vec2(x=0, y=0):
@@ -831,11 +963,20 @@ def make_builtins(interp):
         "randi": builtin_randi, "randstr": builtin_randstr, "seed": builtin_seed,
         "trim": builtin_trim, "upper": builtin_upper, "lower": builtin_lower,
         "strpad": builtin_strpad, "strcut": builtin_strcut, "strjoin": builtin_strjoin,
+        "ord": builtin_ord, "chr": builtin_chr,
         "hash": builtin_hash,
         "arrappend": builtin_arrappend, "arrpop": builtin_arrpop,
         "arrfind": builtin_arrfind, "arrfill": builtin_arrfill,
         "arrdup": builtin_arrdup, "arrrev": builtin_arrrev, "shuffle": builtin_shuffle,
         "max_arr": builtin_max_arr, "min_arr": builtin_min_arr, "sum_arr": builtin_sum_arr,
+        "strsplit": builtin_strsplit, "strcount": builtin_strcount,
+        "strstart": builtin_strstart, "strend": builtin_strend,
+        "arrinsert": builtin_arrinsert, "arrremove": builtin_arrremove,
+        "arrsort": builtin_arrsort, "arrcount": builtin_arrcount,
+        "round": builtin_round, "floor": builtin_floor, "ceil": builtin_ceil,
+        "any": builtin_any, "all": builtin_all,
+        "map": builtin_map, "filter": builtin_filter,
+        "zip": builtin_zip, "enumerate": builtin_enumerate,
         "vec2": builtin_vec2, "rgb": builtin_rgb,
         "frame": builtin_frame, "fps": builtin_fps,
         "now": builtin_now, "clock": builtin_clock,
@@ -870,6 +1011,12 @@ def make_builtins(interp):
         "ffi_read_str_at": builtin_ffi_read_str_at,
         "ffi_buffers": builtin_ffi_buffers,
     }
+    # 4.2：线程/锁/原子量——实现集中在 rt_concurrency.py，解释器与转译产物共用。
+    # thread_spawn 额外绑定当前解释器：新线程会拿到一份执行副本（独立 cur_env）。
+    from .rt_concurrency import registry as _conc_registry
+    builtins_map.update(_conc_registry())
+    builtins_map["thread_spawn"] = (
+        lambda fn: _conc_registry()["thread_spawn"](fn, interp))
     missing, extra = check_interpreter_names(builtins_map)
     if missing or extra:
         raise RuntimeError(
@@ -1013,6 +1160,23 @@ BUILTIN_DOCS = {
     "max_arr": "max_arr(arr)：数组最大值。",
     "min_arr": "min_arr(arr)：数组最小值。",
     "sum_arr": "sum_arr(arr)：数组求和。",
+    "strsplit": "strsplit(s[, sep[, maxsplit]])：切串为数组。",
+    "strcount": "strcount(s, sub)：子串出现次数。",
+    "strstart": "strstart(s, prefix)：是否以 prefix 开头。",
+    "strend": "strend(s, suffix)：是否以 suffix 结尾。",
+    "arrinsert": "arrinsert(arr, i, v)：位置 i 插入，返回新数组。",
+    "arrremove": "arrremove(arr, v)：删除首个 v，返回新数组。",
+    "arrsort": "arrsort(arr[, reverse])：排序后的新数组。",
+    "arrcount": "arrcount(arr, v)：等于 v 的元素个数。",
+    "round": "round(x[, n])：四舍六入五成双。",
+    "floor": "floor(x)：向下取整。",
+    "ceil": "ceil(x)：向上取整。",
+    "any": "any(arr)：任一为真返回 true。",
+    "all": "all(arr)：全部为真返回 true。",
+    "map": "map(fn, arr)：逐元素调用 fn。",
+    "filter": "filter(fn, arr)：保留 fn(x) 为真的元素。",
+    "zip": "zip(a, b, ...)：按位置组合。",
+    "enumerate": "enumerate(arr)：每项变成 [下标, 值]。",
     "args": "args()：命令行参数数组。",
     "vec2": "vec2(x, y)：二维向量。",
     "rgb": "rgb(r, g, b)：颜色值（0-255）。",

@@ -1,0 +1,71 @@
+// std/atomic.impor — 原子量（64 位整数）与互斥锁的薄封装
+// 使用：use std.atomic  或  import std.atomic → std.atomic.counter()
+//
+// 口径：add / sub / exchange 返回**旧值**（与 C 的 fetch-and-add 一致）；
+// cas 成功返回 true，失败返回 false 且不刷新值。
+
+def counter(start) {
+    return atomic_new(start)
+}
+
+def load(a) {
+    return atomic_load(a)
+}
+
+def store(a, v) {
+    return atomic_store(a, v)
+}
+
+def add(a, n) {
+    return atomic_add(a, n)
+}
+
+def sub(a, n) {
+    return atomic_sub(a, n)
+}
+
+def exchange(a, v) {
+    return atomic_exchange(a, v)
+}
+
+def cas(a, expect, new_value) {
+    return atomic_cas(a, expect, new_value)
+}
+
+def lock() {
+    return mutex_new()
+}
+
+def enter(m) {
+    return mutex_lock(m)
+}
+
+def leave(m) {
+    return mutex_unlock(m)
+}
+
+def try_enter(m) {
+    return mutex_trylock(m)
+}
+
+// 临界区写法：执行 fn() 期间持有锁，返回 fn 的结果。
+// 注意：C 后端不支持 defer，异常路径请自己在 fn 里 try/catch 后调用 leave(m)。
+def with_lock(m, fn) {
+    mutex_lock(m)
+    var r = fn()
+    mutex_unlock(m)
+    return r
+}
+
+export counter
+export load
+export store
+export add
+export sub
+export exchange
+export cas
+export lock
+export enter
+export leave
+export try_enter
+export with_lock

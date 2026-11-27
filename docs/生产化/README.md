@@ -7,8 +7,8 @@
 
 | 阶段 | 目标 | 当前状态 |
 |---|---|---|
-| 1 原生后端与内存模型 | 脱离 TinyCC 依赖，能生成可部署的原生二进制 | 未完成：已有 C 后端/自举编译器；内存策略定为**自动管理**，不暴露手动 `free`；尚无 LLVM/Cranelift 后端 |
-| 2 标准库与包生态 | 能写真实服务、能用成熟库 | 部分完成：已有 pkg 管理器、LSP、测试、格式化、JSON/正则等；缺 HTTP/TLS/SQL/连接池/中央注册表 |
+| 1 原生后端与内存模型 | 脱离 TinyCC 依赖，能生成可部署的原生二进制 | 部分完成：C 后端 + 自举编译器 + 4.5.0 的 IR→C 下降后端（`impor ir --build`，不从 AST 走）；`impor build` 4.3.1 起默认优先 gcc64，TinyCC 仅作兜底。内存策略为**自动管理 + 泄漏检测**（`IMPOR_LEAK_CHECK=1`），不暴露手动 `free`；尚无 LLVM/Cranelift 后端 |
+| 2 标准库与包生态 | 能写真实服务、能用成熟库 | 部分完成：pkg 管理器、LSP、测试、格式化、JSON/正则/时间已补实；4.5.0 起标准库 **37 个模块**（新增 log/config/encoding/template/cli/test/bench/metrics/uuid/semver/validate/table/units/cache/color/process/diff）；缺 HTTP/TLS/SQL/连接池/中央注册表 |
 | 3 治理与发布 | 多人协作、长期维护、安全响应 | 基线完成：本目录 + `SECURITY.md` + `CONTRIBUTING.md` + `CODEOWNERS` + `impor release-check` |
 
 ## 生产化的定义
@@ -35,7 +35,12 @@ python Impor.py release-check --full --json release-report.json
 - LLVM/Cranelift 原生后端、优化等级、调试信息、交叉编译。
 - 内存模型（GC / 手动 / 区域分配）与热路径分配规则。
 - 稳定 C ABI、结构体布局、回调、共享库导出。
-- HTTP/TLS/SQL/连接池/迁移/指标/健康检查标准库。
+- HTTP/TLS/SQL/连接池/迁移/指标/健康检查标准库（`std.metrics` 4.5.0 已有进程内聚合，导出格式仍未做）。
 - 中央包注册表、命名空间、签名、审计、撤回。
-- 多线程、锁、原子、channel。
+- 泛型单态化（C 后端仍统一 `Val` 值模型，不为每个实例化点生成专用符号）。
+- IR 下降后端的模块导入 / 类 / 异常（`ir_lower.py` 拒绝清单内，21 个示例因此不能走 IR）。
 - LTS、SBOM、可复现构建、CVE 流程。
+
+> 已完成项（勿再列为未完成）：多线程 / 锁 / 原子 / channel（4.2–4.3.1 已交付）、
+> 条件变量等待、`channel.select`（4.5.0）、内存泄漏检测（4.5.0）、
+> 默认 gcc64 构建（4.3.1 起）。

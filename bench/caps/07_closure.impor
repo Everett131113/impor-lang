@@ -1,0 +1,9 @@
+// 闭包：捕获外层变量 + nonlocal 写回
+def make(n)
+    def add(k)
+        nonlocal set n = n + k
+        return n
+    return add
+var f = make(10)
+print(f(1), f(2))
+# EXPECT: 11 13

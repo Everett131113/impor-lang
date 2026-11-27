@@ -1,0 +1,70 @@
+// examples/condvar.impor — v4.3.1：条件变量 + 阻塞通道
+// 四端运行（解释器 / Python 转译 / gcc64 / tcc32）输出一致：
+//   py Impor.py run examples/condvar.impor
+//   py Impor.py compile examples/condvar.impor -o condvar.py && py condvar.py
+//   py Impor.py build examples/condvar.impor -o condvar.exe && condvar.exe
+//   py Impor.py build examples/condvar.impor -o condvar32.exe --cc tcc && condvar32.exe
+import std.sync as sy
+import std.channel as ch
+
+// 1) 锁 + 条件变量：worker 挂起，主线程置位后唤醒
+var m = sy.make_lock()
+var cv = sy.make_cond()
+var state = atomic_new(0)
+
+def waiter() {
+    sy.lock(m)
+    while atomic_load(state) == 0 {
+        sy.wait(cv, m)
+    }
+    sy.unlock(m)
+    return 1
+}
+
+var t = thread_spawn(waiter)
+sleep(0.02)
+sy.lock(m)
+atomic_store(state, 1)
+sy.notify(cv)
+sy.unlock(m)
+print("wake:", thread_join(t))
+
+// 2) 有界通道（cap=1）：满时发送方挂起，收空时消费者挂起
+var c = ch.make(1)
+
+def consumer() {
+    var n = 0
+    var v = ch.recv(c)
+    while not ch.is_empty(v) {
+        set n = n + 1
+        set v = ch.recv(c)
+    }
+    return n
+}
+
+var h = thread_spawn(consumer)
+var i = 0
+while i < 10 {
+    ch.send(c, i)
+    i += 1
+}
+ch.close(c)
+print("sum:", thread_join(h))
+
+// 3) 超时收：空通道上 50 ms 后返回 [false, 哨兵]
+var tr = ch.recv_timeout(ch.make(0), 50)
+print("timeout:", tr[0])
+
+// 4) 多行字面量 + 逻辑别名 + nil（v4.3.1 的语法收口）
+var d = {
+    "a": 1,
+    "b": [
+        1,
+        2, 3],
+}
+print("dict:", d["a"] + d["b"][2])
+var nv = nil
+print("nil:", nv == nil, to_str(nv))
+if !false || false {
+    print("logic:", 1 == 1 && true)
+}

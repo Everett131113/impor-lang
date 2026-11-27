@@ -1,4 +1,0 @@
-export twice
-
-func twice(x)
-    return x * 2

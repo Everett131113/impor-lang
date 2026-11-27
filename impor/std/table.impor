@@ -1,0 +1,66 @@
+// std/table.impor — 把二维数据渲染成对齐的纯文本表（终端/日志用）
+
+def render(headers, rows) {
+    var widths = []
+    for h in headers {
+        arrappend(widths, len(h))
+    }
+    for r in rows {
+        var i = 0
+        for cell in r {
+            var w = len(str(cell))
+            if i < len(widths) and w > widths[i] {
+                widths[i] = w
+            }
+            set i = i + 1
+        }
+    }
+    var out = _line(headers, widths) + "\n" + _sep(widths) + "\n"
+    for r in rows {
+        out += _line(r, widths) + "\n"
+    }
+    return out
+}
+
+def _line(cells, widths) {
+    var out = ""
+    var i = 0
+    for c in cells {
+        var cell = str(c)
+        if i < len(widths) {
+            set cell = strpad(cell, widths[i], " ")
+        }
+        if len(out) > 0 {
+            set out = out + " | "
+        }
+        set out = out + cell
+        set i = i + 1
+    }
+    return out
+}
+
+def _sep(widths) {
+    var out = ""
+    var i = 0
+    for w in widths {
+        if len(out) > 0 {
+            set out = out + "-+-"
+        }
+        set out = out + repeat_str("-", w)
+        set i = i + 1
+    }
+    return out
+}
+
+def repeat_str(ch, n) {
+    var out = ""
+    var i = 0
+    while i < n {
+        set out = out + ch
+        set i = i + 1
+    }
+    return out
+}
+
+export render
+export repeat_str

@@ -1,0 +1,62 @@
+# Impor 绑定：图像（WIC 解码 / PNG 编码，v4.3.2）
+# 先把 impor_bind_image.dll 与本文件放同一目录，再 import image_bind。
+# 坐标原点左上角；像素顺序与常见 RGBA 一致（r/g/b/a 分开取）。
+
+var __lib = nil
+var __loaded = false
+
+export def load(shim_path)
+    if __loaded {
+        return true
+    }
+    set __lib = ffi_open(shim_path)
+    set __loaded = ffi_call(__lib, "impor_image_init",[], "int",[]) == 1
+    return __loaded
+
+export def error()
+    if __lib == nil {
+        return "未加载"
+    }
+    return ffi_call(__lib, "impor_image_last_error",[], "cstr",[])
+
+export def open(path)
+    if !__loaded {
+        return 0
+    }
+    return ffi_call(__lib, "impor_image_load",[path], "int",["cstr"])
+
+export def width(handle)
+    if handle <= 0 {
+        return 0
+    }
+    return ffi_call(__lib, "impor_image_width",[handle], "int",["int"])
+
+export def height(handle)
+    if handle <= 0 {
+        return 0
+    }
+    return ffi_call(__lib, "impor_image_height",[handle], "int",["int"])
+
+export def red(handle, x, y)
+    return ffi_call(__lib, "impor_image_red",[handle, x, y], "int",["int", "int", "int"])
+
+export def green(handle, x, y)
+    return ffi_call(__lib, "impor_image_green",[handle, x, y], "int",["int", "int", "int"])
+
+export def blue(handle, x, y)
+    return ffi_call(__lib, "impor_image_blue",[handle, x, y], "int",["int", "int", "int"])
+
+export def alpha(handle, x, y)
+    return ffi_call(__lib, "impor_image_alpha",[handle, x, y], "int",["int", "int", "int"])
+
+export def save_png(handle, path)
+    if handle <= 0 {
+        return false
+    }
+    return ffi_call(__lib, "impor_image_save_png",[handle, path], "int",["int", "cstr"]) == 1
+
+export def close(handle)
+    if handle <= 0 {
+        return false
+    }
+    return ffi_call(__lib, "impor_image_close",[handle], "int",["int"]) == 1

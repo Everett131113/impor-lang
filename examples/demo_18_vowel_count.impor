@@ -1,9 +1,9 @@
 important<<DAY<<english("English"):
 // 统计英文字符串里的元音
-func vowels(s)
+def vowels(s)
     var count = 0
     var i = 0
-    loop
+    while true
         if i >= len(s)
             break
         var ch = lower(strcut(s, i, i + 1))

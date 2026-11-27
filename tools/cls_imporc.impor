@@ -1,6 +1,6 @@
 class P
     var x = 1
-    func get()
+    def get()
         return this.x + 1
 
 var p = new P()

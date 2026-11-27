@@ -159,7 +159,7 @@ class Analyzer:
         self._all_reads.add(name)
         self.references.setdefault(name, []).append((line, col))
         if self._cur_scope().lookup(name) is None and name not in BUILTIN_NAMES:
-            self.issues.append(Issue(line, col, "warning", "undefined-name",
+            self.issues.append(Issue(line, col, "error", "undefined-name",
                                      f"未定义变量: {name}"))
 
     # ---------- 遍历 ----------
@@ -175,7 +175,11 @@ class Analyzer:
     def _decl_names(self, stmt):
         """语句在模块级绑定的名字（用于预声明）。"""
         if isinstance(stmt, A.Assign):
-            return [stmt.name]
+            if getattr(stmt, "is_enum", False):
+                return [stmt.name]
+            if getattr(stmt, "scope", "") in ("local", "const"):
+                return [stmt.name]
+            return []
         if isinstance(stmt, A.CompoundAssign):
             return [stmt.name]
         if isinstance(stmt, A.For):
@@ -287,15 +291,28 @@ class Analyzer:
         self._mark_write(name, line)
 
     def _stmt_assign(self, n):
+        if getattr(n, "is_enum", False):
+            self._decl_and_expr(n.name, n.expr, "var", n.lineno)
+            return
+        if getattr(n, "scope", "") in ("update", "global", "nonlocal"):
+            # 更新/跨作用域赋值不产生新绑定；名字必须已存在。
+            self._all_reads.add(n.name)
+            self.references.setdefault(n.name, []).append(
+                (n.lineno, self._col_of(n.name, n.lineno)))
+            if self._cur_scope().lookup(n.name) is None and n.name not in BUILTIN_NAMES:
+                self.issues.append(Issue(
+                    n.lineno, self._col_of(n.name, n.lineno), "error",
+                    "undeclared-assign",
+                    f"变量 {n.name} 未声明；首次赋值请写 `var {n.name} = ...`"))
+            self._mark_write(n.name, n.lineno)
+            self._expr(n.expr)
+            return
         self._decl_and_expr(n.name, n.expr, "var", n.lineno)
 
     def _stmt_compound(self, n):
-        # 复合赋值 = 读 + 写
+        # 复合赋值 = 读 + 写；不产生新绑定
         self._expr(n.expr)
         self._read(n.name, n.lineno, self._col_of(n.name, n.lineno))
-        if self._cur_scope().lookup(n.name) is None:
-            # 对未声明变量复合赋值属于隐式声明（解释器语义），记为声明
-            self._add_symbol(n.name, "var", n.lineno)
         self._mark_write(n.name, n.lineno)
 
     def _stmt_print(self, n):
@@ -715,7 +732,7 @@ _STYLE_ADVICE = {
     "style-extends": "用 class 子(父) { ... }",
     "style-new": "new 后写括号：new A()",
     "style-catch": "catch 写明异常变量：catch e { ... }",
-    "style-params": "函数参数加括号：func f(a, b)",
+    "style-params": "函数参数加括号：def f(a, b)",
     "style-cfor": "用 for i in range(...) 或 while",
     "style-dountil": "用 while 循环（do..until 只作兼容）",
     "style-naming": "用能表达含义的名字；循环计数可用 i / j / k",

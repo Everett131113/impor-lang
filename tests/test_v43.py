@@ -57,19 +57,19 @@ def run(src, build=False, argv=None):
 
 DOC_SRC = '''## 两数相加
 ## 返回 a + b
-func add(a, b) {
+def add(a, b) {
     return a + b
 }
 
 ## 盒子
 class Box {
     ## 构造函数
-    func __init__(v) {
+    def __init__(v) {
         self.v = v
     }
 
     ## 读取内部值
-    func get() {
+    def get() {
         return self.v
     }
 }
@@ -142,7 +142,7 @@ class TestDocSymbolsAndHover(unittest.TestCase):
         self.assertIn("> ", md)
 
     def test_no_doc_symbol_untouched(self):
-        src = 'func f(a) {\n    return a\n}\n'
+        src = 'def f(a) {\n    return a\n}\n'
         ast = Parser(tokenize(src)).program()
         an = analyze(ast, src.split("\n"))
         self.assertIsNone(an.symbols["f"][0].doc)
@@ -175,7 +175,7 @@ class TestStyleLint(unittest.TestCase):
         return [i.code for i in style_lint(src)]
 
     def test_canonical_code_is_clean(self):
-        src = ('func add(a, b) {\n'
+        src = ('def add(a, b) {\n'
                '    return a + b\n'
                '}\n'
                'var x = 1\n'
@@ -184,6 +184,7 @@ class TestStyleLint(unittest.TestCase):
                'print(add(1, 2))\n')
         self.assertEqual(self._codes(src), [])
 
+    @unittest.skip("v4.0.0 已物理删除这些历史写法，无法再被 style-lint 提示")
     def test_detects_main_sugars(self):
         src = ('var x = 0; x := 1\n'
                'if x > 0 then { print "p" }\n'
@@ -204,12 +205,13 @@ class TestStyleLint(unittest.TestCase):
     def test_detects_semicolon_extends_params_catch(self):
         src = ('print("hi"); print("x")\n'
                'class B extends A { }\n'
-               'func f a, b {\n    return a\n}\n'
+               'def f(a, b) {\n    return a\n}\n'
                'try { print(1) } catch { print("e") }\n')
         codes = self._codes(src)
-        for code in ("style-semicolon", "style-extends", "style-params", "style-catch"):
+        for code in ("style-semicolon", "style-extends", "style-catch"):
             self.assertIn(code, codes, f"{code} 未报告；实际 {codes}")
 
+    @unittest.skip("v4.0.0 已删除 C 风格 for")
     def test_c_for_reported_once_without_semicolon_noise(self):
         src = 'for i = 0; i < 3; i++ { print(i) }\n'
         codes = self._codes(src)
@@ -242,7 +244,7 @@ class TestStyleLint(unittest.TestCase):
 
 class TestFmtKeepsDocs(unittest.TestCase):
     def test_fmt_preserves_doc_lines(self):
-        src = '## 说明一\n## 说明二\nfunc f(a)\n    return a\n'
+        src = '## 说明一\n## 说明二\ndef f(a)\n    return a\n'
         d, p = _write(src)
         try:
             r = subprocess.run([PY, IMPOR, "fmt", p],
@@ -260,7 +262,7 @@ class TestFmtKeepsDocs(unittest.TestCase):
 class TestKeywordCountUnchanged(unittest.TestCase):
     def test_keyword_total_v52(self):
         from impor.lexer import KEYWORDS
-        self.assertEqual(len(KEYWORDS), 58)  # v3.8.4 起含 yield / with
+        self.assertEqual(len(KEYWORDS), 55)  # v4.0.0 删除 func / loop / local
         self.assertFalse(any(any("\u4e00" <= ch <= "\u9fff" for ch in w) for w in KEYWORDS))
 
 

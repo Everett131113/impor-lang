@@ -15,6 +15,7 @@ from .editor_search import (
     FileResult, SearchOptions, apply_results, count_selected, describe,
     find_latest_transaction, prepare_replacements, search_project, undo_transaction,
 )
+from .pathsafe import rel_quiet
 
 CHECK = "☑"
 UNCHECK = "☐"
@@ -291,7 +292,7 @@ class SearchReplaceDialog(tk.Toplevel):
         end = min(len(self.results), start + getattr(self, "_render_batch", 200))
         for r in self.results[start:end]:
             iid = os.path.abspath(r.path)
-            rel = os.path.relpath(r.path, self.app.workspace).replace("\\", "/")
+            rel = rel_quiet(r.path, self.app.workspace).replace("\\", "/")
             state = ("读取失败" if r.error else
                      ("缓冲区可替换" if r.dirty and self.include_dirty_var.get() else
                       ("未保存修改" if r.dirty else "可替换")))
@@ -314,7 +315,7 @@ class SearchReplaceDialog(tk.Toplevel):
             iid = os.path.abspath(r.path)
             if not self.tree.exists(iid):
                 continue
-            rel = os.path.relpath(r.path, self.app.workspace).replace("\\", "/")
+            rel = rel_quiet(r.path, self.app.workspace).replace("\\", "/")
             state = ("读取失败" if r.error else
                      ("缓冲区可替换" if r.dirty and self.include_dirty_var.get() else
                       ("未保存修改" if r.dirty else "可替换")))

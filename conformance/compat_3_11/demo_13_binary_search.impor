@@ -1,9 +1,9 @@
 important<<DAY<<english("English"):
 // 二分查找（数组必须有序）
-func bsearch(a, target)
+def bsearch(a, target)
     var low = 0
     var high = len(a) - 1
-    loop
+    while true
         if low > high
             break
         var mid = div(low + high, 2)

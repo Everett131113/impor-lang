@@ -1,7 +1,7 @@
 @echo off
 rem 一键安装 Impor (I++) 到全局：安装后任意目录可直接使用 impor 命令
 chcp 65001 >nul
-cd /d %~dp0
+cd /d "%~dp0"
 echo 正在安装 Impor (I++) 命令行工具...
 
 where py >nul 2>nul

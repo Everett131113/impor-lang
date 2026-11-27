@@ -1,0 +1,32 @@
+// std/color.impor — ANSI 颜色（只在支持的终端上有效；不检测 TERM）
+
+def wrap(code, s) {
+    return chr(27) + "[" + code + "m" + str(s) + chr(27) + "[0m"
+}
+
+def red(s) {
+    return wrap("31", s)
+}
+
+def green(s) {
+    return wrap("32", s)
+}
+
+def yellow(s) {
+    return wrap("33", s)
+}
+
+def blue(s) {
+    return wrap("34", s)
+}
+
+def bold(s) {
+    return wrap("1", s)
+}
+
+export wrap
+export red
+export green
+export yellow
+export blue
+export bold

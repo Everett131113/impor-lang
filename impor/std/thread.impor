@@ -1,0 +1,91 @@
+// std/thread.impor — 线程工具：起线程、等结果、并行 map（纯 Impor + 内建）
+// 使用：use std.thread  或  import std.thread → std.thread.map_parallel(...)
+//
+// 语义边界（与 C 后端一致，别指望语言层兜住）：
+// - spawn 的 fn 必须无参；join 返回 fn() 的结果，重复 join 拿同一份。
+// - 线程之间共享全局变量 / 列表时必须自己用 std.atomic 或 mutex 保护，
+//   Impor 不做引用计数，裸并发改同一个容器属于未定义行为。
+
+def spawn(fn) {
+    return thread_spawn(fn)
+}
+
+def join(handle) {
+    return thread_join(handle)
+}
+
+def alive(handle) {
+    return thread_alive(handle)
+}
+
+def current() {
+    return thread_id()
+}
+
+def cpus() {
+    return cpu_count()
+}
+
+// 把 lst 的每个元素交给 fn，全部并行跑完再按原顺序返回结果数组。
+// 注意：fn(item) 通过闭包捕获，写共享状态仍需 mutex / atomic。
+def map_parallel(lst, fn) {
+    var handles = []
+    for item in lst {
+        arrappend(handles, thread_spawn(make_item_job(fn, item)))
+    }
+    var out = []
+    for h in handles {
+        arrappend(out, thread_join(h))
+    }
+    return out
+}
+
+def make_item_job(fn, item) {
+    def job() {
+        return fn(item)
+    }
+    return job
+}
+
+// 用 n 个线程把 [0, total) 切成 n 段，每段交给 fn(start, end)。
+// 适合「按区间累加」这类不需要每个元素一个线程的场景。
+def range_parallel(total, n, fn) {
+    if n <= 0 {
+        n = 1
+    }
+    var handles = []
+    var chunk = div(total, n)
+    if chunk < 1 {
+        chunk = 1
+    }
+    var i = 0
+    while i < total {
+        var start = i
+        var end = i + chunk
+        if end > total {
+            end = total
+        }
+        arrappend(handles, thread_spawn(make_range_job(fn, start, end)))
+        i += chunk
+    }
+    for h in handles {
+        thread_join(h)
+    }
+    return len(handles)
+}
+
+def make_range_job(fn, start, end) {
+    def job() {
+        fn(start, end)
+        return 0
+    }
+    return job
+}
+
+export spawn
+export join
+export alive
+export current
+export cpus
+export map_parallel
+export range_parallel

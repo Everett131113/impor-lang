@@ -61,7 +61,7 @@ class TestCBuild(unittest.TestCase):
     """impor build 端到端：解释器输出 === 独立 exe 输出。"""
 
     PROC_SRC = (
-        'func fib(n)\n'
+        'def fib(n)\n'
         '    if n <= 1\n'
         '        return n\n'
         '    return fib(n-1) + fib(n-2)\n'

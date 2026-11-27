@@ -18,6 +18,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .editor_theme import THEME, DARK_THEME, LIGHT_THEME, HIGH_CONTRAST_THEME
 from .editor_widgets import round_rect, FlatButton, TabStrip, ActivityBar, Minimap, MiniScrollbar
+from .pathsafe import rel_quiet
 
 
 class EditorGroupsMixin:
@@ -179,6 +180,23 @@ class EditorGroupsMixin:
         self.split_pagehost = None
 
     def open_new_tab(self, content=None, title=None, path=None, force_full=False, group=None):
+        # 4.7.3：带 path 且没给内容时，按磁盘真实字节打开并识别 BOM/换行。
+        # 旧版只当空标签建，保存时会把 CRLF+BOM 文件静默改写成 LF+无 BOM。
+        meta = {}
+        if content is None and path:
+            try:
+                raw = open(path, "rb").read()
+                bom = raw.startswith(b"\xef\xbb\xbf")
+                crlf = raw.count(b"\r\n")
+                meta = {"bom": bom,
+                        "ends_nl": raw.endswith(b"\n"),
+                        "newline": "CRLF" if (crlf and crlf * 2 >= raw.count(b"\n")) else "LF"}
+                content = raw.decode("utf-8-sig" if bom else "utf-8")
+            except Exception as exc:
+                note_swallowed("editor.new_tab.read", exc)
+                content = None
+        if content is None:
+            content = ""
         if group is None:
             group = getattr(self.active_pane, "group", "main") if self.active_pane is not None else "main"
         if group == "split":
@@ -186,9 +204,12 @@ class EditorGroupsMixin:
             parent = self.split_pagehost
         else:
             parent = self.pagehost
-        if content is None:
-            content = ""
         pane = EditorPane(parent, self, path=path, content=content)
+        if meta:
+            pane._encoding = "UTF-8 BOM" if meta["bom"] else "UTF-8"
+            pane._newline = meta["newline"]
+            pane._bom = meta["bom"]
+            pane._ends_nl = meta.get("ends_nl", True)
         pane.group = group
         name = title or (os.path.basename(path) if path else "未命名")
         pane.tab_title = name
@@ -283,7 +304,7 @@ class EditorGroupsMixin:
         if not pane or not pane.path:
             return
         self.root.clipboard_clear()
-        self.root.clipboard_append(os.path.relpath(pane.path, self.workspace))
+        self.root.clipboard_append(rel_quiet(pane.path, self.workspace))
         self.toast("已复制路径：" + os.path.basename(pane.path), "ok")
 
     def _close_tabs_right(self, target):

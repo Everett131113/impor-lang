@@ -24,7 +24,7 @@ def _analyze(src):
 
 class TestFmtConfig(unittest.TestCase):
     def test_indent_width_applies(self):
-        src = 'important<<DAY<<english("English"):\nvar a = 1\nfunc f()\n    return a\n'
+        src = 'important<<DAY<<english("English"):\nvar a = 1\ndef f()\n    return a\n'
         self.assertIn("\n  return a\n", fmt_source(src, indent_width=2))
         self.assertIn("\n    return a\n", fmt_source(src, indent_width=4))
 
@@ -48,7 +48,7 @@ class TestFmtConfig(unittest.TestCase):
 
 class TestLintArgCount(unittest.TestCase):
     SRC = ('important<<DAY<<english("English"):\n'
-           "func add(a, b)\n"
+           "def add(a, b)\n"
            "    return a + b\n"
            "var y = add(1, 2, 3)\n"   # 3 args, 期望 2
            "var z = len(1, 2)\n"      # 内建 len 期望 1
@@ -81,14 +81,15 @@ class TestNewTemplate(unittest.TestCase):
             old = os.getcwd()
             os.chdir(d)
             try:
-                for tmpl, marker in (("script", "你好"), ("lib", "func greet"),
+                for tmpl, marker in (("script", "你好"), ("lib", "def greet"),
                                      ("game", "canvas_create")):
                     fname = f"t_{tmpl}.impor"
                     rc = cli.cmd_new([fname, "--template", tmpl])
                     self.assertEqual(rc, 0)
                     content = open(fname, encoding="utf-8").read()
                     self.assertIn(marker, content)
-                    self.assertTrue(content.startswith("important<<DAY"))
+                    self.assertFalse(content.startswith("important<<"),
+                                     "4.0.1 起新模板不再写头部标记")
                 rc = cli.cmd_new(["bad", "--template", "nope"])
                 self.assertNotEqual(rc, 0)
             finally:

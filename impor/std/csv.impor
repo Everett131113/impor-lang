@@ -1,0 +1,51 @@
+// std/csv.impor — 极简 CSV（逗号分隔，无引号转义）
+// 使用：import std.csv as csv  →  csv.parse("a,b\n1,2")
+// 边界：只处理 "字段里不含逗号" 的常见场景；带引号/转义的真 CSV 请用 json。
+
+def parse_line(line) {
+    return line.split(",")
+}
+
+def parse(text) {
+    var rows = []
+    for ln in strlines(text) {
+        var t = ln.strip()
+        if len(t) > 0 {
+            rows = arrappend(rows, parse_line(t))
+        }
+    }
+    return rows
+}
+
+def join_row(row) {
+    return strjoin(row, ",")
+}
+
+def stringify(rows) {
+    var out = ""
+    var first = true
+    for row in rows {
+        if not first {
+            out += "\n"
+        }
+        out += join_row(row)
+        first = false
+    }
+    return out
+}
+
+def column(rows, index) {
+    var out = []
+    for row in rows {
+        if index < len(row) {
+            out = arrappend(out, row[index])
+        }
+    }
+    return out
+}
+
+export parse_line
+export parse
+export join_row
+export stringify
+export column

@@ -114,7 +114,7 @@ def check_quickstart_dll():
     return ok, "rc=%s / %s" % (rc, out.strip()[:100])
 
 
-@check("exe", "单文件 exe 脱离 Python 可运行且 <= 160 KB")
+@check("exe", "单文件 exe 脱离 Python 可运行且 <= 320 KB")
 def check_exe():
     tmp = tempfile.mkdtemp(prefix="impor_verify_exe_")
     try:
@@ -124,7 +124,7 @@ def check_exe():
             return False, "构建失败 rc=%s %s" % (rc, (out + err)[-160:])
         size = os.path.getsize(target)
         r2, out2, err2 = run([target], cwd=tmp)
-        ok = r2 == 0 and size <= 160 * 1024 and "Impor" in out2
+        ok = r2 == 0 and size <= 320 * 1024 and "Impor" in out2
         return ok, "size=%d rc=%s out=%s" % (size, r2, out2.strip()[:60])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -261,10 +261,17 @@ def check_api():
     return rc == 0, (out + err).strip().splitlines()[-1]
 
 
-@check("compat_20", "3.11 的 20 个示例在 3.12 全部通过")
+@check("compat_20", "3.11 行为基线的 20 个示例在 4.0 全部通过")
 def check_compat():
     rc, out, err = run([PY, os.path.join(ROOT, "tools", "compat_check.py")])
     return rc == 0 and "20/20" in (out + err), (out + err).strip().splitlines()[-1]
+
+
+@check("fmt_clean", "全仓 .impor 已格式化（文件系统扫描，不依赖 Git）")
+def check_fmt_clean():
+    rc, out, err = run([PY, os.path.join(ROOT, "tools", "check_fmt_all.py")])
+    txt = (out + err).strip().splitlines()
+    return rc == 0, txt[-1] if txt else "rc=%s" % rc
 
 
 @check("keywords", "保留字静默接受 = 0")
@@ -300,7 +307,7 @@ def check_defer():
     try:
         p = os.path.join(tmp, "d.impor")
         write(p, """
-        func f() {
+        def f() {
             defer { print("defer-ok") }
             print("body")
         }

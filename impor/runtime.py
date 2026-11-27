@@ -26,6 +26,15 @@ import builtins as _b
 
 from .builtin_manifest import RUNTIME_BUILTINS, check_runtime_namespace
 
+# 4.2：并发内建（线程/锁/原子量）。转译产物 `from impor.runtime import *` 能直接拿到。
+from .rt_concurrency import (  # noqa: F401
+    thread_spawn, thread_join, thread_alive, thread_id, cpu_count,
+    mutex_new, mutex_lock, mutex_unlock, mutex_trylock,
+    cond_new, cond_wait, cond_wait_ms, cond_notify, cond_notify_all,
+    atomic_new, atomic_load, atomic_store, atomic_add, atomic_sub,
+    atomic_exchange, atomic_cas,
+)
+
 __all__ = [
     "ImporException", "UserError", "ExitScriptExc", "Vec2", "Color",
     "range", "type", "type_of", "to_num", "to_str", "inputstr", "expect",
@@ -337,6 +346,23 @@ def cls():
 
 
 # ---------------- 数学工具 ----------------
+def div(a, b):
+    """div(a, b)：整数除法，向下取整。
+
+    v4.3.2：此前 `div` 只登记在 INTERPRETER_ONLY_BUILTINS 里，转译产物
+    （impor compile → xxx.py）根本没有这个函数，`print(div(7, 2))` 直接
+    NameError。div 是纯算术、不依赖解释器状态，改为三路同语义：
+    与 builtins.builtin_div 和 C 运行时 rt_div 一致（向下取整、除零报错）。
+    """
+    try:
+        ia, ib = int(a), int(b)
+    except (TypeError, ValueError):
+        raise ImporException("TypeError", "div 需要数值参数", 0)
+    if ib == 0:
+        raise ImporException("DivisionByZero", "div 除数为 0", 0)
+    return ia // ib
+
+
 def clamp(v, lo, hi):
     return _b.max(lo, _b.min(hi, float(v)))
 
@@ -466,6 +492,86 @@ def min_arr(arr):
 
 def sum_arr(arr):
     return _b.sum(arr)
+
+
+# ---------------- 5.2 新增 ----------------
+def strsplit(s, sep=None, maxsplit=-1):
+    if sep is None:
+        return str(s).split(maxsplit=int(maxsplit))
+    return str(s).split(str(sep), int(maxsplit))
+
+
+def strcount(s, sub):
+    return str(s).count(str(sub))
+
+
+def strstart(s, prefix):
+    return str(s).startswith(str(prefix))
+
+
+def strend(s, suffix):
+    return str(s).endswith(str(suffix))
+
+
+def arrinsert(arr, idx, val):
+    out = _b.list(arr)
+    out.insert(int(idx), val)
+    return out
+
+
+def arrremove(arr, val):
+    out = _b.list(arr)
+    try:
+        out.remove(val)
+    except ValueError:
+        raise ImporException("ValueError", "arrremove 找不到元素：%s" % str(val), 0)
+    return out
+
+
+def arrsort(arr, reverse=False):
+    return _b.sorted(arr, reverse=bool(reverse))
+
+
+def arrcount(arr, val):
+    return arr.count(val)
+
+
+def round(x, ndigits=None):  # noqa: A001 - Impor 内建名
+    if ndigits is None:
+        return _b.round(x)
+    return _b.round(x, int(ndigits))
+
+
+def floor(x):
+    return math.floor(x)
+
+
+def ceil(x):
+    return math.ceil(x)
+
+
+def any(arr):  # noqa: A001 - Impor 内建名
+    return _b.any(arr)
+
+
+def all(arr):  # noqa: A001 - Impor 内建名
+    return _b.all(arr)
+
+
+def map(fn, arr):  # noqa: A001 - Impor 内建名
+    return [fn(x) for x in arr]
+
+
+def filter(fn, arr):  # noqa: A001 - Impor 内建名
+    return [x for x in arr if fn(x)]
+
+
+def zip(*arrs):  # noqa: A001 - Impor 内建名
+    return [_b.list(g) for g in _b.zip(*arrs)]
+
+
+def enumerate(arr):  # noqa: A001 - Impor 内建名
+    return [[i, x] for i, x in _b.enumerate(arr)]
 
 
 # ---------------- 游戏工具 ----------------
@@ -788,6 +894,29 @@ def _runtime_ffi_load(path):
         raise ImporException("FFIError", "加载原生库失败：%s" % e, 0)
     _runtime_ffi_libs[target] = lib
     return lib
+
+
+def ord(s):
+    """4.5 码点：返回首字符的 Unicode 码点（与 impor/std 和 C 运行时 rt_ord 同口径）。
+
+    4.7.1 修：这两个名字在 4.5 就被登记进 RUNTIME_BUILTINS，但本模块没实现，
+    导致 `from .runtime import ...`（ffi_call 会走这条）在导入期直接抛
+    `ImportError: impor.runtime 缺少已登记内建: chr, ord`。
+    """
+    t = str(s)
+    if len(t) == 0:
+        raise ImporException("ValueError", "ord 的参数不能是空串", 0)
+    import builtins as _b
+    return _b.ord(t[0])
+
+
+def chr(n):
+    """4.5 码点：按 Unicode 码点生成单字符串（范围 0..0x10FFFF）。"""
+    cp = int(n)
+    if cp < 0 or cp > 0x10FFFF:
+        raise ImporException("ValueError", "chr 的码点超出范围（0..1114111）", 0)
+    import builtins as _b
+    return _b.chr(cp)
 
 
 def ffi_open(path):

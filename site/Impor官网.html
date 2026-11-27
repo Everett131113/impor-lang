@@ -657,7 +657,7 @@ h2{font-family:var(--display);font-size:clamp(34px,4.4vw,62px);line-height:1.16;
         <li><span>工具链</span><span>增量构建 / 一致性门禁 / 依赖审计</span></li>
         <li><span>编辑器</span><span>语义高亮 / 异步诊断 / 覆盖率行号栏 / 三方合并 / 插件管理器</span></li>
         <li><span>底座</span><span>ADT / async / 三端对齐 / 安全内核 / 12 课</span></li>
-        <li><span>标准库</span><span>700 个 <code>std.atlas</code> 微库 / 全量导入冒烟</span></li>
+        <li><span>标准库</span><span>16 个 <code>std</code> 模块 / 114 个导出函数</span></li>
         <li><span>交付</span><span>单文件 exe / 3.2.3 VSIX / 桌面镜像</span></li>
       </ul>
       <div class="manifest-foot"><span>impor doctor</span><b>18 / 18</b></div>
@@ -683,7 +683,7 @@ h2{font-family:var(--display);font-size:clamp(34px,4.4vw,62px);line-height:1.16;
     <li><a href="#pipeline"><span class="no">04</span><b>流程</b><em>从一行源码到一枚 exe</em></a></li>
     <li><a href="#diagnostics"><span class="no">05</span><b>诊断</b><em>错误码是下一步动作</em></a></li>
     <li><a href="#studio"><span class="no">06</span><b>编辑器</b><em>Code Studio 的完整地图</em></a></li>
-    <li><a href="#ecosystem"><span class="no">07</span><b>生态</b><em>依赖、课程与 700 库</em></a></li>
+    <li><a href="#ecosystem"><span class="no">07</span><b>生态</b><em>依赖、课程与 16 个标准库</em></a></li>
     <li><a href="#release"><span class="no">08</span><b>变更</b><em>3.2.3 改了什么，没改什么</em></a></li>
     <li><a href="#workflows"><span class="no">09</span><b>场景</b><em>课堂、工具与 CI</em></a></li>
     <li><a href="#boundary"><span class="no">10</span><b>边界</b><em>没做完的，也摆在这里</em></a></li>
@@ -1263,37 +1263,42 @@ app
   </div>
 
   <div class="minor-head">
-    <div class="sec-tag">07.1 / std.atlas</div>
+    <div class="sec-tag">07.1 / std</div>
     <div>
-      <h3>700 个库，全部可导入。</h3>
-      <p><code>std.atlas</code> 按 10 族 × 7 套 API × 10 变体落成 <strong>700 个独立模块</strong>：每库一个函数、一个 <code>export</code>、无跨模块依赖。不是空文件，也不是同一个模板换 700 个名字；全量冒烟会逐个 import 并调用一次。</p>
+      <h3>16 个模块，114 个函数，全部可导入。</h3>
+      <p><code>impor/std/</code> 下是 1 个包入口 + 16 个纯 Impor 源码模块，合计 <strong>114 个导出函数</strong>，每个 <code>import std.xxx</code> 都用得上。<br><em>旧页面写过的「<code>std.atlas</code> 700 个微库」已撤回：发布包内没有 <code>impor/std/atlas/</code>，也没有 <code>tests/atlas_700_smoke.impor</code>，源码里 atlas 字样命中 0。</em></p>
     </div>
   </div>
 
   <div class="atlas-board">
-    <div class="atlas-cell"><span>num / 70</span><b>数论与整数</b><p>倍数、数字根、模幂、质数、区间夹取。</p></div>
-    <div class="atlas-cell"><span>seq / 70</span><b>序列与窗口</b><p>步长、切片、窗口和、分块、旋转。</p></div>
-    <div class="atlas-cell"><span>txt / 70</span><b>文本与字符</b><p>前后缀、填充、掩码、凯撒位移。</p></div>
-    <div class="atlas-cell"><span>data / 70</span><b>列表与聚合</b><p>头部求和、极值、阈值计数、去重。</p></div>
-    <div class="atlas-cell"><span>geom / 70</span><b>几何与网格</b><p>多边形、圆/矩形/三角、加权距离。</p></div>
-    <div class="atlas-cell"><span>time / 70</span><b>时间与日历</b><p>闰年、时区偏移、时长、时钟夹角。</p></div>
-    <div class="atlas-cell"><span>codec / 70</span><b>编码与校验</b><p>奇偶位、进制转换、校验值、折叠混合。</p></div>
-    <div class="atlas-cell"><span>sim / 70</span><b>模拟与游戏</b><p>网格下标、循环折返、重力步进、碰撞。</p></div>
-    <div class="atlas-cell"><span>teach / 70</span><b>教学与评分</b><p>及格线、加权、token/行数、课程元数据。</p></div>
-    <div class="atlas-cell"><span>stat / 70</span><b>统计与换算</b><p>均值、方差、中位数、百分位、比例。</p></div>
+    <div class="atlas-cell"><span>text / 18</span><b>文本</b><p>split、join、trim、replace、pad_left、split_lines。</p></div>
+    <div class="atlas-cell"><span>collections / 14</span><b>序列</b><p>map、filter、reduce、uniq、take、drop、flatten。</p></div>
+    <div class="atlas-cell"><span>mathx / 9</span><b>数论</b><p>gcd、lcm、fact、fib、is_prime、avg。</p></div>
+    <div class="atlas-cell"><span>atomic / 11</span><b>原子量</b><p>counter、load/store、add/sub、cas、mutex。</p></div>
+    <div class="atlas-cell"><span>fs / 9</span><b>文件</b><p>read、write、exists、list、mkdir、read_json。</p></div>
+    <div class="atlas-cell"><span>path / 7</span><b>路径</b><p>norm、join、basename、dirname、ext、stem。</p></div>
+    <div class="atlas-cell"><span>thread / 7</span><b>线程</b><p>spawn、join、cpus、map_parallel、range_parallel。</p></div>
+    <div class="atlas-cell"><span>algo / 6</span><b>算法</b><p>sorted、bsearch、index_of、min_index。</p></div>
+    <div class="atlas-cell"><span>stats / 6</span><b>统计</b><p>mean、median、variance、stddev、mode、percentile。</p></div>
+    <div class="atlas-cell"><span>random / 5</span><b>随机</b><p>between、choice、shuffled、pick、token。</p></div>
+    <div class="atlas-cell"><span>csv / 5</span><b>CSV</b><p>parse、join_row、stringify、column。</p></div>
+    <div class="atlas-cell"><span>sort / 4</span><b>排序</b><p>sort、sort_by、search、is_sorted。</p></div>
+    <div class="atlas-cell"><span>regex / 4</span><b>正则</b><p>is_match、find_all、replace_all、contains。</p></div>
+    <div class="atlas-cell"><span>time / 4</span><b>时间</b><p>readable、seconds、sleep_ms、elapsed。</p></div>
+    <div class="atlas-cell"><span>json / 3</span><b>JSON</b><p>parse、stringify、try_parse。</p></div>
+    <div class="atlas-cell"><span>http / 2</span><b>网络</b><p>get、get_json（受宿主权限约束）。</p></div>
   </div>
 
   <div class="atlas-code">
-    <div class="term-bar"><span>std.atlas / 700 micro-libraries</span><span>impor 3.2.3</span></div>
-    <pre><span class="dim">$</span> impor run tests/atlas_700_smoke.impor
-atlas-smoke 700 700
+    <div class="term-bar"><span>std / 16 modules</span><span>impor 4.0.1</span></div>
+    <pre><span class="dim">$</span> dir impor\std
+algo  atomic  collections  csv  fs  http  json  mathx  path  random  regex  sort  stats  text  thread  time
 
-import std.atlas as atlas
-import std.atlas.geom_circle_area_05 as ca
-print(atlas.count())         <span class="c">// 700</span>
-print(ca.circle_area_05(2))  <span class="c">// 12.566368</span></pre>
+import std.text as text
+print(text.trim("  ok  "))    <span class="c">// ok</span>
+print(text.join(["a", "b"], "-"))  <span class="c">// a-b</span></pre>
   </div>
-  <p class="pkg-notes"><b>700/700</b> 模块全部导入并调用；<b>700</b> 个文件 SHA256 全不同；<b>0.82s</b> C 后端抽测构建，产物运行 <code>True</code>。<code>use std</code> 只注入 atlas 目录入口，不一次性加载 700 个子模块。</p>
+  <p class="pkg-notes"><b>16/16</b> 模块可 import；<b>114</b> 个导出函数；无公共包仓库，<code>impor pkg search</code> 只扫本地（缓存 + 项目 zip）。<code>use std</code> 注入全部 16 个子模块；协程与泛型仍缺，<code>yield</code> 明确报 <code>E2001</code>。</p>
 
   <div class="minor-head">
     <div class="sec-tag">项目骨架 / impor.toml</div>
@@ -1397,7 +1402,7 @@ paths = ["./lib"]
             <tr><td><span class="tag">三端</span></td><td>C 后端补 JSON 编解码、基础正则、lambda、<code>run_tasks</code> / <code>task_status</code>。</td><td><code>_t_parity</code> 9 行逐行一致；C 产物 114.5 KB。</td></tr>
             <tr><td><span class="tag">编辑器</span></td><td>重构预览/撤销、测试失败内联、覆盖率、分块可编辑、插件崩溃重启/权限清单/面板宿主、UIA 控件树/高对比、搜索虚拟列表。</td><td>3,200 行 / 2.4 MB 文件插入一行后保存，磁盘 3200 → 3201；GUI 冒烟全绿。</td></tr>
             <tr><td><span class="tag">安全</span></td><td>默认拒绝写/FFI/网络/子进程、路径围栏、原子写、SHA256 清单、JSONL 审计、进程加固、安全中心；插件子进程用 Python audit hook 强制权限。</td><td>启动/保存/插件写入均留审计；未授权 socket / 子进程 / 越界读写实测抛 <code>PermissionError</code>；威胁模型与残余风险公开。</td></tr>
-            <tr><td><span class="tag">标准库</span></td><td><code>std.atlas</code> 保持 700 库；新增 JSON / 正则 / FFI 内建进入标准表面。</td><td>全量 import + 调用 700/700；正则/JSON 用例通过。</td></tr>
+            <tr><td><span class="tag">标准库</span></td><td><code>std</code> 16 个模块 / 114 个导出函数；JSON / 正则 / 线程 / 原子量 / 排序 / 统计 / 随机 / CSV 都在标准表面内。</td><td><code>dir impor\std</code> 列出 16 个；六模块 smoke 通过；「700 微库」旧宣称已撤回。</td></tr>
             <tr><td><span class="tag">分发</span></td><td>Windows ZIP、3.2.3 VSIX、项目 / site / 桌面 / 镜像 / 镜像 site 五处同步。</td><td>ZIP 与 VSIX 重新打包；解压目录可运行 <code>impor version</code> 输出 3.2.3。</td></tr>
             <tr><td><span class="tag">修复</span></td><td>自举路径含空格 / 括号、<code>%errorlevel%</code> 早展开、<code>_walk</code> 崩溃、<code>int</code> 赋 <code>float</code> 误报。</td><td>桌面镜像 23/23；<code>impor check</code> 退出码实测 1；全仓扫描 0 issues。</td></tr>
             <tr><td><span class="tag">未改</span></td><td>自举 imporc 的 ADT/async/lambda/JSON/正则、C 后端 FFI、OS 级沙箱、代码签名。</td><td>边界页逐条列出；不把子集能力说成全量。</td></tr>
@@ -1620,7 +1625,7 @@ paths = ["./lib"]
       <h4>包里有什么</h4>
       <ul class="req-list">
         <li><b>impor\</b><span>CLI / LSP / 教学</span></li>
-        <li><b>impor\std\atlas\</b><span>700 个标准库微库</span></li>
+        <li><b>impor\std\</b><span>16 个标准库模块</span></li>
         <li><b>bootstrap\</b><span>imporc / TCC</span></li>
         <li><b>site\</b><span>离线站点 / 更新清单</span></li>
         <li><b>examples\</b><span>标准库与示例</span></li>
@@ -1653,8 +1658,8 @@ paths = ["./lib"]
 <section class="colophon wrap" id="colophon" aria-label="制作说明">
   <div class="colophon-grid">
     <div><span>colophon / 关于这份出版物</span><b>一份单文件的技术出版物。</b><p>12 章，无外部 CSS / JS、无框架、无 emoji；图标全部内联 SVG。数据来自 3.1 文档、CLI 实测与测试矩阵，不把设计目标写成已完成。</p></div>
-    <div><span>release</span><b>Impor (I++) 3.2.3</b><p>Windows x64 · 2026-11-14<br>ZIP / VSIX / 五处镜像</p></div>
-    <div><span>evidence</span><b>23/23 · 18/18 · 12/12 · 700/700</b><p>conformance · doctor<br>teach grade · atlas smoke</p></div>
+    <div><span>release</span><b>Impor (I++) 4.0.1</b><p>Windows x64 · 2026-11-22<br>ZIP / VSIX</p></div>
+    <div><span>evidence</span><b>23/23 · 16/16 · 3/3 · 2/2</b><p>后端一致性测试 · std 模块可导入<br>int_mode 用例 · upgrade+vendor 用例</p></div>
     <div><span>palette / type</span><b>夜间底，纸色证据。</b><div class="palette" aria-hidden="true"><i style="background:#070A09"></i><i style="background:#E7EAE2"></i><i style="background:#FF4F1E"></i><i style="background:#A8E6C1"></i><i style="background:#EDEFE7"></i></div><p>展示字：宋体系统栈；UI：Bahnschrift / DIN Alternate；代码：Cascadia Code。</p></div>
   </div>
 </section>

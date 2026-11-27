@@ -36,55 +36,55 @@ var top_var = 0
 var session_task = ""
 
 // ---------------- 纯函数：格式化与统计 ----------------
-func two(n)
+def two(n)
     var s = to_str(n)
     if len(s) < 2
         return strpad(s, 2, "0")
     return s
 
-func fmt_time(sec)
+def fmt_time(sec)
     var n = int(sec)
     if n < 0
         n = 0
     var m = int((n - n % 60) / 60)
     return two(m) + ":" + two(n % 60)
 
-func minutes_for(items, day)
+def minutes_for(items, day)
     var total = 0
     for item in items
         if item["day"] == day
             total = total + int(item["minutes"])
     return total
 
-func count_for(items, day)
+def count_for(items, day)
     var total = 0
     for item in items
         if item["day"] == day
             total = total + 1
     return total
 
-func yesterday_str()
+def yesterday_str()
     return time.strftime("%Y-%m-%d", time.localtime(clock() - 86400))
 
-func last_session_for(items, day)
-    var last = {"task": "", "minutes": 0}
+def last_session_for(items, day)
+    var last = { "task": "", "minutes": 0 }
     for item in items
         if item["day"] == day and last["task"] == ""
             last = item
     return last
 
 // ---------------- 持久化 ----------------
-func data_dir()
+def data_dir()
     var home = os.environ["USERPROFILE"]
     var dir = os.path.join(home, ".impor_focus")
     if not fileexists(dir)
         filemkdir(dir)
     return dir
 
-func data_path()
+def data_path()
     return os.path.join(data_dir(), "history.json")
 
-func load_history()
+def load_history()
     var path = data_path()
     if not fileexists(path)
         return
@@ -96,14 +96,14 @@ func load_history()
     catch err
         global set history = []
 
-func save_history()
-    var payload = {"history": history}
+def save_history()
+    var payload = { "history": history }
     filewrite(data_path(), json_encode(payload))
 
-func state_path()
+def state_path()
     return os.path.join(data_dir(), "state.json")
 
-func save_state()
+def save_state()
     if mode != "focus"
         return
     var left = remaining
@@ -119,13 +119,13 @@ func save_state()
     name = trim(name)
     if name == ""
         name = task_default
-    var payload = {"active": true, "day": today, "task": name, "mode": mode, "remaining": left, "focus_min": focus_min, "break_min": break_min}
+    var payload = { "active": true, "day": today, "task": name, "mode": mode, "remaining": left, "focus_min": focus_min, "break_min": break_min }
     filewrite(state_path(), json_encode(payload))
 
-func clear_state()
-    filewrite(state_path(), json_encode({"active": false}))
+def clear_state()
+    filewrite(state_path(), json_encode({ "active": false }))
 
-func load_state()
+def load_state()
     var path = state_path()
     if not fileexists(path)
         return false
@@ -148,11 +148,11 @@ func load_state()
         global set session_task = name
         task_entry.delete(0, "end")
         task_entry.insert(0, name)
-        start_btn.configure({"text": "继续"})
+        start_btn.configure({ "text": "继续" })
         var prefix = "上次未完成"
         if data["day"] != today
             prefix = "昨天未完成"
-        status_label.configure({"text": prefix + " · " + name + " · 还剩 " + fmt_time(left), "fg": MUTED})
+        status_label.configure({ "text": prefix + " · " + name + " · 还剩 " + fmt_time(left), "fg": MUTED })
         update_mode()
         refresh_clock()
         update_end_label()
@@ -161,45 +161,45 @@ func load_state()
         return false
 
 // ---------------- 计时核心 ----------------
-func minutes_text()
+def minutes_text()
     if mode == "focus"
         return to_str(focus_min) + " 分钟专注"
     return to_str(break_min) + " 分钟休息"
 
-func update_mode()
+def update_mode()
     if mode == "focus"
-        remaining_label.configure({"text": fmt_time(remaining), "fg": ACCENT})
-        mode_label.configure({"text": "专注", "fg": ACCENT})
-        mode_hint.configure({"text": minutes_text()})
-        window_pill.configure({"text": "FOCUS", "fg": ACCENT})
+        remaining_label.configure({ "text": fmt_time(remaining), "fg": ACCENT })
+        mode_label.configure({ "text": "专注", "fg": ACCENT })
+        mode_hint.configure({ "text": minutes_text() })
+        window_pill.configure({ "text": "FOCUS", "fg": ACCENT })
     else
-        remaining_label.configure({"text": fmt_time(remaining), "fg": GREEN})
-        mode_label.configure({"text": "休息", "fg": GREEN})
-        mode_hint.configure({"text": minutes_text()})
-        window_pill.configure({"text": "BREAK", "fg": GREEN})
+        remaining_label.configure({ "text": fmt_time(remaining), "fg": GREEN })
+        mode_label.configure({ "text": "休息", "fg": GREEN })
+        mode_hint.configure({ "text": minutes_text() })
+        window_pill.configure({ "text": "BREAK", "fg": GREEN })
 
-func refresh_clock()
-    remaining_label.configure({"text": fmt_time(remaining)})
+def refresh_clock()
+    remaining_label.configure({ "text": fmt_time(remaining) })
 
-func update_end_label()
+def update_end_label()
     if running
-        end_label.configure({"text": "结束 " + time.strftime("%H:%M", time.localtime(deadline))})
+        end_label.configure({ "text": "结束 " + time.strftime("%H:%M", time.localtime(deadline)) })
     else
         var total = focus_min * 60
         if mode == "break"
             total = break_min * 60
         if remaining > 0 and remaining < total
-            end_label.configure({"text": "还剩 " + fmt_time(remaining)})
+            end_label.configure({ "text": "还剩 " + fmt_time(remaining) })
         else
-            end_label.configure({"text": "结束 --:--"})
+            end_label.configure({ "text": "结束 --:--" })
 
-func refresh_stats()
+def refresh_stats()
     var mins = minutes_for(history, today)
     var count = count_for(history, today)
     if count == 0
-        stats_label.configure({"text": "今天还没有记录。开始第一段专注。"})
+        stats_label.configure({ "text": "今天还没有记录。开始第一段专注。" })
     else
-        stats_label.configure({"text": "今日 " + to_str(mins) + " 分钟 · " + to_str(count) + " 段专注"})
+        stats_label.configure({ "text": "今日 " + to_str(mins) + " 分钟 · " + to_str(count) + " 段专注" })
     var yday = yesterday_str()
     var ymins = minutes_for(history, yday)
     var ycount = count_for(history, yday)
@@ -209,9 +209,9 @@ func refresh_stats()
         ytext = "昨天 " + to_str(ymins) + " 分钟 · " + to_str(ycount) + " 段"
         if last["task"] != ""
             ytext = ytext + " · 最后一轮 " + last["task"] + " " + to_str(int(last["minutes"])) + " 分钟"
-    yesterday_label.configure({"text": ytext})
+    yesterday_label.configure({ "text": ytext })
 
-func refresh_history()
+def refresh_history()
     history_list.delete(0, "end")
     var shown = 0
     for item in history
@@ -226,20 +226,20 @@ func refresh_history()
                 history_list.insert("end", "昨天 " + item["at"] + "   " + item["task"] + "   " + to_str(item["minutes"]) + " 分钟")
                 yshown = yshown + 1
 
-func add_session(mins)
+def add_session(mins)
     var name = session_task
     name = trim(name)
     if name == ""
         name = trim(task_entry.get())
     if name == ""
         name = task_default
-    var item = {"day": today, "at": time.strftime("%H:%M", time.localtime()), "task": name, "minutes": mins}
+    var item = { "day": today, "at": time.strftime("%H:%M", time.localtime()), "task": name, "minutes": mins }
     history.insert(0, item)
     save_history()
     refresh_stats()
     refresh_history()
 
-func read_minutes(entry, fallback)
+def read_minutes(entry, fallback)
     try
         var n = int(to_num(entry.get()))
         if n < 1
@@ -250,7 +250,7 @@ func read_minutes(entry, fallback)
     catch err
         return fallback
 
-func apply_settings()
+def apply_settings()
     var f = read_minutes(focus_entry, focus_min)
     var b = read_minutes(break_entry, break_min)
     global set focus_min = f
@@ -264,18 +264,18 @@ func apply_settings()
         update_mode()
         update_end_label()
 
-func start_pause()
+def start_pause()
     if running
         global set running = false
         var left = int(deadline - clock())
         if left < 0
             left = 0
         global set remaining = left
-        start_btn.configure({"text": "继续"})
+        start_btn.configure({ "text": "继续" })
         if mode == "focus"
-            status_label.configure({"text": "已暂停 · " + session_task + " · 还剩 " + fmt_time(left), "fg": MUTED})
+            status_label.configure({ "text": "已暂停 · " + session_task + " · 还剩 " + fmt_time(left), "fg": MUTED })
         else
-            status_label.configure({"text": "已暂停 · 休息 · 还剩 " + fmt_time(left), "fg": MUTED})
+            status_label.configure({ "text": "已暂停 · 休息 · 还剩 " + fmt_time(left), "fg": MUTED })
         update_end_label()
     else
         if session_task == "" and mode == "focus"
@@ -286,14 +286,14 @@ func start_pause()
         clear_state()
         global set deadline = clock() + remaining
         global set running = true
-        start_btn.configure({"text": "暂停"})
+        start_btn.configure({ "text": "暂停" })
         if mode == "focus"
-            status_label.configure({"text": "专注中 · " + session_task, "fg": ACCENT})
+            status_label.configure({ "text": "专注中 · " + session_task, "fg": ACCENT })
         else
-            status_label.configure({"text": "休息中 · 还剩 " + fmt_time(remaining), "fg": ACCENT})
+            status_label.configure({ "text": "休息中 · 还剩 " + fmt_time(remaining), "fg": ACCENT })
         update_end_label()
 
-func reset_round()
+def reset_round()
     global set running = false
     global set session_task = ""
     clear_state()
@@ -301,15 +301,15 @@ func reset_round()
         global set remaining = focus_min * 60
     else
         global set remaining = break_min * 60
-    start_btn.configure({"text": "开始"})
-    status_label.configure({"text": "已重置", "fg": MUTED})
+    start_btn.configure({ "text": "开始" })
+    status_label.configure({ "text": "已重置", "fg": MUTED })
     refresh_clock()
     update_mode()
     update_end_label()
 
-func finish_round()
+def finish_round()
     global set running = false
-    start_btn.configure({"text": "开始"})
+    start_btn.configure({ "text": "开始" })
     if mode == "focus"
         add_session(focus_min)
         clear_state()
@@ -319,36 +319,36 @@ func finish_round()
         global set session_task = ""
         global set mode = "break"
         global set remaining = break_min * 60
-        status_label.configure({"text": "专注完成 · " + completed_task + " · " + to_str(focus_min) + " 分钟", "fg": GREEN})
+        status_label.configure({ "text": "专注完成 · " + completed_task + " · " + to_str(focus_min) + " 分钟", "fg": GREEN })
     else
         root.bell()
         attention()
         global set session_task = ""
         global set mode = "focus"
         global set remaining = focus_min * 60
-        status_label.configure({"text": "休息结束，继续专注", "fg": ACCENT})
+        status_label.configure({ "text": "休息结束，继续专注", "fg": ACCENT })
     update_mode()
     refresh_clock()
     update_end_label()
 
-func skip_round()
+def skip_round()
     global set running = false
     global set session_task = ""
     clear_state()
-    start_btn.configure({"text": "开始"})
+    start_btn.configure({ "text": "开始" })
     if mode == "focus"
         global set mode = "break"
         global set remaining = break_min * 60
-        status_label.configure({"text": "已跳过专注，进入休息", "fg": GREEN})
+        status_label.configure({ "text": "已跳过专注，进入休息", "fg": GREEN })
     else
         global set mode = "focus"
         global set remaining = focus_min * 60
-        status_label.configure({"text": "已跳过休息，回到专注", "fg": ACCENT})
+        status_label.configure({ "text": "已跳过休息，回到专注", "fg": ACCENT })
     update_mode()
     refresh_clock()
     update_end_label()
 
-func heartbeat()
+def heartbeat()
     if running
         var left = int(deadline - clock())
         if left <= 0
@@ -361,33 +361,33 @@ func heartbeat()
         global set today = daynow
         refresh_stats()
         refresh_history()
-        status_label.configure({"text": "新的一天，记录已切换", "fg": MUTED})
+        status_label.configure({ "text": "新的一天，记录已切换", "fg": MUTED })
     root.after(250, heartbeat)
 
-func release_attention()
+def release_attention()
     if top_var.get() != 1
         root.attributes("-topmost", false)
 
-func attention()
+def attention()
     root.deiconify()
     root.lift()
     root.focus_force()
     root.attributes("-topmost", true)
     root.after(5000, release_attention)
 
-func toggle_top()
+def toggle_top()
     if top_var.get() == 1
         root.attributes("-topmost", true)
     else
         root.attributes("-topmost", false)
 
-func on_space(ev)
+def on_space(ev)
     start_pause()
 
-func on_escape(ev)
+def on_escape(ev)
     reset_round()
 
-func on_close()
+def on_close()
     save_state()
     save_history()
     root.destroy()
@@ -399,7 +399,7 @@ var do_smoke = false
 for a in opts
     if a == "--selftest"
         set do_selftest = true
-    elseif a == "--smoke-gui"
+    elif a == "--smoke-gui"
         set do_smoke = true
 
 if do_selftest
@@ -417,9 +417,9 @@ if do_selftest
         print("SELFTEST FAIL fmt_time(3599)=" + fmt_time(3599))
         set ok = false
     var sample = []
-    sample.insert(0, {"day": "2026-11-15", "at": "14:30", "task": "数学", "minutes": 25})
-    sample.insert(0, {"day": "2026-11-15", "at": "15:10", "task": "英语", "minutes": 25})
-    sample.insert(0, {"day": "2026-11-14", "at": "20:00", "task": "语文", "minutes": 30})
+    sample.insert(0, { "day": "2026-11-15", "at": "14:30", "task": "数学", "minutes": 25 })
+    sample.insert(0, { "day": "2026-11-15", "at": "15:10", "task": "英语", "minutes": 25 })
+    sample.insert(0, { "day": "2026-11-14", "at": "20:00", "task": "语文", "minutes": 30 })
     if minutes_for(sample, "2026-11-15") != 50
         print("SELFTEST FAIL minutes_for")
         set ok = false
@@ -436,7 +436,7 @@ if do_selftest
     if len(yesterday_str()) != 10
         print("SELFTEST FAIL yesterday_str")
         set ok = false
-    var roundtrip = json_decode(json_encode({"history": sample}))
+    var roundtrip = json_decode(json_encode({ "history": sample }))
     if len(roundtrip["history"]) != 3
         print("SELFTEST FAIL json roundtrip")
         set ok = false
@@ -454,126 +454,126 @@ set root = tkinter.Tk()
 root.title("Impor 专注计时器 · 3.6.17")
 root.geometry("580x600+60+40")
 root.minsize(560, 560)
-root.configure({"bg": BG})
+root.configure({ "bg": BG })
 root.protocol("WM_DELETE_WINDOW", on_close)
 
 // 顶栏
-var header = tkinter.Frame(root, {"bg": BG})
-header.pack({"fill": "x", "padx": 28, "pady": 12})
+var header = tkinter.Frame(root, { "bg": BG })
+header.pack({ "fill": "x", "padx": 28, "pady": 12 })
 
-var brand = tkinter.Frame(header, {"bg": BG})
-brand.pack({"side": "left", "fill": "x", "expand": true})
+var brand = tkinter.Frame(header, { "bg": BG })
+brand.pack({ "side": "left", "fill": "x", "expand": true })
 
-var brand_top = tkinter.Label(brand, {"text": "IMPOR FOCUS / 3.6.17", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 9", "anchor": "w"})
-brand_top.pack({"fill": "x", "anchor": "w"})
+var brand_top = tkinter.Label(brand, { "text": "IMPOR FOCUS / 3.6.17", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 9", "anchor": "w" })
+brand_top.pack({ "fill": "x", "anchor": "w" })
 
-var brand_title = tkinter.Label(brand, {"text": "专注计时器", "bg": BG, "fg": TEXT, "font": "{Segoe UI} 22 bold", "anchor": "w"})
-brand_title.pack({"fill": "x", "anchor": "w", "pady": 2})
+var brand_title = tkinter.Label(brand, { "text": "专注计时器", "bg": BG, "fg": TEXT, "font": "{Segoe UI} 22 bold", "anchor": "w" })
+brand_title.pack({ "fill": "x", "anchor": "w", "pady": 2 })
 
-var window_pill = tkinter.Label(header, {"text": "FOCUS", "bg": CARD, "fg": ACCENT, "font": "Consolas 10 bold", "padx": 12, "pady": 6})
-window_pill.pack({"side": "right", "anchor": "n", "pady": 4})
+var window_pill = tkinter.Label(header, { "text": "FOCUS", "bg": CARD, "fg": ACCENT, "font": "Consolas 10 bold", "padx": 12, "pady": 6 })
+window_pill.pack({ "side": "right", "anchor": "n", "pady": 4 })
 
 // 计时卡片
-var timer_card = tkinter.Frame(root, {"bg": CARD, "highlightthickness": 1, "highlightbackground": BORDER})
-timer_card.pack({"fill": "x", "padx": 28, "pady": 4})
+var timer_card = tkinter.Frame(root, { "bg": CARD, "highlightthickness": 1, "highlightbackground": BORDER })
+timer_card.pack({ "fill": "x", "padx": 28, "pady": 4 })
 
-var timer_inner = tkinter.Frame(timer_card, {"bg": CARD})
-timer_inner.pack({"fill": "x", "padx": 24, "pady": 10})
+var timer_inner = tkinter.Frame(timer_card, { "bg": CARD })
+timer_inner.pack({ "fill": "x", "padx": 24, "pady": 10 })
 
-var mode_row = tkinter.Frame(timer_inner, {"bg": CARD})
-mode_row.pack({"fill": "x"})
+var mode_row = tkinter.Frame(timer_inner, { "bg": CARD })
+mode_row.pack({ "fill": "x" })
 
-var mode_label = tkinter.Label(mode_row, {"text": "专注", "bg": CARD, "fg": ACCENT, "font": "{Segoe UI} 13 bold", "anchor": "w"})
-mode_label.pack({"side": "left"})
+var mode_label = tkinter.Label(mode_row, { "text": "专注", "bg": CARD, "fg": ACCENT, "font": "{Segoe UI} 13 bold", "anchor": "w" })
+mode_label.pack({ "side": "left" })
 
-var mode_hint = tkinter.Label(mode_row, {"text": "25 分钟专注", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "w"})
-mode_hint.pack({"side": "left", "padx": 10})
+var mode_hint = tkinter.Label(mode_row, { "text": "25 分钟专注", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "w" })
+mode_hint.pack({ "side": "left", "padx": 10 })
 
-var end_label = tkinter.Label(mode_row, {"text": "结束 --:--", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "e"})
-end_label.pack({"side": "right"})
+var end_label = tkinter.Label(mode_row, { "text": "结束 --:--", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "e" })
+end_label.pack({ "side": "right" })
 
-var remaining_label = tkinter.Label(timer_inner, {"text": fmt_time(remaining), "bg": CARD, "fg": ACCENT, "font": "Consolas 46 bold", "anchor": "w"})
-remaining_label.pack({"fill": "x", "pady": 6})
+var remaining_label = tkinter.Label(timer_inner, { "text": fmt_time(remaining), "bg": CARD, "fg": ACCENT, "font": "Consolas 46 bold", "anchor": "w" })
+remaining_label.pack({ "fill": "x", "pady": 6 })
 
-var status_label = tkinter.Label(timer_inner, {"text": "准备开始", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "w"})
-status_label.pack({"fill": "x"})
+var status_label = tkinter.Label(timer_inner, { "text": "准备开始", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "w" })
+status_label.pack({ "fill": "x" })
 
 // 任务输入
-var task_row = tkinter.Frame(timer_inner, {"bg": CARD})
-task_row.pack({"fill": "x", "pady": 8})
+var task_row = tkinter.Frame(timer_inner, { "bg": CARD })
+task_row.pack({ "fill": "x", "pady": 8 })
 
-var task_label = tkinter.Label(task_row, {"text": "这次要做什么", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "width": 11, "anchor": "w"})
-task_label.pack({"side": "left"})
+var task_label = tkinter.Label(task_row, { "text": "这次要做什么", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "width": 11, "anchor": "w" })
+task_label.pack({ "side": "left" })
 
-var task_entry = tkinter.Entry(task_row, {"bg": CARD2, "fg": TEXT, "insertbackground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 12"})
-task_entry.pack({"side": "left", "fill": "x", "expand": true, "ipady": 6})
+var task_entry = tkinter.Entry(task_row, { "bg": CARD2, "fg": TEXT, "insertbackground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 12" })
+task_entry.pack({ "side": "left", "fill": "x", "expand": true, "ipady": 6 })
 task_entry.insert(0, task_default)
 
 // 控制按钮
-var controls = tkinter.Frame(timer_inner, {"bg": CARD})
-controls.pack({"fill": "x", "pady": 2})
+var controls = tkinter.Frame(timer_inner, { "bg": CARD })
+controls.pack({ "fill": "x", "pady": 2 })
 
-var start_btn = tkinter.Button(controls, {"text": "开始", "command": start_pause, "bg": ACCENT, "fg": "#14181E", "activebackground": ACCENT2, "activeforeground": "#14181E", "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11 bold", "cursor": "hand2", "padx": 22, "pady": 8})
-start_btn.pack({"side": "left"})
+var start_btn = tkinter.Button(controls, { "text": "开始", "command": start_pause, "bg": ACCENT, "fg": "#14181E", "activebackground": ACCENT2, "activeforeground": "#14181E", "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11 bold", "cursor": "hand2", "padx": 22, "pady": 8 })
+start_btn.pack({ "side": "left" })
 
-var reset_btn = tkinter.Button(controls, {"text": "重置", "command": reset_round, "bg": CARD2, "fg": TEXT, "activebackground": BORDER, "activeforeground": TEXT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "cursor": "hand2", "padx": 18, "pady": 8})
-reset_btn.pack({"side": "left", "padx": 8})
+var reset_btn = tkinter.Button(controls, { "text": "重置", "command": reset_round, "bg": CARD2, "fg": TEXT, "activebackground": BORDER, "activeforeground": TEXT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "cursor": "hand2", "padx": 18, "pady": 8 })
+reset_btn.pack({ "side": "left", "padx": 8 })
 
-var skip_btn = tkinter.Button(controls, {"text": "跳过", "command": skip_round, "bg": CARD2, "fg": MUTED, "activebackground": BORDER, "activeforeground": TEXT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "cursor": "hand2", "padx": 18, "pady": 8})
-skip_btn.pack({"side": "left"})
+var skip_btn = tkinter.Button(controls, { "text": "跳过", "command": skip_round, "bg": CARD2, "fg": MUTED, "activebackground": BORDER, "activeforeground": TEXT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "cursor": "hand2", "padx": 18, "pady": 8 })
+skip_btn.pack({ "side": "left" })
 
 // 设置行
-var settings = tkinter.Frame(root, {"bg": BG})
-settings.pack({"fill": "x", "padx": 28, "pady": 12})
+var settings = tkinter.Frame(root, { "bg": BG })
+settings.pack({ "fill": "x", "padx": 28, "pady": 12 })
 
-var focus_label = tkinter.Label(settings, {"text": "专注", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10"})
-focus_label.pack({"side": "left"})
+var focus_label = tkinter.Label(settings, { "text": "专注", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10" })
+focus_label.pack({ "side": "left" })
 
-var focus_entry = tkinter.Entry(settings, {"bg": CARD2, "fg": TEXT, "insertbackground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "width": 4, "justify": "center"})
-focus_entry.pack({"side": "left", "padx": 6, "ipady": 4})
+var focus_entry = tkinter.Entry(settings, { "bg": CARD2, "fg": TEXT, "insertbackground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "width": 4, "justify": "center" })
+focus_entry.pack({ "side": "left", "padx": 6, "ipady": 4 })
 focus_entry.insert(0, "25")
 
-var min1 = tkinter.Label(settings, {"text": "分", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10"})
-min1.pack({"side": "left"})
+var min1 = tkinter.Label(settings, { "text": "分", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10" })
+min1.pack({ "side": "left" })
 
-var break_label = tkinter.Label(settings, {"text": "休息", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10"})
-break_label.pack({"side": "left", "padx": 12})
+var break_label = tkinter.Label(settings, { "text": "休息", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10" })
+break_label.pack({ "side": "left", "padx": 12 })
 
-var break_entry = tkinter.Entry(settings, {"bg": CARD2, "fg": TEXT, "insertbackground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "width": 4, "justify": "center"})
-break_entry.pack({"side": "left", "padx": 6, "ipady": 4})
+var break_entry = tkinter.Entry(settings, { "bg": CARD2, "fg": TEXT, "insertbackground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 11", "width": 4, "justify": "center" })
+break_entry.pack({ "side": "left", "padx": 6, "ipady": 4 })
 break_entry.insert(0, "5")
 
-var min2 = tkinter.Label(settings, {"text": "分", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10"})
-min2.pack({"side": "left"})
+var min2 = tkinter.Label(settings, { "text": "分", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 10" })
+min2.pack({ "side": "left" })
 
-var apply_btn = tkinter.Button(settings, {"text": "应用", "command": apply_settings, "bg": CARD2, "fg": TEXT, "activebackground": BORDER, "activeforeground": TEXT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 10", "cursor": "hand2", "padx": 10, "pady": 4})
-apply_btn.pack({"side": "left", "padx": 10})
+var apply_btn = tkinter.Button(settings, { "text": "应用", "command": apply_settings, "bg": CARD2, "fg": TEXT, "activebackground": BORDER, "activeforeground": TEXT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "{Segoe UI} 10", "cursor": "hand2", "padx": 10, "pady": 4 })
+apply_btn.pack({ "side": "left", "padx": 10 })
 
 set top_var = tkinter.IntVar()
-var top_check = tkinter.Checkbutton(settings, {"text": "置顶", "variable": top_var, "command": toggle_top, "bg": BG, "fg": MUTED, "activebackground": BG, "activeforeground": TEXT, "selectcolor": CARD2, "font": "{Segoe UI} 10", "relief": "flat", "highlightthickness": 0})
-top_check.pack({"side": "right"})
+var top_check = tkinter.Checkbutton(settings, { "text": "置顶", "variable": top_var, "command": toggle_top, "bg": BG, "fg": MUTED, "activebackground": BG, "activeforeground": TEXT, "selectcolor": CARD2, "font": "{Segoe UI} 10", "relief": "flat", "highlightthickness": 0 })
+top_check.pack({ "side": "right" })
 
 // 统计 + 历史
-var stats_card = tkinter.Frame(root, {"bg": CARD, "highlightthickness": 1, "highlightbackground": BORDER})
-stats_card.pack({"fill": "x", "padx": 28, "pady": 4})
+var stats_card = tkinter.Frame(root, { "bg": CARD, "highlightthickness": 1, "highlightbackground": BORDER })
+stats_card.pack({ "fill": "x", "padx": 28, "pady": 4 })
 
-var stats_inner = tkinter.Frame(stats_card, {"bg": CARD})
-stats_inner.pack({"fill": "x", "padx": 24, "pady": 12})
+var stats_inner = tkinter.Frame(stats_card, { "bg": CARD })
+stats_inner.pack({ "fill": "x", "padx": 24, "pady": 12 })
 
-var stats_title = tkinter.Label(stats_inner, {"text": "今日记录", "bg": CARD, "fg": TEXT, "font": "{Segoe UI} 12 bold", "anchor": "w"})
-stats_title.pack({"fill": "x", "anchor": "w"})
+var stats_title = tkinter.Label(stats_inner, { "text": "今日记录", "bg": CARD, "fg": TEXT, "font": "{Segoe UI} 12 bold", "anchor": "w" })
+stats_title.pack({ "fill": "x", "anchor": "w" })
 
-var stats_label = tkinter.Label(stats_inner, {"text": "今天还没有记录。开始第一段专注。", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "w"})
-stats_label.pack({"fill": "x", "anchor": "w", "pady": 4})
+var stats_label = tkinter.Label(stats_inner, { "text": "今天还没有记录。开始第一段专注。", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 10", "anchor": "w" })
+stats_label.pack({ "fill": "x", "anchor": "w", "pady": 4 })
 
-var yesterday_label = tkinter.Label(stats_inner, {"text": "昨天没有记录", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 9", "anchor": "w", "wraplength": 500, "justify": "left"})
-yesterday_label.pack({"fill": "x", "anchor": "w", "pady": 2})
+var yesterday_label = tkinter.Label(stats_inner, { "text": "昨天没有记录", "bg": CARD, "fg": MUTED, "font": "{Segoe UI} 9", "anchor": "w", "wraplength": 500, "justify": "left" })
+yesterday_label.pack({ "fill": "x", "anchor": "w", "pady": 2 })
 
-var history_list = tkinter.Listbox(stats_inner, {"bg": CARD, "fg": TEXT, "selectbackground": CARD2, "selectforeground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "Consolas 10", "height": 4})
-history_list.pack({"fill": "x", "pady": 6})
+var history_list = tkinter.Listbox(stats_inner, { "bg": CARD, "fg": TEXT, "selectbackground": CARD2, "selectforeground": ACCENT, "relief": "flat", "bd": 0, "highlightthickness": 0, "font": "Consolas 10", "height": 4 })
+history_list.pack({ "fill": "x", "pady": 6 })
 
-var footer = tkinter.Label(root, {"text": "空格 开始/暂停     Esc 重置     关窗保留当前一轮", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 9", "anchor": "center"})
-footer.pack({"fill": "x", "padx": 28, "pady": 8})
+var footer = tkinter.Label(root, { "text": "空格 开始/暂停     Esc 重置     关窗保留当前一轮", "bg": BG, "fg": MUTED, "font": "{Segoe UI} 9", "anchor": "center" })
+footer.pack({ "fill": "x", "padx": 28, "pady": 8 })
 
 // 初始化显示
 refresh_stats()

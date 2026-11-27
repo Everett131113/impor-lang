@@ -3,16 +3,16 @@ important<<DAY<<english("English"):
 // 运行：impor run examples/grade.impor
 exception ScoreError
 
-func grade(score)
+def grade(score)
     if score < 0 or score > 100
         raise ScoreError("非法成绩: " + to_str(score))
     if score >= 90
         return "A"
-    elseif score >= 80
+    elif score >= 80
         return "B"
-    elseif score >= 70
+    elif score >= 70
         return "C"
-    elseif score >= 60
+    elif score >= 60
         return "D"
     else
         return "F"

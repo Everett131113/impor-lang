@@ -8,20 +8,20 @@
 
 var lib = "C:/Windows/System32/winsqlite3.dll"
 var db_out = ffi_alloc(8)
-var rc = ffi_call(lib, "sqlite3_open", [":memory:", db_out], "int", ["cstr", "addr"], "stdcall")
+var rc = ffi_call(lib, "sqlite3_open",[":memory:", db_out], "int",["cstr", "addr"], "stdcall")
 if rc != 0
     print("sqlite3_open 失败：", rc)
     exit(1)
 var db = ffi_read_i64(db_out)
 
 var sql = "CREATE TABLE t(x TEXT); INSERT INTO t VALUES('alpha'),('beta'),('gamma');"
-rc = ffi_call(lib, "sqlite3_exec", [db, sql, 0, 0, 0], "int", ["addr", "cstr", "addr", "addr", "addr"], "stdcall")
+rc = ffi_call(lib, "sqlite3_exec",[db, sql, 0, 0, 0], "int",["addr", "cstr", "addr", "addr", "addr"], "stdcall")
 if rc != 0
     print("sqlite3_exec 失败：", rc)
     exit(1)
 
 var stmt_out = ffi_alloc(8)
-rc = ffi_call(lib, "sqlite3_prepare_v2", [db, "SELECT x FROM t ORDER BY x", -1, stmt_out, 0], "int", ["addr", "cstr", "i32", "addr", "addr"], "stdcall")
+rc = ffi_call(lib, "sqlite3_prepare_v2",[db, "SELECT x FROM t ORDER BY x",-1, stmt_out, 0], "int",["addr", "cstr", "i32", "addr", "addr"], "stdcall")
 if rc != 0
     print("sqlite3_prepare_v2 失败：", rc)
     exit(1)
@@ -29,14 +29,14 @@ var stmt = ffi_read_i64(stmt_out)
 
 // SQLITE_ROW = 100，SQLITE_DONE = 101
 var rows = 0
-loop
-    rc = ffi_call(lib, "sqlite3_step", [stmt], "int", ["addr"], "stdcall")
+while true
+    rc = ffi_call(lib, "sqlite3_step",[stmt], "int",["addr"], "stdcall")
     if rc != 100
         break
-    var text_addr = ffi_call(lib, "sqlite3_column_text", [stmt, 0], "ptr", ["addr", "i32"], "stdcall")
+    var text_addr = ffi_call(lib, "sqlite3_column_text",[stmt, 0], "ptr",["addr", "i32"], "stdcall")
     print(ffi_read_str_at(text_addr))
     set rows = rows + 1
 
-ffi_call(lib, "sqlite3_finalize", [stmt], "int", ["addr"], "stdcall")
-ffi_call(lib, "sqlite3_close", [db], "int", ["addr"], "stdcall")
+ffi_call(lib, "sqlite3_finalize",[stmt], "int",["addr"], "stdcall")
+ffi_call(lib, "sqlite3_close",[db], "int",["addr"], "stdcall")
 print("rows =", rows)

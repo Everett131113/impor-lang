@@ -120,6 +120,11 @@
     "keywords": {
       "patterns": [
         {
+          "comment": "4.9.1：have 是软关键字（类型判定 x have int），单独一条以便着色",
+          "name": "keyword.operator.type.impor",
+          "match": "\\b(have)\\b"
+        },
+        {
           "name": "keyword.control.impor",
           "match": "\\b(if|elseif|else|while|for|in|loop|break|continue|match|case|use)\\b"
         },

@@ -14,14 +14,14 @@ var g_lines = 0
 var g_bad = 0
 var g_async = 0
 
-func _starts(s, prefix) {
+def _starts(s, prefix) {
     if len(s) < len(prefix) {
         return false
     }
     return strcut(s, 0, len(prefix)) == prefix
 }
 
-func _contains(s, needle) {
+def _contains(s, needle) {
     var i = 0
     while i + len(needle) <= len(s) {
         if strcut(s, i, i + len(needle)) == needle {
@@ -32,7 +32,7 @@ func _contains(s, needle) {
     return false
 }
 
-func _count_lines(text) {
+def _count_lines(text) {
     var n = 1
     var i = 0
     while i < len(text) {
@@ -44,7 +44,7 @@ func _count_lines(text) {
     return n
 }
 
-func walk(root, rel, depth) {
+def walk(root, rel, depth) {
     if depth > 8 {
         return
     }
@@ -70,7 +70,7 @@ func walk(root, rel, depth) {
     }
 }
 
-func main() {
+def main() {
     var argv = args()
     var root = "."
     if len(argv) > 0 {

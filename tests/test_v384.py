@@ -14,7 +14,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMPOR_PY = os.path.join(ROOT, "Impor.py")
 
-YIELD_SRC = """func counter(n) {
+YIELD_SRC = """def counter(n) {
     for i in range(n) {
         yield i
     }
@@ -24,14 +24,14 @@ for v in counter(3) {
 }
 """
 
-WITH_SRC = """func f() {
+WITH_SRC = """def f() {
     with x {
         print(1)
     }
 }
 """
 
-DEFAULT_PARAM_SRC = """func g(a, b = 1) {
+DEFAULT_PARAM_SRC = """def g(a, b = 1) {
     return a
 }
 print(g(1))
@@ -45,7 +45,7 @@ DICT_COMP_SRC = """var m = {x: x for x in range(3)}
 print(m)
 """
 
-TRY_CATCH_SRC = """func main() {
+TRY_CATCH_SRC = """def main() {
     try {
         var x = 1 / 0
         print("NO_ERROR", x)
@@ -95,7 +95,7 @@ class TestUnimplementedRejected(unittest.TestCase):
                               "默认参数尚未实现")
 
     def test_variadic_param_is_compile_error(self):
-        self._assert_rejected("variadic.impor", "func h(*args)\n    return 1\n",
+        self._assert_rejected("variadic.impor", "def h(*args)\n    return 1\n",
                               "变参尚未实现")
 
     def test_list_comprehension_is_compile_error(self):

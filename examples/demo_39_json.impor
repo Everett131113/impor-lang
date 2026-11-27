@@ -1,6 +1,6 @@
 important<<DAY<<english("English"):
 // JSON 编码与解码
-var data = {"name": "Impor", "version": 6.6, "ok": true}
+var data = { "name": "Impor", "version": 6.6, "ok": true }
 var text = json_encode(data)
 print("编码:", text)
 var back = json_decode(text)

@@ -1,0 +1,74 @@
+// Impor AI 训练示例：两层 MLP 做二维二分类（解释器 + imporai.dll，无需任何外部库）。
+// 运行：impor run examples/ai_train.impor
+import imporai
+
+imporai.seed(42)
+
+// ---------- 1. 造数据：两个高斯簇，各 20 个点 ----------
+var n = 40
+var rows = []
+var labels = []
+var i = 0
+while i < n
+    var pt = imporai.randn([1, 2])
+    if i < n / 2
+        set pt = imporai.add(pt,-2.0)
+        arrappend(rows, pt.to_list()[0])
+        arrappend(labels,[0.0])
+    else
+        set pt = imporai.add(pt, 2.0)
+        arrappend(rows, pt.to_list()[0])
+        arrappend(labels,[1.0])
+    set i = i + 1
+
+// ---------- 2. 模型：2 -> 8(tanh) -> 1(sigmoid) ----------
+var w1 = imporai.param(imporai.randn([2, 8]).mul(0.5))
+var b1 = imporai.param(imporai.zeros([1, 8]))
+var w2 = imporai.param(imporai.randn([8, 1]).mul(0.5))
+var b2 = imporai.param(imporai.zeros([1, 1]))
+var params = [w1, b1, w2, b2]
+
+def forward(x)
+    var h = imporai.tanh_t(imporai.linear(x, w1, b1))
+    var p = imporai.sigmoid(imporai.linear(h, w2, b2))
+    return p
+
+// 二元交叉熵（加 eps 防 log(0)）
+def bce(p, y)
+    var eps = 0.000000001
+    var left = imporai.mul(y, imporai.log_t(imporai.add(p, eps)))
+    var q = imporai.add(imporai.mul(p,-1.0), 1.0)
+    var right = imporai.mul(imporai.add(imporai.mul(y,-1.0), 1.0),
+                            imporai.log_t(imporai.add(q, eps)))
+    return imporai.mul(imporai.mean(imporai.add(left, right)),-1.0)
+
+// ---------- 3. 训练 ----------
+var opt = imporai.Adam(params, 0.05)
+var epoch = 0
+while epoch < 30
+    var x = imporai.tensor(rows)
+    var y = imporai.tensor(labels)
+    var loss = bce(forward(x), y)
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+    if epoch % 5 == 0
+        print("epoch", epoch, "loss", loss.data.flat()[0])
+    set epoch = epoch + 1
+
+// ---------- 4. 准确率 ----------
+var final_p = forward(imporai.tensor(rows))
+var pred = final_p.data.flat()
+var truth = imporai.tensor(labels).data.flat()
+var correct = 0
+var j = 0
+while j < n
+    if(pred[j] >= 0.5 and truth[j] == 1.0) or(pred[j] < 0.5 and truth[j] == 0.0)
+        set correct = correct + 1
+    set j = j + 1
+print("准确率", correct, "/", n)
+
+// ---------- 5. 保存模型，并演示读回 ----------
+imporai.save_model("mlp_model.ia", params)
+var back = imporai.load_model("mlp_model.ia")
+print("模型已保存并读回，参数张量数", len(back), "第一个形状", back[0].shape)

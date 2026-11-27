@@ -1,14 +1,14 @@
 important<<DAY<<english("English"):
 // BMI 计算与区间判断
-func bmi(weight, height)
-    return weight / (height * height)
+def bmi(weight, height)
+    return weight /(height * height)
 
-func level(value)
+def level(value)
     if value < 18.5
         return "偏瘦"
-    elseif value < 24
+    elif value < 24
         return "正常"
-    elseif value < 28
+    elif value < 28
         return "偏胖"
     else
         return "肥胖"

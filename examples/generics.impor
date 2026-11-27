@@ -1,0 +1,15 @@
+// 泛型（v4.2）：声明期约束 + 运行期擦除
+// 三端（解释器 / Python 转译 / C 后端）应输出同一份结果。
+
+def max2 < T >(a : T, b : T) -> T
+    if a > b
+        return a
+    return b
+
+def ident < T >(x : T) -> T
+    return x
+
+print("max2(9, 2):", max2(9, 2))
+print("max2(2.5, 3.5):", max2(2.5, 3.5))
+print("ident(hi):", ident("hi"))
+print("ident(7):", ident(7))

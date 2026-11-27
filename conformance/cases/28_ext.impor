@@ -2,4 +2,4 @@ important<<DAY<<english("English"):
 var a = 9
 var b = 4
 print(a + b, a - b, a * b, a / b)
-print((a + b) * (a - b))
+print((a + b) *(a - b))

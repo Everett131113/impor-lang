@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Sequence, Tuple
 from .observability import note_swallowed
+from .pathsafe import rel_quiet
 
 DEFAULT_SUFFIXES = (".impor", ".md", ".txt", ".json", ".toml", ".yaml", ".yml")
 SKIP_DIRS = {".git", ".hg", ".svn", "__pycache__", ".impor_recovery", "node_modules",
@@ -274,7 +275,7 @@ def apply_results(root: str, results: Iterable[FileResult], backup_root: str,
             if not (r.selected and r.changed) or r.error:
                 continue
             path = ensure_inside(root, r.path)
-            rel = os.path.relpath(path, root)
+            rel = rel_quiet(path, root)
             backup_name = "%04d_%s" % (i, os.path.basename(path))
             backup_path = os.path.join(txn, backup_name)
             existed = os.path.exists(path)

@@ -98,14 +98,14 @@ class TestSemanticAlignment(unittest.TestCase):
 
 class TestRecursionDepth(unittest.TestCase):
     def test_1000_levels(self):
-        src = ('func f(n)\n    if n <= 0\n        return 0\n    return f(n - 1) + 1\n'
+        src = ('def f(n)\n    if n <= 0\n        return 0\n    return f(n - 1) + 1\n'
                'print(f(1000))\n')
         rc, out, err = run(src)
         self.assertEqual(rc, 0, "1000 层递归失败：" + (out + err)[-800:])
         self.assertEqual(out.strip(), "1000")
 
     def test_too_deep_gives_diagnostic(self):
-        src = 'func f(n)\n    return f(n + 1)\nprint(f(0))\n'
+        src = 'def f(n)\n    return f(n + 1)\nprint(f(0))\n'
         rc, out, err = run(src)
         self.assertNotEqual(rc, 0)
         self.assertIn("递归过深", out + err)

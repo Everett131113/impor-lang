@@ -109,7 +109,7 @@ class TestHeaderAndComments(unittest.TestCase):
 
 class TestVariables(unittest.TestCase):
     def test_var_and_set(self):
-        self.assertEqual(run_impor("var a = 100\nset b = 200\nprint(a + b)"), ["300"])
+        self.assertEqual(run_impor("var a = 100\nvar b = 200\nprint(a + b)"), ["300"])
 
     def test_reassign(self):
         self.assertEqual(run_impor("var a = 1\na = a + 5\nprint(a)"), ["6"])
@@ -174,7 +174,7 @@ class TestOperators(unittest.TestCase):
         self.assertEqual(run_impor("print(3 > 2, 3 <= 2, 3 == 3, 3 != 4)"), ["True False True True"])
 
     def test_logic(self):
-        self.assertEqual(run_impor("print(true and false, true or false, not true, !false)"),
+        self.assertEqual(run_impor("print(true and false, true or false, not true, not false)"),
                          ["False True False True"])
 
     def test_ternary(self):
@@ -200,7 +200,7 @@ class TestControlFlow(unittest.TestCase):
         self.assertEqual(run_impor(src), ["0", "1", "2"])
 
     def test_loop_break(self):
-        src = "var i = 0\nloop\n    print(i)\n    var i = i + 1\n    if i >= 3\n        break"
+        src = "var i = 0\nwhile true\n    print(i)\n    var i = i + 1\n    if i >= 3\n        break"
         self.assertEqual(run_impor(src), ["0", "1", "2"])
 
     def test_continue(self):
@@ -220,8 +220,8 @@ class TestControlFlow(unittest.TestCase):
 # ================= 函数 =================
 
 class TestFunctions(unittest.TestCase):
-    def test_func(self):
-        src = "func add(x, y)\n    return x + y\nprint(add(3, 5))"
+    def test_def(self):
+        src = "def add(x, y)\n    return x + y\nprint(add(3, 5))"
         self.assertEqual(run_impor(src), ["8"])
 
     def test_def(self):
@@ -229,16 +229,16 @@ class TestFunctions(unittest.TestCase):
         self.assertEqual(run_impor(src), ["5"])
 
     def test_recursion(self):
-        src = ("func fib(n)\n    if n < 2\n        return n\n    return fib(n-1) + fib(n-2)\n"
+        src = ("def fib(n)\n    if n < 2\n        return n\n    return fib(n-1) + fib(n-2)\n"
                "print(fib(10))")
         self.assertEqual(run_impor(src), ["55"])
 
     def test_bare_return(self):
-        src = "func f(x)\n    if x > 0\n        return\n    return 0\nprint(f(5))"
+        src = "def f(x)\n    if x > 0\n        return\n    return 0\nprint(f(5))"
         self.assertEqual(run_impor(src), ["None"])
 
     def test_closure_nonlocal(self):
-        src = ("func make_counter(start)\n"
+        src = ("def make_counter(start)\n"
                "    def inc()\n"
                "        nonlocal set start = start + 1\n"
                "        return start\n"
@@ -250,7 +250,7 @@ class TestFunctions(unittest.TestCase):
 
     def test_global(self):
         src = ("var count = 0\n"
-               "func bump()\n"
+               "def bump()\n"
                "    global set count = count + 1\n"
                "bump()\n"
                "bump()\n"
@@ -259,12 +259,12 @@ class TestFunctions(unittest.TestCase):
 
     def test_local_shadow(self):
         src = ("var x = 10\n"
-               "func f()\n    var x = 99\n    return x\n"
+               "def f()\n    var x = 99\n    return x\n"
                "print(f(), x)")
         self.assertEqual(run_impor(src), ["99 10"])
 
     def test_arg_count_error(self):
-        e = run_impor_err("func f(a)\n    return a\nprint(f(1, 2))")
+        e = run_impor_err("def f(a)\n    return a\nprint(f(1, 2))")
         self.assertIsNotNone(e)
         self.assertEqual(e.name, "CallError")
 
@@ -428,7 +428,7 @@ class TestImport(unittest.TestCase):
         mod_dir = tempfile.mkdtemp()
         mod_path = os.path.join(mod_dir, "mymod.impor")
         with open(mod_path, "w", encoding="utf-8") as f:
-            f.write(HEADER + "func hello()\n    return \"来自模块\"\nvar version = \"1.0\"\n")
+            f.write(HEADER + "def hello()\n    return \"来自模块\"\nvar version = \"1.0\"\n")
         body = strip_header(HEADER + "import mymod\nprint(mymod.hello(), mymod.version)")
         ast = parse_source(body)
         out = []
@@ -467,35 +467,35 @@ def _run_with_mods(mods, src, interp=None):
 
 class TestModuleSystem(unittest.TestCase):
     def test_from_import_selective(self):
-        mods = {"mymod.impor": "func hello()\n    return \"hi\"\nfunc calc(a, b)\n    return a + b\n"}
+        mods = {"mymod.impor": "def hello()\n    return \"hi\"\ndef calc(a, b)\n    return a + b\n"}
         out = _run_with_mods(mods, "from mymod import hello, calc\nprint(hello(), calc(2, 3))")
         self.assertEqual(out, ["hi 5"])
 
     def test_from_import_alias(self):
-        mods = {"mymod.impor": "func hello()\n    return \"hi\"\n"}
+        mods = {"mymod.impor": "def hello()\n    return \"hi\"\n"}
         out = _run_with_mods(mods, "from mymod import hello as hi\nprint(hi())")
         self.assertEqual(out, ["hi"])
 
     def test_import_user_alias(self):
-        mods = {"mymod.impor": "func hello()\n    return \"hi\"\n"}
+        mods = {"mymod.impor": "def hello()\n    return \"hi\"\n"}
         out = _run_with_mods(mods, "import mymod as mm\nprint(mm.hello())")
         self.assertEqual(out, ["hi"])
 
     def test_star_import(self):
-        mods = {"mymod.impor": "func a1()\n    return 1\nvar v = 5\n"}
+        mods = {"mymod.impor": "def a1()\n    return 1\nvar v = 5\n"}
         out = _run_with_mods(mods, "from mymod import *\nprint(a1(), v)")
         self.assertEqual(out, ["1 5"])
 
     def test_no_export_full_expose(self):
         # 兼容旧行为：无 export 的模块全部顶层符号对外可见
-        mods = {"mymod.impor": "func f()\n    return 7\nvar v = 9\n"}
+        mods = {"mymod.impor": "def f()\n    return 7\nvar v = 9\n"}
         out = _run_with_mods(mods, "import mymod\nprint(mymod.f(), mymod.v)")
         self.assertEqual(out, ["7 9"])
 
     def test_export_strict_private(self):
         mods = {"mymod.impor":
-                "func pub()\n    return \"公开\"\n"
-                "func secret()\n    return \"私有\"\n"
+                "def pub()\n    return \"公开\"\n"
+                "def secret()\n    return \"私有\"\n"
                 "export pub\n"}
         out = _run_with_mods(
             mods,
@@ -506,14 +506,14 @@ class TestModuleSystem(unittest.TestCase):
 
     def test_export_batch(self):
         mods = {"mymod.impor":
-                "func a()\n    return 1\n"
-                "func b()\n    return 2\n"
+                "def a()\n    return 1\n"
+                "def b()\n    return 2\n"
                 "export { a, b }\n"}
         out = _run_with_mods(mods, "from mymod import a, b\nprint(a() + b())")
         self.assertEqual(out, ["3"])
 
     def test_export_missing_name(self):
-        mods = {"mymod.impor": "func ok()\n    return 1\nexport nope\n"}
+        mods = {"mymod.impor": "def ok()\n    return 1\nexport nope\n"}
         with self.assertRaises(ImporException) as cm:
             _run_with_mods(mods, "import mymod")
         self.assertEqual(cm.exception.name, "ExportError")
@@ -526,8 +526,8 @@ class TestModuleSystem(unittest.TestCase):
     def test_package_dotted_import(self):
         mods = {
             "mygame/__pkg__.impor": "var version = \"1.0\"\nexport version\n",
-            "mygame/graphics.impor": "func draw()\n    return \"画图\"\n",
-            "mygame/physics.impor": "func step()\n    return \"物理\"\n",
+            "mygame/graphics.impor": "def draw()\n    return \"画图\"\n",
+            "mygame/physics.impor": "def step()\n    return \"物理\"\n",
         }
         out = _run_with_mods(
             mods,
@@ -541,7 +541,7 @@ class TestModuleSystem(unittest.TestCase):
         # __pkg__.impor 聚合子模块符号并导出
         mods = {
             "mygame/__pkg__.impor": "from .graphics import draw\nexport { draw }\n",
-            "mygame/graphics.impor": "func draw()\n    return \"画图\"\n",
+            "mygame/graphics.impor": "def draw()\n    return \"画图\"\n",
         }
         out = _run_with_mods(mods, "from mygame import draw\nprint(draw())")
         self.assertEqual(out, ["画图"])
@@ -550,9 +550,9 @@ class TestModuleSystem(unittest.TestCase):
         # 子模块内用 .. 访问父包模块
         mods = {
             "pkg/__pkg__.impor": "var name = \"pkg\"\n",
-            "pkg/a.impor": "func aval()\n    return \"A\"\n",
+            "pkg/a.impor": "def aval()\n    return \"A\"\n",
             "pkg/sub/__pkg__.impor": "var name = \"sub\"\n",
-            "pkg/sub/b.impor": "from ..a import aval\nfunc bval()\n    return aval() + \"B\"\n",
+            "pkg/sub/b.impor": "from ..a import aval\ndef bval()\n    return aval() + \"B\"\n",
         }
         out = _run_with_mods(mods, "from pkg.sub.b import bval\nprint(bval())")
         self.assertEqual(out, ["AB"])
@@ -565,14 +565,14 @@ class TestModuleSystem(unittest.TestCase):
 
     def test_circular_import_safe(self):
         mods = {
-            "a.impor": "import b\nfunc aval()\n    return \"a\"\n",
-            "b.impor": "import a\nfunc bval()\n    return \"b\"\n",
+            "a.impor": "import b\ndef aval()\n    return \"a\"\n",
+            "b.impor": "import a\ndef bval()\n    return \"b\"\n",
         }
         out = _run_with_mods(mods, "import a\nprint(a.aval(), a.b.bval())")
         self.assertEqual(out, ["a b"])
 
     def test_module_meta(self):
-        mods = {"mymod.impor": "var version = \"1.0\"\nfunc hello()\n    return \"hi\"\n"}
+        mods = {"mymod.impor": "var version = \"1.0\"\ndef hello()\n    return \"hi\"\n"}
         out = _run_with_mods(
             mods,
             "import mymod\nprint(mymod.__name__)\nprint(mymod.__is_package__)\nprint(mymod.hello())")
@@ -587,7 +587,7 @@ class TestModuleSystem(unittest.TestCase):
         mod_dir = tempfile.mkdtemp()
         mod_path = os.path.join(mod_dir, "mymod.impor")
         with open(mod_path, "w", encoding="utf-8") as f:
-            f.write(HEADER + "func f()\n    return 1\n")
+            f.write(HEADER + "def f()\n    return 1\n")
         interp = Interpreter(log_cb=lambda t: None)
         interp.module_search_paths.insert(0, mod_dir)
         ast1 = parse_source("import mymod\nprint(mymod.f())")
@@ -597,7 +597,7 @@ class TestModuleSystem(unittest.TestCase):
         self.assertEqual(out1, ["1"])
         # 修改模块文件后 reload，同一引用看到新函数
         with open(mod_path, "w", encoding="utf-8") as f:
-            f.write(HEADER + "func f()\n    return 2\n")
+            f.write(HEADER + "def f()\n    return 2\n")
         out2 = []
         interp.log_cb = out2.append
         ast2 = parse_source("reload(\"mymod\")\nprint(mymod.f())")
@@ -615,11 +615,11 @@ class TestModuleSystem(unittest.TestCase):
         os.makedirs(os.path.join(mod_dir, "pkg"), exist_ok=True)
         H = HEADER
         with open(os.path.join(mod_dir, "mymod.impor"), "w", encoding="utf-8") as f:
-            f.write(H + "func hello()\n    return \"hi\"\nexport { hello }\n")
+            f.write(H + "def hello()\n    return \"hi\"\nexport { hello }\n")
         with open(os.path.join(mod_dir, "pkg", "__pkg__.impor"), "w", encoding="utf-8") as f:
             f.write(H + "from .util import tool\nexport tool\n")
         with open(os.path.join(mod_dir, "pkg", "util.impor"), "w", encoding="utf-8") as f:
-            f.write(H + "func tool()\n    return \"TOOL\"\n")
+            f.write(H + "def tool()\n    return \"TOOL\"\n")
         src = ('import_path("{}")\n'
                "from mymod import hello as hi\n"
                "print(hi())\n"
@@ -662,20 +662,20 @@ class TestTranspiler(unittest.TestCase):
         assert_same_output(self, src)
 
     def test_functions_closures(self):
-        src = ("func make_counter(start)\n"
+        src = ("def make_counter(start)\n"
                "    def inc()\n"
                "        nonlocal set start = start + 1\n"
                "        return start\n"
                "    return inc\n"
                "var c = make_counter(0)\n"
                "print(c(), c())\n"
-               "func add(x, y)\n    return x + y\n"
+               "def add(x, y)\n    return x + y\n"
                "print(add(3, 4))")
         assert_same_output(self, src)
 
     def test_global_and_compound(self):
         src = ("var count = 0\n"
-               "func bump()\n"
+               "def bump()\n"
                "    global set count = count + 1\n"
                "bump()\n"
                "bump()\n"
@@ -738,13 +738,13 @@ class TestTranspiler(unittest.TestCase):
 
     def test_loop_break_continue(self):
         src = ("var i = 0\n"
-               "loop\n    var i = i + 1\n    if i >= 4\n        break\n"
+               "while true\n    var i = i + 1\n    if i >= 4\n        break\n"
                "    if i == 2\n        continue\n"
                "    print(i)")
         assert_same_output(self, src)
 
     def test_recursion(self):
-        src = ("func fib(n)\n    if n < 2\n        return n\n    return fib(n-1) + fib(n-2)\n"
+        src = ("def fib(n)\n    if n < 2\n        return n\n    return fib(n-1) + fib(n-2)\n"
                "for i in range(0, 8)\n    print(fib(i))")
         assert_same_output(self, src)
 
@@ -807,7 +807,7 @@ class TestMatchCase(unittest.TestCase):
         self.assertEqual(run_impor(src), ["其他"])
 
     def test_string_bool_literal(self):
-        src = ("func pick(k)\n"
+        src = ("def pick(k)\n"
                "    match k\n"
                "        case \"red\":\n            return 1\n"
                "        case true:\n            return 2\n"
@@ -843,7 +843,7 @@ class TestMatchCase(unittest.TestCase):
         self.assertEqual(run_impor(src), ["负三"])
 
     def test_transpile_parity(self):
-        src = ("func score(x)\n"
+        src = ("def score(x)\n"
                "    match x\n"
                "        case 1:\n            return \"一\"\n"
                "        case n:\n            return \"其他:\" + to_str(n)\n"
@@ -876,8 +876,8 @@ class TestExceptionChain(unittest.TestCase):
 
     def test_exception_stack_frames(self):
         src = ("exception E\n"
-               "func inner()\n    raise E(\"深\")\n"
-               "func outer()\n    inner()\n"
+               "def inner()\n    raise E(\"深\")\n"
+               "def outer()\n    inner()\n"
                "try\n    outer()\n"
                "catch err\n    print(len(err.stack))")
         self.assertEqual(run_impor(src), ["3"])  # main + outer + inner
@@ -894,8 +894,8 @@ class TestExceptionChain(unittest.TestCase):
 class TestCompoundAssignExt(unittest.TestCase):
     def test_attr_compound(self):
         src = ("class Box\n"
-               "    func __init__()\n        set self.val = 1\n"
-               "b = new Box()\n"
+               "    def __init__()\n        set self.val = 1\n"
+               "var b = new Box()\n"
                "b.val += 10\n"
                "b.val *= 3\n"
                "print(b.val)")
@@ -917,8 +917,8 @@ class TestCompoundAssignExt(unittest.TestCase):
 
     def test_transpile_parity(self):
         src = ("class Box\n"
-               "    func __init__()\n        set self.val = 1\n"
-               "b = new Box()\n"
+               "    def __init__()\n        set self.val = 1\n"
+               "var b = new Box()\n"
                "b.val += 10\n"
                "var a = [1, 2]\n"
                "a[1] += 5\n"
@@ -940,7 +940,7 @@ class TestAttrBoundary(unittest.TestCase):
 
 class TestDebugSystem(unittest.TestCase):
     def test_breakpoint_pause_and_stack(self):
-        src = ("func add(a, b)\n"
+        src = ("def add(a, b)\n"
                "    var s = a + b\n"
                "    return s\n"
                "var t = add(1, 2)\n"
@@ -964,7 +964,7 @@ class TestDebugSystem(unittest.TestCase):
         self.assertEqual(pauses, [1])
 
     def test_step_over_skips_function(self):
-        src = ("func f()\n    return 7\n"
+        src = ("def f()\n    return 7\n"
                "var y = f()\n"
                "print(y)")
         pauses = []
@@ -982,7 +982,7 @@ class TestDebugSystem(unittest.TestCase):
         self.assertEqual(pauses, [1, 3])
 
     def test_step_into_function(self):
-        src = ("func f()\n    return 7\n"
+        src = ("def f()\n    return 7\n"
                "var y = f()\n"
                "print(y)")
         pauses = []
@@ -1002,7 +1002,7 @@ class TestDebugSystem(unittest.TestCase):
         self.assertEqual(pauses, [1, 3, 2])
 
     def test_step_out_to_caller(self):
-        src = ("func f()\n    var s = 1\n    return s\n"
+        src = ("def f()\n    var s = 1\n    return s\n"
                "var y = f()\n"
                "print(y)")
         pauses = []
@@ -1021,7 +1021,7 @@ class TestDebugSystem(unittest.TestCase):
         self.assertEqual(pauses, [2, 5])
 
     def test_call_stack_clean_after_run(self):
-        src = "func a()\n    return 1\nvar x = a()\nprint(x)"
+        src = "def a()\n    return 1\nvar x = a()\nprint(x)"
         interp = Interpreter(log_cb=lambda t: None)
         interp.run(parse_source(src))
         self.assertEqual(len(interp.call_stack), 1)
@@ -1034,7 +1034,7 @@ class TestCliRunDbg(unittest.TestCase):
         from impor.cli import cmd_run_dbg
         script = ("important<<DAY<<english(\"English\"):\n"
                   "var total = 0\n"
-                  "func add(a, b)\n"
+                  "def add(a, b)\n"
                   "    var s = a + b\n"
                   "    return s\n"
                   "total = add(10, 20)\n"
@@ -1055,11 +1055,11 @@ class TestCliRunDbg(unittest.TestCase):
         from unittest import mock
         from impor.cli import cmd_run_dbg
         script = ("important<<DAY<<english(\"English\"):\n"
-                  "func a()\n    raise\n"
+                  "def a()\n    raise\n"
                   "a()\n")
         # 用真实异常：未声明异常类型 raise 会报 RaiseError
         script = ("important<<DAY<<english(\"English\"):\n"
-                  "func a()\n"
+                  "def a()\n"
                   "    var z = 1 / 0\n"
                   "a()\n")
         with tempfile.TemporaryDirectory() as td:
@@ -1076,7 +1076,7 @@ class TestCliRunDbg(unittest.TestCase):
 class TestFmt(unittest.TestCase):
     def test_indent_normalized(self):
         from impor.fmt import fmt_source
-        src = HEADER + "func f()\n" \
+        src = HEADER + "def f()\n" \
                        "    var a = 1\n" \
                        "    return a\n" \
                        "print(f())\n"
@@ -1126,7 +1126,7 @@ class TestFmt(unittest.TestCase):
         self.assertIn("var b = a == 1", out)
 
     def test_fmt_roundtrip_runs(self):
-        src = HEADER + ("func fib(n)\n"
+        src = HEADER + ("def fib(n)\n"
                         "    if n < 2\n        return n\n"
                         "    return fib(n-1)+fib(n-2)\n"
                         "print(fib(6))\n")
@@ -1151,7 +1151,7 @@ class TestLint(unittest.TestCase):
         self.assertEqual([i.code for i in issues], [])
 
     def test_unused_param(self):
-        issues = self._lint("func f(a, b)\n    return a\nprint(f(1, 2))\n")
+        issues = self._lint("def f(a, b)\n    return a\nprint(f(1, 2))\n")
         codes = [i.code for i in issues]
         self.assertIn("unused-variable", codes)
         self.assertTrue(any("b" in i.msg for i in issues))
@@ -1166,15 +1166,15 @@ class TestLint(unittest.TestCase):
         self.assertEqual([i.code for i in issues], [])
 
     def test_unreachable_after_return(self):
-        issues = self._lint("func f()\n    return 1\n    print(2)\nprint(f())\n")
+        issues = self._lint("def f()\n    return 1\n    print(2)\nprint(f())\n")
         codes = [i.code for i in issues]
         self.assertIn("unreachable", codes)
 
     def test_self_and_export_not_flagged(self):
         body = ("class C\n"
-                "    func setx(self, v)\n        set self.x = v\n"
-                "    func getx(self)\n        return self.x\n"
-                "c = new C()\n"
+                "    def setx(self, v)\n        set self.x = v\n"
+                "    def getx(self)\n        return self.x\n"
+                "var c = new C()\n"
                 "c.setx(5)\n"
                 "export c\n")
         issues = self._lint(body)
@@ -1182,7 +1182,7 @@ class TestLint(unittest.TestCase):
 
     def test_module_var_used_in_function(self):
         body = ("var g = 10\n"
-                "func f()\n    return g\n"
+                "def f()\n    return g\n"
                 "print(f())\n")
         issues = self._lint(body)
         self.assertEqual([i.code for i in issues], [])
@@ -1223,7 +1223,7 @@ class TestLsp(unittest.TestCase):
     def test_definition(self):
         s = self._server()
         uri = "file:///t.impor"
-        s._update_doc(uri, "func add(a, b)\n    return a + b\nvar x = add(1, 2)\n")
+        s._update_doc(uri, "def add(a, b)\n    return a + b\nvar x = add(1, 2)\n")
         s._on_definition(2, {"textDocument": {"uri": uri},
                              "position": {"line": 2, "character": 10}})
         s.stdout.seek(0)
@@ -1244,7 +1244,7 @@ class TestLsp(unittest.TestCase):
     def test_document_symbol(self):
         s = self._server()
         uri = "file:///t.impor"
-        s._update_doc(uri, "func f()\n    return 1\nclass C\n    func m(self)\n        return 2\n")
+        s._update_doc(uri, "def f()\n    return 1\nclass C\n    def m(self)\n        return 2\n")
         s._on_document_symbol(4, {"textDocument": {"uri": uri}})
         s.stdout.seek(0)
         payload = s.stdout.read().decode("utf-8")
@@ -1259,7 +1259,7 @@ class TestPkg(unittest.TestCase):
         with open(os.path.join(pkg, "impor.toml"), "w", encoding="utf-8") as f:
             f.write(f'[project]\nname = "{name}"\nversion = "{ver}"\n')
         with open(os.path.join(pkg, "lib.impor"), "w", encoding="utf-8") as f:
-            f.write(HEADER + f"func hello()\n    return \"{name} {ver}\"\nexport hello\n")
+            f.write(HEADER + f"def hello()\n    return \"{name} {ver}\"\nexport hello\n")
         return pkg
 
     def _make_project(self, root):
@@ -1318,16 +1318,39 @@ class TestPkg(unittest.TestCase):
 # ================= Impor-Pro P0（v2.3.1 优化） =================
 
 class TestHeaderOptional(unittest.TestCase):
-    def test_warn_prints_to_stderr(self):
+    def test_hint_only_when_env_set(self):
         import io
+        import os as _os
         from contextlib import redirect_stderr
         from impor.interpreter import strip_header
+        old = _os.environ.get("IMPOR_HEADER_HINT")
+        _os.environ["IMPOR_HEADER_HINT"] = "1"
         buf = io.StringIO()
-        with redirect_stderr(buf):
-            body = strip_header("print(1)", warn=True)
+        try:
+            with redirect_stderr(buf):
+                body = strip_header("print(1)", warn=True)
+        finally:
+            if old is None:
+                _os.environ.pop("IMPOR_HEADER_HINT", None)
+            else:
+                _os.environ["IMPOR_HEADER_HINT"] = old
         self.assertEqual(body, "print(1)")
         self.assertIn("Impor 提示", buf.getvalue())
-        self.assertIn("可选", buf.getvalue())
+
+    def test_warn_is_silent_without_env(self):
+        import io
+        import os as _os
+        from contextlib import redirect_stderr
+        from impor.interpreter import strip_header
+        old = _os.environ.pop("IMPOR_HEADER_HINT", None)
+        buf = io.StringIO()
+        try:
+            with redirect_stderr(buf):
+                strip_header("print(1)", warn=True)
+        finally:
+            if old is not None:
+                _os.environ["IMPOR_HEADER_HINT"] = old
+        self.assertEqual(buf.getvalue(), "")
 
     def test_no_warn_silent(self):
         import io
@@ -1343,7 +1366,7 @@ class TestHeaderOptional(unittest.TestCase):
 class TestLineMap(unittest.TestCase):
     def test_transpile_embeds_line_map(self):
         from impor.transpiler import transpile
-        src = ("func f(x)\n"
+        src = ("def f(x)\n"
                "    return x + missing_name\n"
                "print(f(1))\n")
         ast = parse_source(src)
@@ -1374,7 +1397,7 @@ class TestLineMap(unittest.TestCase):
 
     def test_transpile_no_error_parity(self):
         # 成功路径：行号映射不影响正常输出
-        src = "func fib(n)\n    if n < 2\n        return n\n    return fib(n-1)+fib(n-2)\nprint(fib(6))\n"
+        src = "def fib(n)\n    if n < 2\n        return n\n    return fib(n-1)+fib(n-2)\nprint(fib(6))\n"
         ast = parse_source(src)
         from impor.transpiler import transpile
         code = transpile(ast, source_name="t.impor")
@@ -1520,15 +1543,15 @@ class TestLintForwardRef(unittest.TestCase):
         return [i.code for i in analyze(ast, body.split("\n")).issues]
 
     def test_forward_func_call(self):
-        body = ("func main()\n"
+        body = ("def main()\n"
                 "    helper()\n"
-                "func helper()\n"
+                "def helper()\n"
                 "    print(1)\n"
                 "main()\n")
         self.assertNotIn("undefined-name", self._codes(body))
 
     def test_forward_global_var(self):
-        body = ("func f()\n"
+        body = ("def f()\n"
                 "    print(g)\n"
                 "var g = 10\n"
                 "f()\n")

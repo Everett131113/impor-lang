@@ -1,0 +1,75 @@
+// std/cli.impor — 命令行参数解析（不做子命令注册，只做参数归类）
+// 用法：import std.cli → var a = cli.parse(args(), ["-v", "--name"])
+
+def has_key(d, k) {
+    for x in d {
+        if x == k {
+            return true
+        }
+    }
+    return false
+}
+
+def parse(argv, value_flags) {
+    var flags = { }
+    var positional = []
+    var i = 1
+    while i < len(argv) {
+        var a = argv[i]
+        if len(a) > 1 and a[0] == "-" {
+            var name = a
+            var val = "true"
+            var p = strfind(a, "=")
+            if p > 0 {
+                set name = strcut(a, 0, p)
+                set val = strcut(a, p + 1, len(a))
+            } else {
+                if contains_of(value_flags, a) {
+                    if i + 1 < len(argv) {
+                        set val = argv[i + 1]
+                        set i = i + 1
+                    }
+                }
+            }
+            flags[name] = val
+        } else {
+            arrappend(positional, a)
+        }
+        set i = i + 1
+    }
+    var out = { }
+    out["flags"] = flags
+    out["args"] = positional
+    return out
+}
+
+def contains_of(lst, v) {
+    for x in lst {
+        if x == v {
+            return true
+        }
+    }
+    return false
+}
+
+def flag(res, name, fallback) {
+    var f = res["flags"]
+    if has_key(f, name) {
+        return f[name]
+    }
+    return fallback
+}
+
+def has(res, name) {
+    return has_key(res["flags"], name)
+}
+
+def positional(res) {
+    return res["args"]
+}
+
+export parse
+export contains_of
+export flag
+export has
+export positional

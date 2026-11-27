@@ -1,0 +1,33 @@
+// std/uuid.impor — UUID v4（随机源是宿主 randi，不承诺密码学强度）
+
+def hex_digit(n) {
+    var d = "0123456789abcdef"
+    return d[n % 16]
+}
+
+def v4() {
+    var out = ""
+    var i = 0
+    while i < 32 {
+        out += hex_digit(randi(0, 15))
+        set i = i + 1
+    }
+    var g = strcut(out, 0, 8) + "-" + strcut(out, 8, 12) + "-4" + strcut(out, 13, 16)
+    set g = g + "-" + hex_digit(8 + randi(0, 3)) + strcut(out, 17, 20)
+    set g = g + "-" + strcut(out, 20, 32)
+    return g
+}
+
+def short() {
+    var out = ""
+    var i = 0
+    while i < 12 {
+        out += hex_digit(randi(0, 15))
+        set i = i + 1
+    }
+    return out
+}
+
+export v4
+export short
+export hex_digit

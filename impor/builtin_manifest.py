@@ -19,7 +19,7 @@
 
 RUNTIME_BUILTINS = frozenset({
     "angle", "args", "arrappend", "arrdup", "arrfill", "arrfind",
-    "arrpop", "arrrev", "breakpoint", "clamp", "clock", "distance",
+    "arrpop", "arrrev", "breakpoint", "clamp", "clock", "distance", "div",
     "exedir", "exit", "expect", "filecat", "fileexists", "filemkdir", "filemv", "fileread",
     "filewrite", "filelist", "fps", "frame", "hash", "import_path", "inputstr",
     "json_decode", "json_encode", "lerp", "lower", "max_arr", "min_arr",
@@ -29,6 +29,20 @@ RUNTIME_BUILTINS = frozenset({
     "filelines",
     "trim", "type", "type_of", "upper", "vec2", "wait", "watch",
     "writeln", "ffi_open", "ffi_call",
+    # 4.2：并发（解释器走 threading，C 后端走 Win32/pthread，语义见 rt_concurrency.py）
+    "thread_spawn", "thread_join", "thread_alive", "thread_id", "cpu_count",
+    "mutex_new", "mutex_lock", "mutex_unlock", "mutex_trylock",
+    # 4.3.1：条件变量（挂起/唤醒，替代轮询等待）
+    "cond_new", "cond_wait", "cond_wait_ms", "cond_notify", "cond_notify_all",
+    "atomic_new", "atomic_load", "atomic_store", "atomic_add", "atomic_sub",
+    "atomic_exchange", "atomic_cas",
+    # 4.5：码点转换（解释器与 C 运行时同一口径，按 Unicode 码点而非字节）
+    "ord", "chr",
+    # 5.2：字符串/数组/数值/函数式补充
+    "strsplit", "strcount", "strstart", "strend",
+    "arrinsert", "arrremove", "arrsort", "arrcount",
+    "round", "floor", "ceil",
+    "any", "all", "map", "filter", "zip", "enumerate",
 })
 
 HOST_BUILTINS = frozenset({
@@ -36,7 +50,7 @@ HOST_BUILTINS = frozenset({
 })
 
 INTERPRETER_ONLY_BUILTINS = frozenset({
-    "autogc", "div", "ffi_alloc", "ffi_alloc_str", "ffi_buffer_size",
+    "autogc", "ffi_alloc", "ffi_alloc_str", "ffi_buffer_size",
     "ffi_buffers", "ffi_read_f64", "ffi_read_i64",
     "ffi_read_str", "ffi_read_str_at", "ffi_write_f64", "ffi_write_i64", "ffi_write_str",
     "filesize", "filewritebytes", "gc", "mem", "memstats",

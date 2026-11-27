@@ -37,7 +37,7 @@ _add("let", "声明局部变量（let 是 var 的别名，常用于较小作用�
      'let x = 3\nprint(x)',
      "`let x = 3` 创建变量 x；print 输出 3。和 var 的差别主要是写法，当前版本二者都可声明变量。")
 _add("local", "在函数内声明局部变量，不污染外层。", "local 名字 = 值",
-     'func f()\n    local n = 2\n    return n\nprint(f())',
+     'def f()\n    local n = 2\n    return n\nprint(f())',
      "函数 f 内 `local n = 2` 只在 f 内有效；调用 f() 返回 2，print 输出 2。")
 _add("set", "给已有变量或对象属性赋值。", "set 名字 = 值  /  set self.属性 = 值",
      'var a = 1\nset a = 2\nprint(a)',
@@ -125,7 +125,7 @@ _add("from", "从模块里只导入指定符号。", "from 模块名 import 符�
      "from mathx import sqrt\nprint(sqrt(25))",
      "只导入 sqrt，调用时不用写模块名前缀；sqrt(25) 输出 5。")
 _add("export", "把当前文件已有的函数/变量名字导出给其他文件（export 只写名字，不重新声明）。", "export 名字  /  export 名字1, 名字2",
-     'func hello()\n    return "hi"\nexport hello\nprint(hello())',
+     'def hello()\n    return "hi"\nexport hello\nprint(hello())',
      "先定义 hello，再用 `export hello` 标记导出；本文件内直接调用输出 hi，其他文件 import 后也能用。")
 _add("use", "把模块的全部导出符号直接注入当前作用域。", "use 模块名",
      "use mathx\nprint(sqrt(36))",
@@ -205,7 +205,7 @@ _add("await", "等待一个异步任务完成。", "await 异步调用",
 
 # ---------- 延迟清理 ----------
 _add("defer", "注册退出当前函数/模块时执行的清理块，按后进先出执行。", "defer {\n    语句\n}",
-     'func f()\n    defer { print("clean") }\n    print("body")\nf()',
+     'def f()\n    defer { print("clean") }\n    print("body")\nf()',
      "进入 f 后注册清理块；f 正常返回或异常退出时都会执行，输出 body 后输出 clean。C 后端暂不支持 defer。")
 
 # ---------- 结构与枚举 ----------
@@ -225,7 +225,7 @@ _add("implements", "声明类实现某个接口。", "class 类名 implements �
      'interface I\n    def f()\n        return 0\nclass C implements I\n    def f()\n        print("ok")\nvar c = new C()\nc.f()',
      "C 声明实现 I；实现后可以像普通类一样创建 c 并调用 c.f()，输出 ok。")
 _add("namespace", "定义命名空间/容器类（当前实现为类容器）。", "namespace 名字:\n    语句",
-     'namespace Util\n    func twice(x)\n        return x * 2\nprint(Util.twice(3))',
+     'namespace Util\n    def twice(x)\n        return x * 2\nprint(Util.twice(3))',
      "namespace Util 把 twice 收在 Util 下；Util.twice(3) 返回 6。")
 _add("sealed", "修饰类，表示密封类（当前主要作为标记保留）。", "sealed class 类名:",
      'sealed class FinalBox\n    var n = 1\nvar f = new FinalBox()\nprint(f.n)',
@@ -361,7 +361,10 @@ _add(["ffi_alloc", "ffi_alloc_str", "ffi_read_i64", "ffi_write_i64", "ffi_read_s
 
 
 def get(name):
-    return ENTRIES.get(str(name).strip())
+    key = str(name).strip()
+    if key not in ENTRIES:
+        key = ALIASES.get(key, key)
+    return ENTRIES.get(key)
 
 
 def names():
@@ -405,5 +408,72 @@ def format_entry(name):
 def categories():
     groups = {}
     for e in ENTRIES.values():
-        groups.setdefault(e["kind"], []).append(e["name"])
+        for kind in [e["kind"]] + list(e.get("extra_kinds", [])):
+            groups.setdefault(kind, []).append(e["name"])
     return {k: sorted(v) for k, v in groups.items()}
+
+
+# ---------- patch8b：语法表不再靠手写数字，与真实语言对齐 ----------
+# 旧实现的毛病（用户实测撞到）：表里躺着 79 个「关键字」，其中 func/loop/let/local 等
+# 12 个在 4.0 已被物理删除；内建只有 43 条，而语言实际有 101 条；连 `管道 |>`
+# 这种印在语言规范里的差异化特性都查不到。真源是 tools/api_baseline.json
+# （README 首屏的 55/101 也是它算的），这里直接对齐，避免两套数字打架。
+
+ALIASES = {"管道": "|>", "管道运算符": "|>", "pipe": "|>"}
+
+_add("|>", "管道运算符：把左侧的值作为右侧调用的第一个参数，专为链式数据流写法设计。",
+     "值 |> 函数(其余参数)",
+     'def add(a, b)\n    return a + b\nprint(3 |> add(4))',
+     "`3 |> add(4)` 等价于 `add(3, 4)`，所以输出 7。管道在解释器与完整 C 后端一致（v3.7.8 起是普通调用）；"
+     "自举编译器 imporc 的子集不含管道，遇到会明确报错，不会静默改语义。",
+     kind="运算符")
+
+
+def _api_baseline():
+    """读 tools/api_baseline.json；读不到就退回 lexer 的 KEYWORDS（不静默编数字）。"""
+    import json
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        with open(os.path.join(root, "tools", "api_baseline.json"), encoding="utf-8") as f:
+            base = json.load(f)
+        kws = [str(x) for x in base.get("keywords", [])]
+        bis = {}
+        for group, names in (base.get("builtins", {}) or {}).items():
+            for n in names:
+                bis[str(n)] = str(group)
+        return kws, bis
+    except Exception:
+        return list(KEYWORDS), {}
+
+
+def _align_with_language():
+    kws, bis = _api_baseline()
+    kwset = set(kws)
+    # 1) 删掉语言里已经不存在的条目（4.0 物理删除的历史写法、以及被移除的内建）
+    for name, e in list(ENTRIES.items()):
+        if e.get("kind") == "关键字" and name not in kwset:
+            del ENTRIES[name]
+        elif e.get("kind") == "内建函数" and bis and name not in bis:
+            del ENTRIES[name]
+    # 2) 补齐真实存在但没写说明的关键字
+    for kw in sorted(kwset - set(ENTRIES)):
+        _add(kw, "语言关键字（自动收录：本表还没有为它写说明，先用 `impor explain` 或 docs/语言规范.md 查）。",
+             "——", "——", "语法表自动收录项，仅用于让条目数与真实语言一致。", kind="关键字")
+    # 3) 补齐真实存在但没写说明的内建
+    for name in sorted(set(bis) - set(ENTRIES)):
+        _add(name, "内建函数（分组：%s；自动收录，说明待补，`help(%s)` 可看内置帮助）。" % (bis[name], name),
+             "%s(...)" % name, "——", "语法表自动收录项，调用约定以 `help(%s)` 为准。" % name,
+             kind="内建函数")
+    # 4) 双身份：exit 既是关键字又是内建函数，dict 键只能占一个身份。
+    #    之前这里被吞掉，于是「内建 100」永远差基线 1 —— 现在显式记第二个身份。
+    for name in sorted(kwset & set(bis)):
+        e = ENTRIES.get(name)
+        if e and "内建函数" not in e.get("extra_kinds", []):
+            e["extra_kinds"] = list(e.get("extra_kinds", [])) + ["内建函数"]
+            e["explain"] = (e.get("explain", "") +
+                            "（它同时是内建函数：%s() 也是合法调用形式。）" % name)
+
+
+_align_with_language()
+

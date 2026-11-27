@@ -2,10 +2,11 @@
 """
 Impor (I++) 递归下降解析器。
 
-语法要点（v2）：
-  - 缩进即代码块；if/while/for/def/func/loop/try/catch/finally/class 后的冒号可省略
+语法要点（v4）：
+  - 缩进或大括号定义代码块；if/while/for/def/try/catch/finally/class 后的冒号可省略
   - var / set 声明变量；nonlocal set / global set 声明作用域
-  - func 与 def 等价；loop 等价 while true
+  - 函数只写 `def`；`func` 已从关键词表和 parser 删除
+  - 无限循环只写 `while true`；`loop` 已删除
   - 三元表达式：条件 ? 真值 : 假值
   - import math | import important.math | import math as m
   - try / catch err / catch Type err / catch Type, err / finally
@@ -19,6 +20,7 @@ from .ast_nodes import (
     ListLit, DictLit, IndexGet, IndexSet, Slice, ImportNode, FromImportNode,
     ExportNode, AssertNode, Block, Defer, TryCatch,
     ClassDef, ExceptionDef, Raise, MatchNode, BindingPattern, AdtPattern, Lambda, Await,
+    TypeTest,
 )
 from .errors import ImporSyntaxError, hint_for
 from .lexer import TOK_OP, TOK_NUM, TOK_STR, TOK_FSTR, TOK_ID, TOK_KEY, TOK_EOF, TOK_INDENT, TOK_DEDENT, TOK_NEWLINE, TOK_DOC, unescape_impor, UNIMPLEMENTED_KEYWORDS
@@ -78,10 +80,8 @@ class Parser:
         return t.value in val if isinstance(val, tuple) else t.value == val
 
     def _opt_colon(self):
-        """v3.4：块引导符可以是 `:`，也可以是 `then`/`则`（可省略）。"""
+        """块引导符只接受 `:`；`then` / `do` / `则` 已随兼容层删除。"""
         if self._is_op(":"):
-            self.consume()
-        elif self.peek().type == TOK_ID and self.peek().value in ("then", "do", "则"):
             self.consume()
 
     def _skip_semis(self):
@@ -93,10 +93,20 @@ class Parser:
         while self.peek().type in (TOK_NEWLINE, TOK_INDENT):
             self.consume()
 
+    def _skip_layout(self):
+        """v4.3.1：字面量 / 调用参数跨行时的排版记号。
+
+        与 _skip_fill 的区别是连 DEDENT 一起吞：`{` 在词法层不参与括号深度，
+        所以换行写在 `{` 里面会同时留下 NEWLINE / INDENT / DEDENT 三种排版记号，
+        只跳前两种会在 `}` 前卡住（历史缺陷：多行字典报「表达式缺失」E1099）。
+        """
+        while self.peek().type in (TOK_NEWLINE, TOK_INDENT, TOK_DEDENT):
+            self.consume()
+
     def _skip_type_annotation(self):
         """v7.3：读取类型注解并返回规范化文本（不再丢弃）。
 
-        支持 var x: int / func f(a: int, b: str) -> int / 泛型 List<int> /
+        支持 var x: int / def f(a: int, b: str) -> int / 泛型 List<int> /
         nullable int? 这类写法。遇到 `=`、`,`、`)`、`;`、`{`、`}` 或行尾即停止。
         """
         parts = []
@@ -144,7 +154,7 @@ class Parser:
 
     def or_expr(self):
         n = self.and_expr()
-        while self._is_key("or") or self._is_op("||"):  # v3.4：|| 同 or
+        while self._is_key("or") or self._is_op("||"):
             ln, cl = self._peek_ln_col()
             self.consume()
             n = BinOp(n, "or", self.and_expr(), ln, cl)
@@ -152,7 +162,7 @@ class Parser:
 
     def and_expr(self):
         n = self.not_expr()
-        while self._is_key("and") or self._is_op("&&"):  # v3.4：&& 同 and
+        while self._is_key("and") or self._is_op("&&"):
             ln, cl = self._peek_ln_col()
             self.consume()
             n = BinOp(n, "and", self.not_expr(), ln, cl)
@@ -172,14 +182,10 @@ class Parser:
         if self.peek().value == "await" and self._await_has_operand():
             t = self.peek()
             self._unimplemented(t, "await")
-        if self._is_key("not"):
+        if self._is_key("not") or self._is_op("!"):
             ln, cl = self._peek_ln_col()
             self.consume()
             return UnaryOp("not", self.neg(), ln, cl)
-        if self._is_op("!"):
-            ln, cl = self._peek_ln_col()
-            self.consume()
-            return UnaryOp("!", self.neg(), ln, cl)
         return self.neg()
 
     def neg(self):
@@ -203,10 +209,25 @@ class Parser:
 
     def cmp(self):
         n = self.add()
-        while self._is_op((">", "<", ">=", "<=", "==", "!=", "<>")):
-            op = self.consume()
-            n = BinOp(n, "!=" if op.value == "<>" else op.value, self._rhs(self.add), op.line, op.col)
-        return n
+        while True:
+            if self._is_op((">", "<", ">=", "<=", "==", "!=")):
+                op = self.consume()
+                n = BinOp(n, op.value, self._rhs(self.add), op.line, op.col)
+                continue
+            # 4.9.1 `x have int`：软关键字（不是保留字，避免撞已有标识符）。
+            # 只在比较层这个位置生效，其他地方 `have` 仍是普通名字。
+            t = self.peek()
+            if t.type in (TOK_ID, TOK_KEY) and t.value == "have":
+                ln, cl = t.line, t.col
+                self.consume()
+                ty = self.peek()
+                if ty.type not in (TOK_ID, TOK_KEY):
+                    raise ImporSyntaxError("have 后面要跟类型名，例如 x have int",
+                                           ln, cl, self.filename, hint_for("expect"))
+                self.consume()
+                n = TypeTest(n, ty.value, ln, cl)
+                continue
+            return n
 
     def add(self):
         n = self.mul()
@@ -225,10 +246,13 @@ class Parser:
     def _parse_call_args(self):
         self.expect(TOK_OP, "(")
         args = []
+        self._skip_layout()
         while not self._is_op(")"):
             args.append(self.expr())
+            self._skip_layout()
             if self._is_op(","):
                 self.consume()
+                self._skip_layout()
         self.expect(TOK_OP, ")")
         return args
 
@@ -407,8 +431,10 @@ class Parser:
             ln, cl = t.line, t.col
             self.consume()
             items = []
+            self._skip_layout()
             while not self._is_op("]"):
                 items.append(self.expr())
+                self._skip_layout()
                 nxt = self.peek()
                 if nxt.type == TOK_KEY and nxt.value == "for":
                     raise ImporSyntaxError(
@@ -416,6 +442,7 @@ class Parser:
                         self.filename, hint_for("stmt_start"))
                 if self._is_op(","):
                     self.consume()
+                    self._skip_layout()
             self.expect(TOK_OP, "]")
             return ListLit(items, ln, cl)
 
@@ -423,11 +450,15 @@ class Parser:
             ln, cl = t.line, t.col
             self.consume()
             kv = []
+            self._skip_layout()
             while not self._is_op("}"):
                 k = self.expr()
+                self._skip_layout()
                 self.expect(TOK_OP, ":")
+                self._skip_layout()
                 v = self.expr()
                 kv.append((k, v))
+                self._skip_layout()
                 nxt = self.peek()
                 if nxt.type == TOK_KEY and nxt.value == "for":
                     raise ImporSyntaxError(
@@ -435,6 +466,7 @@ class Parser:
                         self.filename, hint_for("stmt_start"))
                 if self._is_op(","):
                     self.consume()
+                    self._skip_layout()
             self.expect(TOK_OP, "}")
             return DictLit(kv, ln, cl)
 
@@ -795,87 +827,66 @@ class Parser:
             st.append(node)
         return st
 
-    def _parse_c_for(self, ln, cl):
-        """v3.4：C 风格计数循环 —— for i = 0; i < 3; i++ { }
-        仅支持「i++ / i-- 自增自减 + < / <= / > / >= 单调结束」；降级成 for i in range(...)。"""
-        var = self.expect(TOK_ID).value
-        self.consume()  # = / :=
-        start = self.expr()
-        self.expect(TOK_OP, ";")
-        cvar = self.expect(TOK_ID).value
-        op = self.expect(TOK_OP).value
-        if op not in ("<", "<=", ">", ">="):
-            raise ImporSyntaxError("for 条件只支持 < / <= / > / >=", ln, cl,
-                                   self.filename, hint_for("expect"))
-        bound = self.expr()
-        self.expect(TOK_OP, ";")
-        svar = self.expect(TOK_ID).value
-        step = self.expect(TOK_OP).value
-        if step not in ("++", "--"):
-            raise ImporSyntaxError("for 步进只支持 i++ / i--", ln, cl,
-                                   self.filename, hint_for("expect"))
-        if cvar != var or svar != var:
-            raise ImporSyntaxError("for 头部必须是同一个计数器变量", ln, cl,
-                                   self.filename, hint_for("lvalue"))
-        one = Num(1, ln, cl)
-        if op in ("<", "<=") and step == "--":
+    def _parse_type_params(self):
+        """v4.2：泛型函数声明的类型参数表 `def max<T, U>(...)`。
+
+        语法：`<` 标识符 {`,` 标识符} `>`，只接受无约束类型参数。
+        语义是声明期约束、运行期擦除（不做 C 单态化），因此这里只收集名字，
+        由 typecheck 用它把注解里的 `T` 放宽成“任意类型”，并在调用点做一致性检查。
+        """
+        if not self._is_op("<"):
+            return []
+        self.consume()
+        names = []
+        while True:
+            t = self.peek()
+            if t.type != TOK_ID:
+                raise ImporSyntaxError(
+                    "泛型参数必须是标识符，例如 def max<T>(a: T, b: T) -> T",
+                    t.line, t.col, self.filename, hint_for("stmt_start"))
+            self.consume()
+            if self._is_op(":"):
+                raise ImporSyntaxError(
+                    "泛型约束（如 <T: int>）尚未实现；v4.2 只支持无约束类型参数",
+                    t.line, t.col, self.filename, hint_for("stmt_start"))
+            names.append(t.value)
+            if self._is_op(","):
+                self.consume()
+                continue
+            break
+        if not self._is_op(">"):
+            t = self.peek()
             raise ImporSyntaxError(
-                "递减步进 i-- 不能配 < / <= 条件（循环不会终止），请改用 > / >=",
-                ln, cl, self.filename, hint_for("stmt_start"))
-        if op in (">", ">=") and step == "++":
+                "泛型参数表未闭合：缺少 `>`", t.line, t.col,
+                self.filename, hint_for("stmt_start"))
+        self.consume()
+        dup = [n for n in names if names.count(n) > 1]
+        if dup:
             raise ImporSyntaxError(
-                "递增步进 i++ 不能配 > / >= 条件（循环不会终止），请改用 < / <=",
-                ln, cl, self.filename, hint_for("stmt_start"))
-        if op == "<":
-            args = [start, bound]
-        elif op == "<=":
-            args = [start, BinOp(bound, "+", one, ln, cl)]
-        elif op == ">":
-            # i > M：range(start, M, -1) 取到 M+1 为止，正好不含 M。
-            args = [start, bound, Num(-1, ln, cl)]
-        else:
-            # i >= M：range(start, M - 1, -1) 会包含 M。
-            args = [start, BinOp(bound, "-", one, ln, cl), Num(-1, ln, cl)]
-        self._opt_colon()
-        bd = self._parse_block()
-        return For(var, Call(Var("range", ln, cl), args, ln, cl), bd, ln, cl)
+                "泛型参数 %r 重复声明" % dup[0], self.peek().line, self.peek().col,
+                self.filename, hint_for("stmt_start"))
+        return names
 
     def _parse_params(self):
-        """v3.4 参数列表四种写法都接受：
-        func f(a, b) / func f(a: int, b: str) / func f a, b / func f
-        v3.8.4：默认参数 / 变参尚未实现，语法阶段明确拒绝。
-        """
+        """v4.0：函数参数只接受括号形式 `def f(a, b)`；无括号写法已删除。"""
         params = []
         self._last_param_types = []
-        if self._is_op("("):
-            self.consume()
-            self._skip_fill()
-            while not self._is_op(")"):
-                self._reject_unsupported_param()
-                params.append(self._param_name())
-                self._reject_unsupported_param()
-                self._skip_fill()
-                if self._is_op(","):
-                    self.consume()
-                    self._skip_fill()
-                    continue
-                if self.peek().type == TOK_ID:  # 省略逗号
-                    continue
-                break
-            self._skip_fill()
-            self.expect(TOK_OP, ")")
-            return params
-        # 无括号形式
-        if self.peek().type == TOK_ID and self.peek().value not in ("then", "do"):
+        self.expect(TOK_OP, "(")
+        self._skip_fill()
+        while not self._is_op(")"):
             self._reject_unsupported_param()
             params.append(self._param_name())
             self._reject_unsupported_param()
-            while self._is_op(","):
+            self._skip_fill()
+            if self._is_op(","):
                 self.consume()
                 self._skip_fill()
-                self._reject_unsupported_param()
-                params.append(self._param_name())
-                self._reject_unsupported_param()
+                continue
+            if self.peek().type == TOK_ID:  # 省略逗号
+                continue
+            break
+        self._skip_fill()
+        self.expect(TOK_OP, ")")
         return params
 
     def _reject_unsupported_param(self):
@@ -918,6 +929,18 @@ class Parser:
         elif t.type in (TOK_KEY, TOK_ID) and t.value in UNIMPLEMENTED_KEYWORDS:
             self._unimplemented(t, t.value)
 
+        # v4.0.0：裸 print（无括号）是已删除的历史写法。
+        # print 是内建标识符而不是关键字；若只走通用表达式，`print "x"` 会被拆成
+        # 两条无副作用表达式语句而静默成功（rc=0、零输出），必须在语句位置拦截。
+        if t.type == TOK_ID and t.value == "print":
+            nxt = self.peek(1)
+            if not (nxt.type == TOK_OP and nxt.value == "("):
+                raise ImporSyntaxError(
+                    "`print` 无括号写法是 v4.0.0 已删除的历史写法",
+                    t.line, t.col, self.filename,
+                    "改用唯一写法：print(表达式[, 表达式...])；例如 print(\"hello\")。",
+                )
+
         # v2.18：顶层大括号块 `{ ... }`（省略缩进的独立代码块）
         if t.type == TOK_OP and t.value == "{":
             bln, bcl = self._peek_ln_col()
@@ -925,12 +948,13 @@ class Parser:
             bd = self._brace_block(bln)
             return Block(bd, bln)
 
-        # 作用域修饰：nonlocal set / global set
+        # 作用域修饰：nonlocal set / global set（v4.1：`set` 可省略，写法与普通赋值一致）
         if t.type == TOK_KEY and t.value in ("nonlocal", "global"):
             scope = t.value
             ln, cl = t.line, t.col
             self.consume()
-            self.expect(TOK_KEY, "set")
+            if self.peek().type == TOK_KEY and self.peek().value == "set":
+                self.consume()      # 兼容旧写法 nonlocal set x = ...
             vn = self.expect(TOK_ID).value
             self.expect(TOK_OP, "=")
             exp = self.expr()
@@ -950,7 +974,7 @@ class Parser:
                 ann = self._skip_type_annotation()
             exp = Null(ln, cl)
             has_init = False
-            if self._is_op(("=", ":=")):
+            if self._is_op("="):
                 self.consume()
                 exp = self.expr()
                 has_init = True
@@ -959,8 +983,8 @@ class Parser:
             node.has_init = has_init
             return node
 
-        # var / let / local / set 声明（支持 set 对象.属性 = 值 / set 数组[下标] = 值）
-        if t.type in (TOK_ID, TOK_KEY) and t.value in ("var", "set", "let", "local"):
+        # var / set 声明（支持 set 对象.属性 = 值 / set 数组[下标] = 值）
+        if t.type in (TOK_ID, TOK_KEY) and t.value in ("var", "set"):
             ln, cl = t.line, t.col
             self.consume()
             vn = self.expect(TOK_ID).value
@@ -972,7 +996,7 @@ class Parser:
             if self._is_op("."):
                 self.consume()
                 attr = self.expect(TOK_ID).value
-                if self._is_op(("=", ":=")):
+                if self._is_op("="):
                     self.consume()
                 exp = self.expr()
                 return AttrSet(Var(vn, ln, cl), attr, exp, ln, cl)
@@ -980,14 +1004,14 @@ class Parser:
                 self.consume()
                 idx = self.expr()
                 self.expect(TOK_OP, "]")
-                if self._is_op(("=", ":=")):
+                if self._is_op("="):
                     self.consume()
                 exp = self.expr()
                 return IndexSet(Var(vn, ln, cl), idx, exp, ln, cl)
             # v3.4：初始化可省略（var x / var x: int），未初始化即空值
             exp = Null(ln, cl)
             has_init = False
-            if self._is_op(("=", ":=")):
+            if self._is_op("="):
                 self.consume()
                 exp = self.expr()
                 has_init = True
@@ -1052,35 +1076,6 @@ class Parser:
             self.consume()
             return n
 
-        # v3.4：print 可省略括号 —— print "hi", 名字；也接受 print(...)（走内建调用）
-        if t.type in (TOK_ID, TOK_KEY) and t.value == "print" and not (
-                self.peek(1).type == TOK_OP and self.peek(1).value == "("):
-            ln, cl = t.line, t.col
-            self.consume()
-            items = []
-            while (self.peek().type not in (TOK_NEWLINE, TOK_EOF, TOK_DEDENT)
-                   and not self._is_op((";", "}"))):
-                items.append(self.expr())
-                if self._is_op(","):
-                    self.consume()
-                    continue
-                if self.peek().type in (TOK_NEWLINE, TOK_EOF, TOK_DEDENT):
-                    break
-                break
-            return Print(items, ln, cl)
-
-        if t.type == TOK_KEY and t.value == "print":
-            ln, cl = t.line, t.col
-            self.consume()
-            self.expect(TOK_OP, "(")
-            items = []
-            while not self._is_op(")"):
-                items.append(self.expr())
-                if self._is_op(","):
-                    self.consume()
-            self.expect(TOK_OP, ")")
-            return Print(items, ln, cl)
-
         if t.type == TOK_KEY and t.value == "break":
             n = Break(t.line)
             self.consume()
@@ -1090,47 +1085,6 @@ class Parser:
             n = Continue(t.line)
             self.consume()
             return n
-
-        # v3.4：unless 条件 { } —— if 取反写法
-        if t.type in (TOK_ID, TOK_KEY) and t.value == "unless":
-            ln, cl = t.line, t.col
-            self.consume()
-            cond = self.expr()
-            self._opt_colon()
-            bd = self._parse_block()
-            return If(UnaryOp("not", cond, ln, cl), bd, [], [], ln, cl)
-
-        # v3.4：do { } until 条件 —— 先执行一次再判断（也接受 do { } while 条件）
-        if t.type in (TOK_ID, TOK_KEY) and t.value == "do":
-            ln, cl = t.line, t.col
-            nxt0 = self.peek(1)
-            if nxt0.type == TOK_OP and nxt0.value in ("{", ":"):
-                self.consume()
-                self._opt_colon()
-                bd = self._parse_block()
-                negate = True
-                nde = self.peek()
-                self._skip_fill()
-                nde = self.peek()
-                if nde.type in (TOK_ID, TOK_KEY) and nde.value == "while":
-                    self.consume()
-                    negate = False
-                elif nde.type in (TOK_ID, TOK_KEY) and nde.value == "until":
-                    self.consume()
-                else:
-                    raise ImporSyntaxError(
-                        "do 代码块之后需要 until / while 条件", nde.line, nde.col,
-                        self.filename, hint_for("expect"))
-                cond = self.expr()
-                if negate:
-                    cond = UnaryOp("not", cond, ln, cl)
-                seed = getattr(self, "_do_seed", 0) + 1
-                self._do_seed = seed
-                flag = "__do%d" % seed
-                first = Assign(flag, Bool(True, ln, cl), 'local', ln, cl)
-                clear = Assign(flag, Bool(False, ln, cl), 'local', ln, cl)
-                check = BinOp(Var(flag, ln, cl), "or", cond, ln, cl)
-                return Block([first, While(check, [clear] + bd, ln, cl)], ln)
 
         if t.type == TOK_KEY and t.value == "if":
             ln, cl = t.line, t.col
@@ -1161,64 +1115,35 @@ class Parser:
             bd = self._parse_block()
             return While(cond, bd, ln, cl)
 
-        if t.type == TOK_KEY and t.value == "loop":
+        if t.type in (TOK_ID, TOK_KEY) and t.value in ("for", "repeat"):
             ln, cl = t.line, t.col
             self.consume()
-            self._opt_colon()
-            bd = self._parse_block()
-            return While(Bool(True, ln, cl), bd, ln, cl)
-
-        if t.type in (TOK_ID, TOK_KEY) and t.value in ("for", "repeat", "each"):
-            ln, cl = t.line, t.col
-            self.consume()
-            # v3.4：C 风格计数循环 for i = 0; i < 3; i++ { }
-            if (t.value == "for" and self.peek().type == TOK_ID
-                    and self.peek(1).type == TOK_OP and self.peek(1).value in ("=", ":=")):
-                return self._parse_c_for(ln, cl)
-            # v3.4：for each x in 表 —— each 可省略的引导词
-            if self.peek().type in (TOK_ID, TOK_KEY) and self.peek().value == "each":
-                self.consume()
-            # v2.18：repeat N { } 按次数重复（等价 for __r in range(N)）；repeat/each x in 集合 为 for 别名
-            is_for_in = (self.peek().type == TOK_ID
-                         and self.peek(1).type in (TOK_ID, TOK_KEY)
-                         and self.peek(1).value in ("in", "of"))
-            if t.value == "repeat" and not is_for_in:
+            # v2.18：repeat N { } 按次数重复（等价 for __r in range(N)）
+            if t.value == "repeat":
                 count = self.expr()
                 self._opt_colon()
                 bd = self._parse_block()
                 return For("__r", Call(Var("range", ln, cl), [count], ln, cl), bd, ln, cl)
             var = self.expect(TOK_ID).value
-            # v3.4：of 也可作 in 的别名（for x of 表）
-            if self.peek().type == TOK_KEY and self.peek().value == "in":
-                self.consume()
-            elif self.peek().type in (TOK_ID, TOK_KEY) and self.peek().value in ("in", "of"):
-                self.consume()
-            else:
-                self.expect(TOK_KEY, "in")
+            self.expect(TOK_KEY, "in")
             ite = self.expr()
-            # v3.4：区间写法 for i in 1..5（闭区间，等价 range(1, 5 + 1)）
-            if self._is_op(".."):
-                self.consume()
-                end = self.expr()
-                one = Num(1, ln, cl)
-                ite = Call(Var("range", ln, cl),
-                           [ite, BinOp(end, "+", one, ln, cl)], ln, cl)
             self._opt_colon()
             bd = self._parse_block()
             return For(var, ite, bd, ln, cl)
 
         if (t.type in (TOK_ID, TOK_KEY) and t.value == "async"
                 and self.peek(1).type in (TOK_ID, TOK_KEY)
-                and self.peek(1).value in ("def", "func", "fn")):
+                and self.peek(1).value == "def"):
             ln, cl = t.line, t.col
             self.consume()
             if not (self.peek().type in (TOK_ID, TOK_KEY)
-                    and self.peek().value in ("def", "func", "fn")):
+                    and self.peek().value == "def"):
                 raise ImporSyntaxError(
-                    "async 只能修饰函数声明（async func 名称(...)）",
+                    "async 只能修饰函数声明（async def 名称(...)）",
                     ln, cl, self.filename, hint_for("stmt_start"))
-            self.consume()  # def/func/fn
+            self.consume()  # def
             name = self.expect(TOK_ID).value
+            tparams = self._parse_type_params()
             params = self._parse_params()
             ptypes = list(getattr(self, "_last_param_types", []))
             ret_type = ""
@@ -1230,13 +1155,15 @@ class Parser:
             node = Def(name, params, bd, ln, cl)
             node.param_types = ptypes
             node.ret_type = ret_type
+            node.type_params = tparams
             node.is_async = True
             return node
 
-        if t.type in (TOK_ID, TOK_KEY) and t.value in ("def", "func", "fn"):
+        if t.type in (TOK_ID, TOK_KEY) and t.value == "def":
             ln, cl = t.line, t.col
             self.consume()
             name = self.expect(TOK_ID).value
+            tparams = self._parse_type_params()
             params = self._parse_params()
             ptypes = list(getattr(self, "_last_param_types", []))
             ret_type = ""
@@ -1248,6 +1175,7 @@ class Parser:
             node = Def(name, params, bd, ln, cl)
             node.param_types = ptypes
             node.ret_type = ret_type
+            node.type_params = tparams
             return node
 
         if t.type == TOK_KEY and t.value == "return":
@@ -1439,24 +1367,13 @@ class Parser:
             return ClassDef(cn, bn, bd, ln, cl, impls)
 
         # 表达式语句：赋值 / 复合赋值 / 调用
-        # v3.4：前缀 ++/--：++x / --obj.n / ++arr[i]
-        if self._is_op(("++", "--")):
-            op = self.consume()
-            target = self.expr()
-            return self._incdec(target, op.value[0] + "=", op.line, op.col)
-
         expr_node = self.expr()
 
-        # v3.4：后缀 ++/--：x++ / arr[i]--
-        if self._is_op(("++", "--")):
-            op = self.consume()
-            return self._incdec(expr_node, op.value[0] + "=", expr_node.lineno, expr_node.col)
-
-        if self._is_op(("=", ":=")):
+        if self._is_op("="):
             self.consume()
             rhs = self.expr()
             if isinstance(expr_node, Var):
-                return Assign(expr_node.name, rhs, 'local', expr_node.lineno, expr_node.col)
+                return Assign(expr_node.name, rhs, 'update', expr_node.lineno, expr_node.col)
             if isinstance(expr_node, IndexGet):
                 return IndexSet(expr_node.container, expr_node.idx, rhs, expr_node.lineno, expr_node.col)
             if isinstance(expr_node, AttrGet):
@@ -1482,20 +1399,6 @@ class Parser:
         return ExprStmt(expr_node, expr_node.lineno, expr_node.col)
 
         raise ImporSyntaxError(f"无法开始的语句 {t.value!r}", t.line, t.col, self.filename, hint_for("stmt_start"))
-
-    def _incdec(self, target, op, ln, cl):
-        """v3.4：把 x++ / x-- / ++x / --x 降级成既有节点（零改动三端）。"""
-        one = Num(1, ln, cl)
-        if isinstance(target, Var):
-            return CompoundAssign(target.name, op, one, 'local', ln, cl)
-        if isinstance(target, IndexGet):
-            return IndexSet(target.container, target.idx,
-                            BinOp(target, op[0], one, ln, cl), ln, cl)
-        if isinstance(target, AttrGet):
-            return AttrSet(target.obj_expr, target.attr_name,
-                           BinOp(target, op[0], one, ln, cl), ln, cl)
-        raise ImporSyntaxError("++/-- 只能用于变量、下标或属性", ln, cl,
-                               self.filename, hint_for("lvalue"))
 
     def _parse_import(self):
         ln, cl = self._peek_ln_col()
@@ -1570,10 +1473,11 @@ class Parser:
         ln, cl = self._peek_ln_col()
         self.expect(TOK_KEY, "export")
         t = self.peek()
-        if t.type in (TOK_ID, TOK_KEY) and t.value in ("def", "func", "fn"):
+        if t.type in (TOK_ID, TOK_KEY) and t.value == "def":
             ln, cl = t.line, t.col
             self.consume()
             name = self.expect(TOK_ID).value
+            tparams = self._parse_type_params()
             params = self._parse_params()
             ptypes = list(getattr(self, "_last_param_types", []))
             ret_type = ""
@@ -1585,6 +1489,7 @@ class Parser:
             node = Def(name, params, bd, ln, cl)
             node.param_types = ptypes
             node.ret_type = ret_type
+            node.type_params = tparams
             node.exported = True
             return node
         names = []

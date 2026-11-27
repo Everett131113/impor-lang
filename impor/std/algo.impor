@@ -2,7 +2,7 @@
 // 使用：use std.algo 或 import std.algo
 // 只依赖三端共有内建（arrdup / arrappend / len / 下标），不依赖宿主方法。
 
-func sorted(lst) {
+def sorted(lst) {
     var out = arrdup(lst)
     var i = 1
     while i < len(out) {
@@ -22,7 +22,7 @@ func sorted(lst) {
     return out
 }
 
-func sorted_desc(lst) {
+def sorted_desc(lst) {
     var out = arrdup(lst)
     var i = 1
     while i < len(out) {
@@ -42,7 +42,7 @@ func sorted_desc(lst) {
     return out
 }
 
-func index_of(lst, target) {
+def index_of(lst, target) {
     var i = 0
     while i < len(lst) {
         if lst[i] == target {
@@ -50,10 +50,10 @@ func index_of(lst, target) {
         }
         i += 1
     }
-    return -1
+    return - 1
 }
 
-func bsearch(lst, target) {
+def bsearch(lst, target) {
     var lo = 0
     var hi = len(lst) - 1
     while lo <= hi {
@@ -68,12 +68,12 @@ func bsearch(lst, target) {
             hi = mid - 1
         }
     }
-    return -1
+    return - 1
 }
 
-func min_index(lst) {
+def min_index(lst) {
     if len(lst) == 0 {
-        return -1
+        return - 1
     }
     var k = 0
     var i = 1
@@ -86,9 +86,9 @@ func min_index(lst) {
     return k
 }
 
-func max_index(lst) {
+def max_index(lst) {
     if len(lst) == 0 {
-        return -1
+        return - 1
     }
     var k = 0
     var i = 1

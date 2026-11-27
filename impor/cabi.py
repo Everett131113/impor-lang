@@ -56,7 +56,7 @@ def symbol_name(name):
 def check_exports(exports):
     if not exports:
         raise CabiError(
-            "没有可导出的函数。请在源码中使用：export func add(a: int, b: int) -> int { ... }")
+            "没有可导出的函数。请在源码中使用：export def add(a: int, b: int) -> int { ... }")
     for e in exports:
         _params(e)
         _kind(e.get("ret_type"))
@@ -96,6 +96,9 @@ def header_text(module, exports):
     lines.append("")
     lines.append("/* 释放本 DLL 返回的字符串；传入 NULL 安全。 */")
     lines.append("IMPOR_API void impor_free_str(const char *s);")
+    lines.append("/* 显式回收 DLL 内堆数组（可选）。DLL 模式不注册 atexit，")
+    lines.append("   宿主在卸载前调用一次可拿到确定性的释放；不调用则由操作系统回收。 */")
+    lines.append("IMPOR_API void impor_runtime_shutdown(void);")
     lines += ["", "#ifdef __cplusplus", "}", "#endif", "", "#endif", ""]
     return "\n".join(lines)
 
@@ -108,6 +111,7 @@ def _wrap_one(e):
     out = []
     args = ", ".join("%s a%d" % (_CTYPE[t], i) for i, t in enumerate(types)) or "void"
     out.append("IMPOR_API %s %s(%s) {" % (_CTYPE[ret], sym, args))
+    out.append("    impor_pin_once();")
     for i, t in enumerate(types):
         if t == "int":
             out.append("    Val _a%d = v_int(a%d);" % (i, i))
@@ -166,6 +170,29 @@ def wrappers_text(exports):
         "#ifdef __cplusplus",
         'extern "C" {',
         "#endif",
+        "#if defined(_WIN32)",
+        "/* v4.1：把本模块钉在进程里（GET_MODULE_HANDLE_EX_FLAG_PIN）。",
+        " * tcc 的 DLL CRT 会往 msvcrt 的共享退出表登记堆清理钩子；宿主 FreeLibrary 之后，",
+        " * 进程退出仍会调到已卸载的代码 → 0xC0000005。钉住模块后不再卸载，退出码稳定为 0。",
+        " * 代价：DLL 映射保留到进程结束（对“逻辑层”插件是可接受的，Python/CPython 扩展也这么做）。 */",
+        "typedef long (*pfn_gmhex)(unsigned long, const void *, void **);",
+        "static void impor_pin_self(void) {",
+        "    HMODULE h = NULL;",
+        "    pfn_gmhex f = (pfn_gmhex)GetProcAddress(GetModuleHandleA(\"kernel32.dll\"), \"GetModuleHandleExW\");",
+        "    if (f) f(0x00000004ul, (const void *)&impor_pin_self, (void **)&h);",
+        "}",
+        "#  if defined(__GNUC__) || defined(__TINYC__)",
+        "__attribute__((constructor)) static void impor_pin_ctor(void) { impor_pin_self(); }",
+        "#  endif",
+        "static void impor_pin_once(void) {",
+        "    static int done = 0;",
+        "    if (done) return;",
+        "    done = 1;",
+        "    impor_pin_self();",
+        "}",
+        "#else",
+        "static void impor_pin_once(void) { }",
+        "#endif",
     ]
     for e in exports:
         lines.append(_wrap_one(e))
@@ -173,6 +200,9 @@ def wrappers_text(exports):
     lines += [
         "IMPOR_API void impor_free_str(const char *s) {",
         "    if (s) free((void *)s);",
+        "}",
+        "IMPOR_API void impor_runtime_shutdown(void) {",
+        "    rt_shutdown();",
         "}",
         "#ifdef __cplusplus",
         "}",
@@ -189,4 +219,5 @@ def def_text(module, exports):
     for e in exports:
         lines.append("    %s" % symbol_name(e["name"]))
     lines.append("    impor_free_str")
+    lines.append("    impor_runtime_shutdown")
     return "\n".join(lines) + "\n"

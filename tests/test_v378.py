@@ -39,7 +39,7 @@ def run_cli(args, cwd):
 
 class TestDeferInterpreter(unittest.TestCase):
     def test_lifo_and_return_value(self):
-        src = ('func f()\n'
+        src = ('def f()\n'
                '    defer { print("d1") }\n'
                '    defer { print("d2") }\n'
                '    print("body")\n'
@@ -49,7 +49,7 @@ class TestDeferInterpreter(unittest.TestCase):
 
     def test_runs_on_exception(self):
         src = ('exception EvalError\n'
-               'func f()\n'
+               'def f()\n'
                '    defer { print("clean") }\n'
                '    raise EvalError("boom")\n'
                'try {\n'
@@ -74,8 +74,8 @@ class TestDeferInterpreter(unittest.TestCase):
                '    def close()\n'
                '        defer { print("method-clean") }\n'
                '        print("method-body")\n'
-               'func outer()\n'
-               '    func inner()\n'
+               'def outer()\n'
+               '    def inner()\n'
                '        defer { print("inner-clean") }\n'
                '        print("inner-body")\n'
                '    inner()\n'
@@ -87,10 +87,10 @@ class TestDeferInterpreter(unittest.TestCase):
 
     def test_control_flow_inside_defer_is_rejected(self):
         with self.assertRaises(Exception):
-            parse_source('func f()\n    defer { return 1 }\n')
+            parse_source('def f()\n    defer { return 1 }\n')
 
     def test_fast_mode_executes_defer(self):
-        src = ('func f()\n'
+        src = ('def f()\n'
                '    defer { print("d1") }\n'
                '    defer { print("d2") }\n'
                '    print("body")\n'
@@ -106,7 +106,7 @@ class TestDeferInterpreter(unittest.TestCase):
 
 class TestDeferTranspile(unittest.TestCase):
     def test_compiled_python_matches_interpreter(self):
-        src = ('func f()\n'
+        src = ('def f()\n'
                '    defer { print("d1") }\n'
                '    defer { print("d2") }\n'
                '    print("body")\n'
@@ -131,9 +131,9 @@ class TestDeferTranspile(unittest.TestCase):
 
 class TestCBackendV378(unittest.TestCase):
     def test_pipe_is_lowered_to_call(self):
-        src = ('func twice(x)\n'
+        src = ('def twice(x)\n'
                '    return x * 2\n'
-               'func add(a, b)\n'
+               'def add(a, b)\n'
                '    return a + b\n'
                'print(3 |> twice)\n'
                'print(1 |> add(10))\n')
@@ -143,9 +143,9 @@ class TestCBackendV378(unittest.TestCase):
 
     @unittest.skipUnless(TCC, "未找到 tcc")
     def test_pipe_builds_and_runs(self):
-        src = ('func twice(x)\n'
+        src = ('def twice(x)\n'
                '    return x * 2\n'
-               'func add(a, b)\n'
+               'def add(a, b)\n'
                '    return a + b\n'
                'print(3 |> twice)\n'
                'print(1 |> add(10))\n')
@@ -166,7 +166,7 @@ class TestCBackendV378(unittest.TestCase):
             self.assertEqual((r2.stdout or "").split(), ["6", "11"])
 
     def test_c_backend_rejects_defer_explicitly(self):
-        src = ('func f()\n'
+        src = ('def f()\n'
                '    defer { print("clean") }\n'
                '    return 0\n'
                'f()\n')

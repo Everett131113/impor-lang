@@ -1,0 +1,20 @@
+{
+  "match": 50,
+  "reject": [
+    "channels.impor",
+    "closures.impor",
+    "demo_26_struct_point.impor",
+    "demo_30_closures.impor",
+    "stdlib.impor",
+    "struct.impor"
+  ],
+  "buildfail": [
+    "cn_demo.impor",
+    "err_demo.impor"
+  ],
+  "nondet": [
+    "demo_38_dice.impor",
+    "icon_demo.impor"
+  ],
+  "updated": "5.6.0"
+}

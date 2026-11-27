@@ -1,0 +1,75 @@
+// std/test.impor — 断言与用例计数（给 examples 和 CI 用，不依赖 pytest）
+// 用法：import std.test as t → t.eq(a, b, "加法") → t.summary()
+
+var PASSED = 0
+var FAILED = 0
+var FAILURES = []
+
+def reset() {
+    set PASSED = 0
+    set FAILED = 0
+    set FAILURES = []
+    return true
+}
+
+def ok(cond, name) {
+    if cond {
+        set PASSED = PASSED + 1
+        return true
+    }
+    set FAILED = FAILED + 1
+    arrappend(FAILURES, "断言失败：" + name)
+    return false
+}
+
+def eq(actual, expected, name) {
+    if actual == expected {
+        return ok(true, name)
+    }
+    set FAILED = FAILED + 1
+    arrappend(FAILURES, "期望 " + str(expected) + "，实际 " + str(actual) + "（" + name + "）")
+    return false
+}
+
+def ne(actual, unexpected, name) {
+    return ok(actual != unexpected, name)
+}
+
+def truthy(v, name) {
+    return ok(v == true, name)
+}
+
+def falsy(v, name) {
+    return ok(v == false, name)
+}
+
+def nearly(actual, expected, eps, name) {
+    var d = actual - expected
+    if d < 0 {
+        set d =-d
+    }
+    return ok(d <= eps, name)
+}
+
+def failure_count() {
+    return FAILED
+}
+
+def summary() {
+    var total = PASSED + FAILED
+    print("用例 " + str(total) + "：通过 " + str(PASSED) + "，失败 " + str(FAILED))
+    for f in FAILURES {
+        print("  · " + f)
+    }
+    return FAILED == 0
+}
+
+export reset
+export ok
+export eq
+export ne
+export truthy
+export falsy
+export nearly
+export failure_count
+export summary

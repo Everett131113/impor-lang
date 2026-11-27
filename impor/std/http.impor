@@ -1,8 +1,22 @@
-// std/http.impor — 最小 HTTP GET（使用系统自带 curl，不装第三方包）
-// 使用：import std.http  →  var body = std.http.get("https://example.com")
-// 只用基础内建，解释器与 C 后端行为一致。
+# std/http.impor — HTTP(S) 客户端（v4.3.2 硬化）
+#
+# 两条路径：
+#   1) WinHTTP 绑定（推荐）：bindings/http/impor_bind_http.dll，走系统 TLS 栈，
+#      证书校验、TLS 1.2+、重定向上限 5、16 MB 响应体上限都由绑定控制。
+#   2) curl 兜底：机器上没有绑定 DLL 时用系统 curl，但强制 https / TLS 1.2+、
+#      限制重定向与超时，并拒绝把 URL 拼进 shell（只放行 http(s) 且不含引号等字符）。
+#
+# 用法：
+#   import std.http as http
+#   var body = http.get("https://example.com")
+#   var r = http.request("GET", url, "", "", 15000)   # {"status","body","error"}
+#   var j = http.get_json(url)
 
-func _has_char(s, ch) {
+var __lib = nil
+var __ready = false
+var __shim = ""
+
+def _has_char(s, ch) {
     var i = 0
     while i < len(s) {
         if strcut(s, i, i + 1) == ch {
@@ -13,7 +27,7 @@ func _has_char(s, ch) {
     return false
 }
 
-func _safe_url(url) {
+def _safe_url(url) {
     var s = to_str(url)
     if len(s) < 7 {
         return false
@@ -21,7 +35,7 @@ func _safe_url(url) {
     if strcut(s, 0, 7) != "http://" and strcut(s, 0, 8) != "https://" {
         return false
     }
-    for ch in ["\"", "'", "&", "|", ";", "<", ">", "`", "\n", "\r", " ", "$"] {
+    for ch in["\"", "'", "&", "|", ";", "<", ">", "`", "\n", "\r", " ", "$"] {
         if _has_char(s, ch) {
             return false
         }
@@ -29,27 +43,143 @@ func _safe_url(url) {
     return true
 }
 
-func get(url) {
-    if not _safe_url(url) {
-        print("http.get：只接受 http:// 或 https:// 的普通 URL")
-        exit(1)
+def _maybe(path) {
+    if __ready {
+        return true
     }
-    var stamp = to_str(int(clock()))
-    var tmp = ".impor_http_" + stamp + ".tmp"
-    var cmd = "curl -sS -L --max-time 30 --fail -o \"" + tmp + "\" \"" + url + "\""
-    var rc = system(cmd)
-    if rc != 0 {
-        print("http.get：请求失败，curl 退出码 " + to_str(rc))
-        exit(1)
+    if len(path) == 0 {
+        return false
     }
-    var body = fileread(tmp)
-    filewrite(tmp, "")
-    return body
+    if !fileexists(path) {
+        return false
+    }
+    # v4.3.2：fileexists 按进程 cwd 解析，ffi_open 按脚本目录解析，两者不一致时
+    # 会出现「存在检查通过、加载却报 E1099 原生库不存在」，把本应走 curl 兜底的
+    # 场景变成崩溃。加载失败一律当作「这条路不可用」，交给下一个候选/兜底。
+    var lib = nil
+    try {
+        set lib = ffi_open(path)
+    } catch e {
+        return false
+    }
+    if lib == nil {
+        return false
+    }
+    set __lib = lib
+    set __ready = true
+    set __shim = path
+    return true
 }
 
-func get_json(url) {
+def _ensure() {
+    if __ready {
+        return true
+    }
+    if _maybe(__shim) {
+        return true
+    }
+    if _maybe("bindings/http/impor_bind_http.dll") {
+        return true
+    }
+    if _maybe("impor/bindings/http/impor_bind_http.dll") {
+        return true
+    }
+    if _maybe(exedir() + "/bindings/http/impor_bind_http.dll") {
+        return true
+    }
+    return _maybe(exedir() + "/../bindings/http/impor_bind_http.dll")
+}
+
+export def configure(shim_path) {
+    set __shim = to_str(shim_path)
+    set __ready = false
+    return _ensure()
+}
+
+export def ready() {
+    return __ready
+}
+
+export def _binding_request(method, url, headers, body, timeout_ms) {
+    var id = ffi_call(__lib, "impor_http_request",[method, url, headers, body, timeout_ms], "int",["cstr", "cstr", "cstr", "cstr", "int"])
+    var status = 0
+    var text = ""
+    var err = ""
+    if id > 0 {
+        set status = ffi_call(__lib, "impor_http_status",[id], "int",["int"])
+        set text = ffi_call(__lib, "impor_http_body",[id], "cstr",["int"])
+        set err = ffi_call(__lib, "impor_http_error",[id], "cstr",["int"])
+    } else {
+        set err = ffi_call(__lib, "impor_http_last_error",[], "cstr",[])
+    }
+    return { "status": status, "body": text, "error": err }
+}
+
+def _curl_request(method, url) {
+    # 兜底路径只支持 GET；URL 已过 _safe_url，不含任何可拼 shell 的字符。
+    var stamp = randstr(12)
+    var body_file = ".impor_http_" + stamp + ".body"
+    var hdr_file = ".impor_http_" + stamp + ".hdr"
+    var proto = "=https"
+    if strcut(url, 0, 7) == "http://" {
+        set proto = "=http"
+    }
+    var cmd = "curl -sS -L --proto \"" + proto + "\" --tlsv1.2 --max-redirs 5 --max-time 30 --dump-header \"" + hdr_file + "\" -o \"" + body_file + "\" \"" + url + "\""
+    var rc = system(cmd)
+    var body = ""
+    var code = 0
+    if fileexists(body_file) {
+        set body = fileread(body_file)
+        filewrite(body_file, "")
+    }
+    if fileexists(hdr_file) {
+        var lines = strlines(fileread(hdr_file))
+        if len(lines) > 0 {
+            var first = lines[0]
+            var sp = strfind(first, " ")
+            if sp > 0 {
+                set code = int(strcut(first, sp + 1, sp + 4))
+            }
+        }
+        filewrite(hdr_file, "")
+    }
+    var err = ""
+    if rc != 0 {
+        set err = "curl 退出码 " + to_str(rc)
+    }
+    return { "status": code, "body": body, "error": err }
+}
+
+export def request(method, url, headers, body, timeout_ms) {
+    if !_safe_url(url) {
+        return { "status": 0, "body": "", "error": "只接受 http:// 或 https:// 的普通 URL" }
+    }
+    if _ensure() {
+        return _binding_request(method, url, headers, body, timeout_ms)
+    }
+    return _curl_request(method, url)
+}
+
+export def get_status(url) {
+    return request("GET", url, "", "", 30000)
+}
+
+export def get(url) {
+    var r = request("GET", url, "", "", 30000)
+    if r["status"] < 200 or r["status"] >= 400 {
+        print("http.get：请求失败，status " + to_str(r["status"]) + " " + to_str(r["error"]))
+        exit(1)
+    }
+    return r["body"]
+}
+
+export def get_json(url) {
     return json_decode(get(url))
 }
 
 export get
 export get_json
+export get_status
+export request
+export configure
+export ready

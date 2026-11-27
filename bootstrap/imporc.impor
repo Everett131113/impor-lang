@@ -1,3 +1,4 @@
+# 版本：v5.6.0（与仓库根 VERSION 同步；release-check 读本行作为自举编译器版本）
 # imporc.impor —— Impor (I++) 自举种子编译器（v2.14 阶段二）
 # 用 Impor 语言写的编译器：词法扫描 + 递归下降表达式解析 + C 转译。
 # 由 imporc（C 编译器）编译本文件，得到第一个"Impor 编译器编译出的 Impor 编译器"，
@@ -8,40 +9,41 @@
 # ---------- 全局状态 ----------
 var gsrc = ""
 var gpos = 0
+var gname = "imporc.impor" # patch8b：诊断用的真实脚本名
 var gtok = ""
-var gtype = 0     # 1=标识符 2=数字 3=字符串 4=操作符 5=EOF 6=缩进增 7=缩进减
-var gvars = ""      # 收集到的全局变量名（| 分隔）
-var gout = ""       # 转译输出缓冲（main 段）
-var gfuncs = ""     # 转译输出缓冲（函数段）
-var gfuncs2 = ""    # 函数表：name;nparams;name;nparams;
+var gtype = 0 # 1=标识符 2=数字 3=字符串 4=操作符 5=EOF 6=缩进增 7=缩进减
+var gvars = "" # 收集到的全局变量名（| 分隔）
+var gout = "" # 转译输出缓冲（main 段）
+var gfuncs = "" # 转译输出缓冲（函数段）
+var gfuncs2 = "" # 函数表：name;nparams;name;nparams;
 var ginfunc = false # 当前是否在函数体内（决定输出段与局部/全局）
-var glocals = ""    # 当前函数的局部变量表（| 分隔）
-var gindstack = "0|"  # 缩进栈（| 分隔的数字）
-var g_swinds = ""    # switch 缩进栈（支持嵌套 switch）
-var gprev_nl = true   # 上次扫描后是否跨行（行首缩进判定）
-var gfail = false   # 编译失败标志
-var gded_pending = false  # 多级缩进减少时，待补发的 DED
-var gded_target = 0       # DED 补发到哪一层缩进为止
-var gcur_cls = ""         # 当前正在编译的类名（super 调用需要）
-var gsuper_pending = false  # super() 后等待 .方法( 调用
-var gassign_kind = ""     # 最近表达式主干：""=不可赋值 var=变量 prop=属性
-var gassign_name = ""     # 变量名（gassign_kind=var）
-var gassign_base = ""     # 属性目标 C 文本（gassign_kind=prop）
-var gargseq = 0           # 实参数组临时名序号（避开 tcc 复合字面量限制）
-var gassign_prop = ""     # 属性名（gassign_kind=prop）
-var gassign_idx = ""      # 下标表达式 C 文本（gassign_kind=idx）
-var gparams = ""          # 当前方法的参数名序列（"name;age;" 顺序，序号即索引）
-var gmethod = false       # 当前是否在方法体内（参数经 args[] 访问）
-var gassign_raw = ""      # 变量原始名（gassign_kind=var，用于全局登记）
-var genum_types = ""      # enum 类型名表（"Color|" 形式，用于 Color.MEMBER 改写）
-var gclosure = ""         # 闭包函数定义段（v4.2）
-var gdecls = ""           # 前置声明段（闭包原型 / 函数值对象，v4.2）
-var gcaps = ""            # 当前嵌套函数可捕获的外层局部名（"a|b|"）
-var gclos_seq = 0         # 闭包序号
-var gclosure_depth = 0    # 嵌套函数层数（只支持一层）
+var glocals = "" # 当前函数的局部变量表（| 分隔）
+var gindstack = "0|" # 缩进栈（| 分隔的数字）
+var g_swinds = "" # switch 缩进栈（支持嵌套 switch）
+var gprev_nl = true # 上次扫描后是否跨行（行首缩进判定）
+var gfail = false # 编译失败标志
+var gded_pending = false # 多级缩进减少时，待补发的 DED
+var gded_target = 0 # DED 补发到哪一层缩进为止
+var gcur_cls = "" # 当前正在编译的类名（super 调用需要）
+var gsuper_pending = false # super() 后等待 .方法( 调用
+var gassign_kind = "" # 最近表达式主干：""=不可赋值 var=变量 prop=属性
+var gassign_name = "" # 变量名（gassign_kind=var）
+var gassign_base = "" # 属性目标 C 文本（gassign_kind=prop）
+var gargseq = 0 # 实参数组临时名序号（避开 tcc 复合字面量限制）
+var gassign_prop = "" # 属性名（gassign_kind=prop）
+var gassign_idx = "" # 下标表达式 C 文本（gassign_kind=idx）
+var gparams = "" # 当前方法的参数名序列（"name;age;" 顺序，序号即索引）
+var gmethod = false # 当前是否在方法体内（参数经 args[] 访问）
+var gassign_raw = "" # 变量原始名（gassign_kind=var，用于全局登记）
+var genum_types = "" # enum 类型名表（"Color|" 形式，用于 Color.MEMBER 改写）
+var gclosure = "" # 闭包函数定义段（v4.2）
+var gdecls = "" # 前置声明段（闭包原型 / 函数值对象，v4.2）
+var gcaps = "" # 当前嵌套函数可捕获的外层局部名（"a|b|"）
+var gclos_seq = 0 # 闭包序号
+var gclosure_depth = 0 # 嵌套函数层数（只支持一层）
 
 # ---------- 工具 ----------
-func strfind(hay, needle)
+def strfind(hay, needle)
     var hl = len(hay)
     var nl = len(needle)
     var i = 0
@@ -49,14 +51,14 @@ func strfind(hay, needle)
         if strcut(hay, i, i + nl) == needle
             return i
         set i = i + 1
-    return -1
+    return - 1
 
-func is_digit(c)
+def is_digit(c)
     if c >= "0" and c <= "9"
         return true
     return false
 
-func is_alpha(c)
+def is_alpha(c)
     if c >= "a" and c <= "z"
         return true
     if c >= "A" and c <= "Z"
@@ -65,11 +67,11 @@ func is_alpha(c)
         return true
     return false
 
-func top_ind()
+def top_ind()
     # 缩进栈顶（最后一个 | 之前的数字）
     var s = gindstack
-    var last = -1
-    var prev = -1
+    var last =-1
+    var prev =-1
     var i = 0
     while i < len(s)
         if strcut(s, i, i + 1) == "|"
@@ -80,11 +82,11 @@ func top_ind()
         return 0
     return to_num(strcut(s, prev + 1, last))
 
-func pop_ind()
+def pop_ind()
     # 弹出缩进栈顶一层
     var s = gindstack
-    var last = -1
-    var prev = -1
+    var last =-1
+    var prev =-1
     var i = 0
     while i < len(s)
         if strcut(s, i, i + 1) == "|"
@@ -100,15 +102,15 @@ func pop_ind()
             set gindstack = strcut(s, 0, prev + 1)
     return true
 
-func push_ind(ind)
+def push_ind(ind)
     set gindstack = gindstack + to_str(ind) + "|"
     return true
 
-func top_sw()
+def top_sw()
     # 当前 switch 的基准缩进（支持嵌套 switch）
     var s = g_swinds
-    var last = -1
-    var prev = -1
+    var last =-1
+    var prev =-1
     var i = 0
     while i < len(s)
         if strcut(s, i, i + 1) == "|"
@@ -121,15 +123,15 @@ func top_sw()
         return to_num(strcut(s, 0, last))
     return to_num(strcut(s, prev + 1, last))
 
-func push_sw(ind)
+def push_sw(ind)
     set g_swinds = g_swinds + to_str(ind) + "|"
     return true
 
-func pop_sw()
+def pop_sw()
     var v = top_sw()
     var s = g_swinds
-    var last = -1
-    var prev = -1
+    var last =-1
+    var prev =-1
     var i = 0
     while i < len(s)
         if strcut(s, i, i + 1) == "|"
@@ -142,19 +144,19 @@ func pop_sw()
         set g_swinds = strcut(s, 0, prev + 1)
     return v
 
-func add_func(name, np)
+def add_func(name, np)
     # 登记函数（名字 + 参数个数），不重复
     if strfind(";" + gfuncs2, ";" + name + ";") < 0
         set gfuncs2 = gfuncs2 + name + ";" + to_str(np) + ";"
     return true
 
-func is_func(name)
+def is_func(name)
     # 精确判断 name 是否为函数（避免 total 命中 add_to_total）
     if strfind(";" + gfuncs2, ";" + name + ";") >= 0
         return true
     return false
 
-func param_idx(t)
+def param_idx(t)
     # 在 gparams 中找参数 t 的序号（0 起），找不到返回 -1
     var s = gparams
     var k = 0
@@ -169,9 +171,9 @@ func param_idx(t)
         else
             set cur = cur + strcut(s, i, i + 1)
         set i = i + 1
-    return -1
+    return - 1
 
-func out(s)
+def out(s)
     # 输出到当前段：函数体内 → gfuncs，否则 → gout
     if ginfunc
         set gfuncs = gfuncs + s
@@ -179,7 +181,7 @@ func out(s)
         set gout = gout + s
     return true
 
-func cap_index(name)
+def cap_index(name)
     # 在 gcaps（"a|b|"）里找 name 的序号，找不到 -1
     var idx = 0
     var cur = ""
@@ -193,9 +195,9 @@ func cap_index(name)
         else
             set cur = cur + strcut(gcaps, i, i + 1)
         set i = i + 1
-    return -1
+    return - 1
 
-func env_ptrs(gl)
+def env_ptrs(gl)
     # 把外层局部名表转成 C 初始化列表：&l_a, &l_b,
     var s = ""
     var cur = ""
@@ -210,7 +212,7 @@ func env_ptrs(gl)
         set i = i + 1
     return s
 
-func env_count(gl)
+def env_count(gl)
     # 外层局部名数量
     var n = 0
     var cur = ""
@@ -225,7 +227,7 @@ func env_count(gl)
         set i = i + 1
     return n
 
-func call_expr(target, args, narg)
+def call_expr(target, args, narg)
     # 通过函数值调用：rt_call(target, 参数数组, 个数)
     if narg > 0
         set gargseq = gargseq + 1
@@ -233,14 +235,81 @@ func call_expr(target, args, narg)
         return "({ Val " + an + "[" + to_str(narg) + "] = {" + args + "}; rt_call(" + target + ", " + an + ", " + to_str(narg) + "); })"
     return "rt_call(" + target + ", 0, 0)"
 
-func var_ref(name)
+def bi_expr(t, args, narg)
+    # 4.3.1 并发/原子内建 → 运行时函数；未命中返回 ""
+    if t == "mutex_new"
+        return "rt_mutex_new(" + args + ")"
+    if t == "mutex_lock"
+        return "rt_mutex_lock(" + args + ")"
+    if t == "mutex_unlock"
+        return "rt_mutex_unlock(" + args + ")"
+    if t == "mutex_trylock"
+        return "rt_mutex_trylock(" + args + ")"
+    if t == "cond_new"
+        return "rt_cond_new(" + args + ")"
+    if t == "cond_wait"
+        return "rt_cond_wait(" + args + ")"
+    if t == "cond_wait_ms"
+        return "rt_cond_wait_ms(" + args + ")"
+    if t == "cond_notify"
+        return "rt_cond_notify(" + args + ")"
+    if t == "cond_notify_all"
+        return "rt_cond_notify_all(" + args + ")"
+    if t == "atomic_new"
+        return "rt_atomic_new(" + args + ")"
+    if t == "atomic_load"
+        return "rt_atomic_load(" + args + ")"
+    if t == "atomic_store"
+        return "rt_atomic_store(" + args + ")"
+    if t == "atomic_add"
+        return "rt_atomic_add(" + args + ")"
+    if t == "atomic_sub"
+        return "rt_atomic_sub(" + args + ")"
+    if t == "atomic_exchange"
+        return "rt_atomic_exchange(" + args + ")"
+    if t == "atomic_cas"
+        return "rt_atomic_cas(" + args + ")"
+    if t == "thread_spawn"
+        return "rt_thread_spawn(" + args + ")"
+    if t == "thread_join"
+        return "rt_thread_join(" + args + ")"
+    if t == "thread_alive"
+        return "rt_thread_alive(" + args + ")"
+    if t == "thread_id"
+        return "rt_thread_id(" + args + ")"
+    if t == "arrappend"
+        return "rt_arrappend(" + args + ")"
+    if t == "arrpop"
+        return "rt_arrpop(" + args + ")"
+    if t == "arrfind"
+        return "rt_arrfind(" + args + ")"
+    if t == "arrdup"
+        return "rt_arrdup(" + args + ")"
+    if t == "arrrev"
+        return "rt_arrrev(" + args + ")"
+    if t == "strfind"
+        if narg == 2
+            return "rt_strfind(" + args + ", v_int(0))"
+        return "rt_strfind(" + args + ")"
+    if t == "clock"
+        return "rt_clock(" + args + ")"
+    if t == "now"
+        return "rt_now(" + args + ")"
+    if t == "seed"
+        return "rt_seed(" + args + ")"
+    if t == "randi"
+        return "rt_randi(" + args + ")"
+    if t == "randstr"
+        return "rt_randstr(" + args + ")"
+    return ""
+
+def var_ref(name)
     # 函数内局部统一装箱（Val*），读取时解引用；全局变量保持值
     if ginfunc and strfind("|" + glocals, "|" + name + "|") >= 0
         return "(*l_" + name + ")"
     return "g_" + name
 
-
-func list_at(s, idx)
+def list_at(s, idx)
     # 取 "a|b|c|" 中第 idx 个名字
     var k = 0
     var cur = ""
@@ -256,11 +325,134 @@ func list_at(s, idx)
         set i = i + 1
     return ""
 
+# ---------- patch8b：花括号块 → 缩进（v4 标准写法两种块都要能写） ----------
+# 自举编译器此前只认缩进块：`if (x) { ... }` 会在闭合 `}` 上直接报「无法识别的语句」。
+# 与其在一个 2000 行的递归下降解析器里逐处补大括号分支（每个块函数都要改），
+# 这里在词法之前把「花括号写法」整段归一化成缩进写法：只动前导 `}` 与行尾 `{`，
+# 深度自己数，与源文件原缩进无关。纯缩进文件一行都不改（mi_has_brace_style 先判断）。
 
+def mi_rtrim(s)
+    var e = len(s)
+    while e > 0
+        var c = strcut(s, e - 1, e)
+        if c == " " or c == "\t" or c == "\r"
+            set e = e - 1
+        else
+            break
+    return strcut(s, 0, e)
 
+def mi_has_brace_style(s)
+    var i = 0
+    var n = len(s)
+    while i < n
+        var eol = i
+        while eol < n and strcut(s, eol, eol + 1) != "\n"
+            set eol = eol + 1
+        var line = strcut(s, i, eol)
+        var t = mi_rtrim(line)
+        if len(t) > 0
+            if strcut(t, 0, 1) != "#"
+                if strcut(t, 0, 1) == "}"
+                    return true
+                if strcut(t, len(t) - 1, len(t)) == "{"
+                    return true
+        set i = eol + 1
+    return false
+
+def mi_lead(s)
+    var p = 0
+    var n = len(s)
+    while p < n
+        var ch = strcut(s, p, p + 1)
+        if ch == " "
+            set p = p + 1
+        else
+            if ch == "\t"
+                set p = p + 4
+            else
+                break
+    return p
+
+def mi_brace_to_indent(s)
+    if not mi_has_brace_style(s)
+        return s
+    var out = ""
+    var depth = 0
+    var lits = 0
+    var i = 0
+    var n = len(s)
+    while i < n
+        var eol = i
+        while eol < n and strcut(s, eol, eol + 1) != "\n"
+            set eol = eol + 1
+        var line = strcut(s, i, eol)
+        var lead = mi_lead(line)
+        # 先切掉前导空白，body 从非空白字符开始，行首 } 才能被认出来
+        var body = mi_rtrim(strcut(line, lead, len(line)))
+        # 行首的 } 只吃掉 } 本身（空格已被 mi_lead 计入 lead）
+        var closes = 0
+        var p = 0
+        while p < len(body)
+            var ch = strcut(body, p, p + 1)
+            if ch == "}"
+                set closes = closes + 1
+                set p = p + 1
+            else
+                break
+        var d = 0
+        var removed = 0
+        # lits>0：当前在表达式字面量（多行 dict/list）内部，
+        # 行首的 } 属于字面量收尾，不能当成代码块结束。
+        if lits > 0 and closes > 0
+            set lits = lits - 1
+            set removed = 0
+        else
+            while d < closes and depth > 0
+                set depth = depth - 1
+                set removed = removed + 1
+                set d = d + 1
+        # depth==0 时行首的 } 是字典/表达式字面量的收尾，不能当块结束吞掉
+        set body = mi_rtrim(strcut(body, removed, len(body)))
+        # 缩进 = 原缩进 + 已开的花括号层数×4：
+        # 保留文件自己的缩进风格（纯缩进 def 体内再嵌花括号 if 也不会塌），
+        # 块头自己不加层，块体才加（顺序错会报「意外的缩进开始」）。
+        var total = lead + 4 * depth
+        var opens = 0
+        if len(body) > 0
+            if strcut(body, len(body) - 1, len(body)) == "{"
+                # 只有「块头」结尾的 { 才是代码块；return { / = { / , {
+                # 是多行字典字面量，必须原样留给表达式解析器。
+                var wend = strfind(body, " ")
+                var w0 = body
+                if wend >= 0
+                    set w0 = strcut(body, 0, wend)
+                var is_block = false
+                if w0 == "if" or w0 == "else" or w0 == "elif" or w0 == "while"
+                    set is_block = true
+                if w0 == "for" or w0 == "def" or w0 == "class" or w0 == "switch"
+                    set is_block = true
+                if w0 == "try" or w0 == "catch" or w0 == "finally" or body == "{"
+                    set is_block = true
+                if is_block
+                    set body = mi_rtrim(strcut(body, 0, len(body) - 1))
+                    set opens = 1
+                else
+                    set lits = lits + 1
+        var ind = ""
+        var k = 0
+        while k < total
+            set ind = ind + " "
+            set k = k + 1
+        if len(body) > 0
+            set out = out + ind + body + "\n"
+        else
+            set out = out + "\n"
+        set depth = depth + opens
+        set i = eol + 1
+    return out
 
 # ---------- 词法 ----------
-func scan()
+def scan()
     # ---- 多级缩进减少：逐层补发 DED ----
     if gded_pending
         pop_ind()
@@ -419,19 +611,78 @@ func scan()
         set gtype = 4
         set gpos = gpos + 2
         return
+    # 逻辑别名 || &&（v4.3.1 示例与解释器均接受）
+    if c == "|" and nx < n and strcut(gsrc, nx, nx + 1) == "|"
+        set gtok = "or"
+        set gtype = 4
+        set gpos = gpos + 2
+        return
+    if c == "&" and nx < n and strcut(gsrc, nx, nx + 1) == "&"
+        set gtok = "and"
+        set gtype = 4
+        set gpos = gpos + 2
+        return
+    # 复合赋值 += -= *= /= %=
+    if nx < n and strcut(gsrc, nx, nx + 1) == "="
+        if c == "+" or c == "-" or c == "*" or c == "/" or c == "%"
+            set gtok = c + "="
+            set gtype = 4
+            set gpos = gpos + 2
+            return
+    # 返回类型箭头 ->
+    if c == "-" and nx < n and strcut(gsrc, nx, nx + 1) == ">"
+        set gtok = "->"
+        set gtype = 4
+        set gpos = gpos + 2
+        return
     set gtok = c
     set gtype = 4
     set gpos = gpos + 1
     return
 
-func expect_op(op)
+def expect_op(op)
     if gtok != op
-        print("imporc.impor: 第", mi_line_at(gpos), "行: 期望 ", op, " 实际 ", gtok)
+        print(gname, ": 第", mi_line_at(gpos), "行: 期望 ", op, " 实际 ", gtok)
         set gfail = true
     scan()
 
+def mi_skip_angle()
+    # 泛型声明 < T > / < T, U >：运行期擦除，直接跳过
+    if gtok == "<"
+        scan()
+        var dep = 1
+        while dep > 0 and gtype != 5
+            if gtok == "<"
+                set dep = dep + 1
+            if gtok == ">"
+                set dep = dep - 1
+            scan()
+        return true
+
+def mi_skip_annot()
+    # 参数类型标注 : T / : Array<T> 直接跳过（擦除）
+    if gtok == ":"
+        scan()
+        while gtype != 5 and gtype != 6 and gtype != 7 and gtok != "," and gtok != ")" and gtok != "{" and gtok != "->"
+            if gtok == "<"
+                mi_skip_angle()
+            else
+                scan()
+        return true
+
+def mi_skip_ret()
+    # 返回类型 -> T 直接跳过
+    if gtok == "->"
+        scan()
+        while gtype != 5 and gtype != 6 and gtype != 7 and gtok != "{"
+            if gtok == "<"
+                mi_skip_angle()
+            else
+                scan()
+        return true
+
 # ---------- C 字符串转义 ----------
-func esc_str(s)
+def esc_str(s)
     # s 含引号，剥离首尾引号并转义为 C 字符串字面量
     # 转义序列（\n \\ \" \t 等）原样保留为 C 的转义形式
     var n = len(s)
@@ -457,7 +708,14 @@ func esc_str(s)
     return out
 
 # ---------- 表达式（递归下降，返回 C 文本） ----------
-func parse_primary()
+# ---------- 字面量内部的换行 ----------
+def mi_skip_layout()
+    # 多行 dict / list / 调用实参里，换行会留下 INDENT/DEDENT；
+    # 这些排版记号不是语法，解析字面量时要吞掉。
+    while gtype == 6 or gtype == 7
+        scan()
+
+def parse_primary()
     var t = gtok
     if t == "str"
         set t = "to_str"
@@ -466,6 +724,7 @@ func parse_primary()
     if gtok == "{"
         # 字典字面量 {k: v, ...} → rt_dict_of(n, k, v, ...)；{} 为空字典
         scan()
+        mi_skip_layout()
         var ditems = ""
         var dcnt = 0
         if gtok != "}"
@@ -474,12 +733,17 @@ func parse_primary()
                     set ditems = ditems + ", "
                 set ditems = ditems + parse_expr()
                 expect_op(":")
+                mi_skip_layout()
                 set ditems = ditems + ", " + parse_expr()
                 set dcnt = dcnt + 1
                 if gtok == ","
                     scan()
+                    mi_skip_layout()
+                    if gtok == "}"
+                        break
                 else
                     break
+        mi_skip_layout()
         expect_op("}")
         if dcnt > 0
             return "rt_dict_of(" + to_str(dcnt) + ", " + ditems + ")"
@@ -487,6 +751,7 @@ func parse_primary()
     if gtok == "["
         # 数组字面量 [a, b, c] → rt_arr_of(n, ...)
         scan()
+        mi_skip_layout()
         var items = ""
         var cnt = 0
         if gtok != "]"
@@ -494,10 +759,14 @@ func parse_primary()
             set cnt = 1
             while gtok == ","
                 scan()
+                mi_skip_layout()
+                if gtok == "]"
+                    break
                 set items = items + ", " + parse_expr()
                 set cnt = cnt + 1
+                mi_skip_layout()
         if gtok != "]"
-            print("imporc.impor: 第", mi_line_at(gpos), "行: 数组字面量需要 ]")
+            print(gname, ": 第", mi_line_at(gpos), "行: 数组字面量需要 ]")
             set gfail = true
             return "0"
         scan()
@@ -525,6 +794,16 @@ func parse_primary()
         if t == "false"
             scan()
             return "v_bool(0)"
+        if t == "nil" or t == "null"
+            scan()
+            return "v_null()"
+        if t == "fileexists"
+            # v4.3.1：模块搜索根要先用 fileexists 探路，子集发射器必须认得它
+            scan()
+            expect_op("(")
+            var fep = parse_expr()
+            expect_op(")")
+            return "rt_fileexists(" + fep + ")"
         if t == "not"
             scan()
             return "rt_not(" + parse_unary() + ")"
@@ -543,6 +822,7 @@ func parse_primary()
             var clsname = gtok
             scan()
             expect_op("(")
+            mi_skip_layout()
             var cargs = ""
             var cn = 0
             if gtok != ")"
@@ -553,8 +833,10 @@ func parse_primary()
                     set cn = cn + 1
                     if gtok == ","
                         scan()
+                        mi_skip_layout()
                     else
                         break
+            mi_skip_layout()
             expect_op(")")
             if cn > 0
                 set gargseq = gargseq + 1
@@ -573,6 +855,7 @@ func parse_primary()
                 else
                     if gtok == "("
                         scan()
+                        mi_skip_layout()
                         var args = ""
                         var narg = 0
                         if gtok != ")"
@@ -583,8 +866,10 @@ func parse_primary()
                                 set narg = narg + 1
                                 if gtok == ","
                                     scan()
+                                    mi_skip_layout()
                                 else
                                     break
+                        mi_skip_layout()
                         expect_op(")")
                         if t == "len"
                             set base = "rt_len(" + args + ")"
@@ -682,7 +967,11 @@ func parse_primary()
                                                                                                                                             if t == "imporc_module"
                                                                                                                                                 set base = "rt_module_new(" + args + ")"
                                                                                                                                             else
-                                                                                                                                                set base = call_expr("g_" + t, args, narg)
+                                                                                                                                                var be = bi_expr(t, args, narg)
+                                                                                                                                                if be != ""
+                                                                                                                                                    set base = be
+                                                                                                                                                else
+                                                                                                                                                    set base = call_expr("g_" + t, args, narg)
                         # 调用后也可能带属性/下标后缀，落到底部循环统一处理
                     else
                         if gmethod
@@ -748,7 +1037,7 @@ func parse_primary()
                             set base = "rt_method(" + base + ", \"" + mname + "\", 0, 0)"
                 else
                     if gsuper_pending
-                        print("imporc.impor: 第", mi_line_at(gpos), "行: super 后必须是方法调用")
+                        print(gname, ": 第", mi_line_at(gpos), "行: super 后必须是方法调用")
                         set gfail = true
                         return ""
                     set gassign_kind = "prop"
@@ -787,17 +1076,20 @@ func parse_primary()
         var e = parse_expr()
         expect_op(")")
         return e
-    print("imporc.impor: 第", mi_line_at(gpos), "行: 表达式错误 token=", t)
+    print(gname, ": 第", mi_line_at(gpos), "行: 表达式错误 token=", t)
     set gfail = true
     return ""
 
-func parse_unary()
+def parse_unary()
     if gtok == "-"
         scan()
         return "rt_neg(" + parse_unary() + ")"
+    if gtok == "!"
+        scan()
+        return "rt_not(" + parse_unary() + ")"
     return parse_primary()
 
-func parse_mul()
+def parse_mul()
     var a = parse_unary()
     while 1
         if gtok == "*"
@@ -815,7 +1107,7 @@ func parse_mul()
                     break
     return a
 
-func parse_add()
+def parse_add()
     var a = parse_mul()
     while 1
         if gtok == "+"
@@ -829,7 +1121,7 @@ func parse_add()
                 break
     return a
 
-func parse_cmp()
+def parse_cmp()
     var a = parse_add()
     while 1
         if gtok == "==" or gtok == "!=" or gtok == "<" or gtok == ">" or gtok == "<=" or gtok == ">="
@@ -840,36 +1132,36 @@ func parse_cmp()
             break
     return a
 
-func parse_and()
+def parse_and()
     var a = parse_cmp()
     while gtok == "and"
         scan()
         set a = "rt_and(" + a + ", " + parse_cmp() + ")"
     return a
 
-func parse_or()
+def parse_or()
     var a = parse_and()
     while gtok == "or"
         scan()
         set a = "rt_or(" + a + ", " + parse_and() + ")"
     return a
 
-func parse_expr()
+def parse_expr()
     return parse_or()
 
 # ---------- 语句转译 ----------
-func add_var(name)
+def add_var(name)
     # 收集全局变量（不重复）
     if strfind("|" + gvars, "|" + name + "|") < 0
         set gvars = gvars + name + "|"
     return true
 
-func gen_block()
+def gen_block()
     # 进入块：消费可选 IND，循环转译语句直到 DED / EOF
     # v3.8.3：同时接受单行/多行大括号块 { ... }，不再把 `{` 当成无法识别的语句。
     if gtok == "{" and gtype == 4
         scan()
-        while gtype != 5 and not gfail and not (gtok == "}" and gtype == 4)
+        while gtype != 5 and not gfail and not(gtok == "}" and gtype == 4)
             if gtype == 6 or gtype == 7
                 scan()
             gen_stmt()
@@ -885,11 +1177,11 @@ func gen_block()
         gen_stmt()
     return true
 
-func gen_block2()
+def gen_block2()
     # 块消费：{ ... } 大括号（type 4）或缩进块
     if gtok == "{" and gtype == 4
         scan()
-        while gtype != 5 and not gfail and not (gtok == "}" and gtype == 4)
+        while gtype != 5 and not gfail and not(gtok == "}" and gtype == 4)
             if gtype == 6 or gtype == 7
                 scan()
             gen_stmt()
@@ -899,15 +1191,15 @@ func gen_block2()
         gen_block()
     return true
 
-func gen_stmt()
+def gen_stmt()
     # 期望当前 token 是一条语句关键字
     var t = gtok
     if gtype == 6
-        print("imporc.impor: 第", mi_line_at(gpos), "行: 意外的缩进开始 pos=", gpos, " tok=[", gtok, "] type=", gtype, " ind=", gindstack)
+        print(gname, ": 第", mi_line_at(gpos), "行: 意外的缩进开始 pos=", gpos, " tok=[", gtok, "] type=", gtype, " ind=", gindstack)
         set gfail = true
         return false
     if gtype == 7
-        print("imporc.impor: 第", mi_line_at(gpos), "行: 意外的缩进结束 pos=", gpos, " tok=[", gtok, "] type=", gtype)
+        print(gname, ": 第", mi_line_at(gpos), "行: 意外的缩进结束 pos=", gpos, " tok=[", gtok, "] type=", gtype)
         set gfail = true
         return false
     if t == "var"
@@ -968,7 +1260,7 @@ func gen_stmt()
                 out("rt_objset(" + oexpr + ", \"" + prop + "\", " + pval + ");\n")
             else
                 if gtok != "="
-                    print("imporc.impor: 第", mi_line_at(gpos), "行: set 缺 =")
+                    print(gname, ": 第", mi_line_at(gpos), "行: set 缺 =")
                     exit(1)
                 scan()
                 var val = parse_expr()
@@ -1003,7 +1295,7 @@ func gen_stmt()
         scan()
         var ename = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 后需要类型名")
+            print(gname, ": 第", mi_line_at(gpos), "行: enum 后需要类型名")
             set gfail = true
             return false
         scan()
@@ -1016,7 +1308,7 @@ func gen_stmt()
         elif gtype == 6
             scan()
         else
-            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 需要缩进块或大括号块")
+            print(gname, ": 第", mi_line_at(gpos), "行: enum 需要缩进块或大括号块")
             set gfail = true
             return false
         var edefault = 0
@@ -1024,7 +1316,7 @@ func gen_stmt()
         while not gfail
             if ebrace and gtok == "}"
                 break
-            if not ebrace and (gtype == 7 or gtype == 5)
+            if not ebrace and(gtype == 7 or gtype == 5)
                 break
             if gtype == 6
                 scan()
@@ -1033,7 +1325,7 @@ func gen_stmt()
                     scan()
                 else
                     if gtype != 1
-                        print("imporc.impor: 第", mi_line_at(gpos), "行: enum 成员名应为标识符")
+                        print(gname, ": 第", mi_line_at(gpos), "行: enum 成员名应为标识符")
                         set gfail = true
                         return false
                     var emem = gtok
@@ -1046,7 +1338,7 @@ func gen_stmt()
                             set eneg = true
                             scan()
                         if gtype != 2
-                            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 成员值必须是整数字面量")
+                            print(gname, ": 第", mi_line_at(gpos), "行: enum 成员值必须是整数字面量")
                             set gfail = true
                             return false
                         set ev = to_num(gtok)
@@ -1063,13 +1355,13 @@ func gen_stmt()
                     set edefault = ev + 1
                     set ecount = ecount + 1
         if ecount == 0
-            print("imporc.impor: 第", mi_line_at(gpos), "行: enum 至少需要一个成员")
+            print(gname, ": 第", mi_line_at(gpos), "行: enum 至少需要一个成员")
             set gfail = true
             return false
         set genum_types = genum_types + ename + "|"
         if ebrace
             if gtok != "}"
-                print("imporc.impor: 第", mi_line_at(gpos), "行: enum 缺少 } 闭合")
+                print(gname, ": 第", mi_line_at(gpos), "行: enum 缺少 } 闭合")
                 set gfail = true
                 return false
             scan()
@@ -1080,7 +1372,7 @@ func gen_stmt()
         scan()
         var stname = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: struct 后需要结构体名")
+            print(gname, ": 第", mi_line_at(gpos), "行: struct 后需要结构体名")
             set gfail = true
             return false
         scan()
@@ -1091,7 +1383,7 @@ func gen_stmt()
         elif gtype == 6
             scan()
         else
-            print("imporc.impor: 第", mi_line_at(gpos), "行: struct 需要缩进块或大括号块")
+            print(gname, ": 第", mi_line_at(gpos), "行: struct 需要缩进块或大括号块")
             set gfail = true
             return false
         var sfiedefs = ""
@@ -1100,7 +1392,7 @@ func gen_stmt()
         while not gfail
             if sbrace and gtok == "}"
                 break
-            if not sbrace and (gtype == 7 or gtype == 5)
+            if not sbrace and(gtype == 7 or gtype == 5)
                 break
             if gtok == ";"
                 scan()
@@ -1109,7 +1401,7 @@ func gen_stmt()
                     scan()
                     var sfname = gtok
                     if gtype != 1
-                        print("imporc.impor: 第", mi_line_at(gpos), "行: struct 字段名应为标识符")
+                        print(gname, ": 第", mi_line_at(gpos), "行: struct 字段名应为标识符")
                         set gfail = true
                         return false
                     scan()
@@ -1121,7 +1413,7 @@ func gen_stmt()
                     set sinit = sinit + "rt_objset(self, \"" + sfname + "\", args[" + to_str(snf) + "]);\n"
                     set snf = snf + 1
                 else
-                    print("imporc.impor: 第", mi_line_at(gpos), "行: struct 体内只支持 var 字段 [", gtok, "]")
+                    print(gname, ": 第", mi_line_at(gpos), "行: struct 体内只支持 var 字段 [", gtok, "]")
                     set gfail = true
                     return false
         if sbrace
@@ -1130,7 +1422,7 @@ func gen_stmt()
             if gtype == 7
                 scan()
         if snf == 0
-            print("imporc.impor: 第", mi_line_at(gpos), "行: struct 至少需要一个字段")
+            print(gname, ": 第", mi_line_at(gpos), "行: struct 至少需要一个字段")
             set gfail = true
             return false
         set gfuncs = gfuncs + "static Val m_" + stname + "___init__(Obj *self, Val *args) {\n" + sinit + "return v_null();\n}\n"
@@ -1143,14 +1435,15 @@ func gen_stmt()
         out("reg_class(&ci_" + stname + ");\n")
         return true
     if t == "class"
-        # class 类名[(基类)]:  缩进块内为方法(func/def)与字段(var)
+        # class 类名[(基类)]:  缩进块内为方法(def)与字段(var)
         scan()
         var clsname = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: class 后需要类名")
+            print(gname, ": 第", mi_line_at(gpos), "行: class 后需要类名")
             set gfail = true
             return false
         scan()
+        mi_skip_angle()
         var basename = ""
         if gtok == "("
             scan()
@@ -1158,7 +1451,7 @@ func gen_stmt()
             scan()
             expect_op(")")
         if gtype != 6
-            print("imporc.impor: 第", mi_line_at(gpos), "行: class 需要缩进块")
+            print(gname, ": 第", mi_line_at(gpos), "行: class 需要缩进块")
             set gfail = true
             return false
         scan()
@@ -1166,14 +1459,15 @@ func gen_stmt()
         var fiedefs = ""
         set gcur_cls = clsname
         while gtype != 7 and gtype != 5 and not gfail
-            if gtok == "func" or gtok == "def"
+            if gtok == "def"
                 scan()
                 var mname = gtok
                 if gtype != 1
-                    print("imporc.impor: 第", mi_line_at(gpos), "行: 方法名应为标识符")
+                    print(gname, ": 第", mi_line_at(gpos), "行: 方法名应为标识符")
                     set gfail = true
                     return false
                 scan()
+                mi_skip_angle()
                 expect_op("(")
                 var mplocals = "self|"
                 set gparams = ""
@@ -1182,18 +1476,20 @@ func gen_stmt()
                     while 1
                         var pname = gtok
                         if gtype != 1
-                            print("imporc.impor: 第", mi_line_at(gpos), "行: 参数名应为标识符")
+                            print(gname, ": 第", mi_line_at(gpos), "行: 参数名应为标识符")
                             set gfail = true
                             return false
                         set gparams = gparams + pname + ";"
                         set mplocals = mplocals + pname + "|"
                         set nparam = nparam + 1
                         scan()
+                        mi_skip_annot()
                         if gtok == ","
                             scan()
                         else
                             break
                 expect_op(")")
+                mi_skip_ret()
                 set glocals = mplocals
                 set gfuncs = gfuncs + "static Val m_" + clsname + "_" + mname + "(Obj *self, Val *args) {\n"
                 set gmethod = true
@@ -1214,7 +1510,7 @@ func gen_stmt()
                         set fval = parse_expr()
                     set fiedefs = fiedefs + "rt_objset(o, \"" + fname2 + "\", " + fval + ");\n"
                 else
-                    print("imporc.impor: 第", mi_line_at(gpos), "行: class 体内未知语句 [", gtok, "]")
+                    print(gname, ": 第", mi_line_at(gpos), "行: class 体内未知语句 [", gtok, "]")
                     set gfail = true
                     return false
         if gtype == 7
@@ -1228,22 +1524,23 @@ func gen_stmt()
         out("reg_class(&ci_" + clsname + ");\n")
         return true
     # ---------- v4.2：嵌套函数 / 闭包 ----------
-    if (t == "func" or t == "def") and ginfunc
+    if t == "def" and ginfunc
         if gmethod
-            print("imporc.impor: 第", mi_line_at(gpos), "行: 方法内暂不支持嵌套函数")
+            print(gname, ": 第", mi_line_at(gpos), "行: 方法内暂不支持嵌套函数")
             set gfail = true
             return false
         if gclosure_depth > 0
-            print("imporc.impor: 第", mi_line_at(gpos), "行: 暂不支持两层以上嵌套函数")
+            print(gname, ": 第", mi_line_at(gpos), "行: 暂不支持两层以上嵌套函数")
             set gfail = true
             return false
         scan()
         var cfn = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: def 后需要函数名")
+            print(gname, ": 第", mi_line_at(gpos), "行: def 后需要函数名")
             set gfail = true
             return false
         scan()
+        mi_skip_angle()
         expect_op("(")
         var cparams = ""
         var cplist = ""
@@ -1254,7 +1551,7 @@ func gen_stmt()
             while 1
                 var cp = gtok
                 if gtype != 1
-                    print("imporc.impor: 第", mi_line_at(gpos), "行: 参数名应为标识符")
+                    print(gname, ": 第", mi_line_at(gpos), "行: 参数名应为标识符")
                     set gfail = true
                     return false
                 if cnp > 0
@@ -1264,11 +1561,13 @@ func gen_stmt()
                 set glocals = glocals + cp + "|"
                 set cnp = cnp + 1
                 scan()
+                mi_skip_annot()
                 if gtok == ","
                     scan()
                 else
                     break
         expect_op(")")
+        mi_skip_ret()
         # 捕获外层当前全部局部（快照）；深层嵌套不支持
         var caps = outer_locals
         var capn = env_count(caps)
@@ -1327,7 +1626,7 @@ func gen_stmt()
             if cap_index(nlname) >= 0
                 out("(*c_" + nlname + ") = " + nlval + ";\n")
             else
-                print("imporc.impor: 第", mi_line_at(gpos), "行: nonlocal 只能指向外层局部：", nlname)
+                print(gname, ": 第", mi_line_at(gpos), "行: nonlocal 只能指向外层局部：", nlname)
                 set gfail = true
                 return false
         return true
@@ -1343,14 +1642,15 @@ func gen_stmt()
             add_var(glname)
             out("g_" + glname + " = " + glval + ";\n")
         return true
-    if t == "func" or t == "def"
+    if t == "def"
         scan()
         var fname = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: func 后需要函数名")
+            print(gname, ": 第", mi_line_at(gpos), "行: def 后需要函数名")
             set gfail = true
             return false
         scan()
+        mi_skip_angle()
         expect_op("(")
         var params = ""
         var fplist = ""
@@ -1360,7 +1660,7 @@ func gen_stmt()
             while 1
                 var pname = gtok
                 if gtype != 1
-                    print("imporc.impor: 第", mi_line_at(gpos), "行: 参数名应为标识符")
+                    print(gname, ": 第", mi_line_at(gpos), "行: 参数名应为标识符")
                     set gfail = true
                     return false
                 if nparam > 0
@@ -1370,11 +1670,13 @@ func gen_stmt()
                 set glocals = glocals + pname + "|"
                 set nparam = nparam + 1
                 scan()
+                mi_skip_annot()
                 if gtok == ","
                     scan()
                 else
                     break
         expect_op(")")
+        mi_skip_ret()
         set gfuncs = gfuncs + "static Val c_" + fname + "(" + params + ") {\n"
         var fbi = 0
         while fbi < nparam
@@ -1433,7 +1735,7 @@ func gen_stmt()
             out("return " + parse_expr() + ";\n")
         return true
     if t == "elif" or t == "elseif" or t == "else"
-        print("imporc.impor: 第", mi_line_at(gpos), "行: ", t, " 需要紧跟在 if 块后")
+        print(gname, ": 第", mi_line_at(gpos), "行: ", t, " 需要紧跟在 if 块后")
         set gfail = true
         return false
     if t == "break"
@@ -1449,12 +1751,12 @@ func gen_stmt()
         scan()
         var iv = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: for/each 后需要迭代变量")
+            print(gname, ": 第", mi_line_at(gpos), "行: for/each 后需要迭代变量")
             set gfail = true
             return false
         scan()
         if gtok != "in"
-            print("imporc.impor: 第", mi_line_at(gpos), "行: for/each 需要 in")
+            print(gname, ": 第", mi_line_at(gpos), "行: for/each 需要 in")
             set gfail = true
             return false
         scan()
@@ -1463,13 +1765,13 @@ func gen_stmt()
         if gtok == "range"
             scan()
             if gtok != "("
-                print("imporc.impor: 第", mi_line_at(gpos), "行: range 需要 (")
+                print(gname, ": 第", mi_line_at(gpos), "行: range 需要 (")
                 set gfail = true
                 return false
             scan()
             set ite = parse_expr()
             if gtok != ")"
-                print("imporc.impor: 第", mi_line_at(gpos), "行: range 需要 )")
+                print(gname, ": 第", mi_line_at(gpos), "行: range 需要 )")
                 set gfail = true
                 return false
             scan()
@@ -1527,7 +1829,7 @@ func gen_stmt()
             set mbrace = true
         out("Val _m" + to_str(tag) + " = " + msub + ";\n")
         out("int _m" + to_str(tag) + "_done = 0;\n")
-        while gtype != 5 and not gfail and not (mbrace and gtok == "}" and gtype == 4)
+        while gtype != 5 and not gfail and not(mbrace and gtok == "}" and gtype == 4)
             if gtype == 6
                 scan()
             if gtok == "case"
@@ -1671,7 +1973,7 @@ func gen_stmt()
         scan()
         var ename = gtok
         if gtype != 1
-            print("imporc.impor: 第", mi_line_at(gpos), "行: raise 后需要异常类型名")
+            print(gname, ": 第", mi_line_at(gpos), "行: raise 后需要异常类型名")
             set gfail = true
             return false
         scan()
@@ -1688,7 +1990,10 @@ func gen_stmt()
     # 兜底：表达式语句（函数调用 / 赋值语句 x = v / x.y = v）
     if gtype == 1
         var e0 = parse_expr()
-        if gtok == "="
+        var cop = ""
+        if gtok == "+=" or gtok == "-=" or gtok == "*=" or gtok == "/=" or gtok == "%="
+            set cop = strcut(gtok, 0, 1)
+        if gtok == "=" or cop != ""
             # 赋值语句：快照左侧赋值目标（此刻 gassign 属于左侧表达式）
             var ak = gassign_kind
             var an = gassign_name
@@ -1698,23 +2003,39 @@ func gen_stmt()
             var ai = gassign_idx
             scan()
             var ev = parse_expr()
+            var opfn = "rt_add"
+            if cop == "-"
+                set opfn = "rt_sub"
+            if cop == "*"
+                set opfn = "rt_mul"
+            if cop == "/"
+                set opfn = "rt_div"
+            if cop == "%"
+                set opfn = "rt_mod"
             if ak == "prop"
+                var curp = "rt_getattr(" + ab + ", \"" + ap + "\")"
+                if cop != ""
+                    set ev = opfn + "(" + curp + ", " + ev + ")"
                 out("rt_objset(" + ab + ".o, \"" + ap + "\", " + ev + ");\n")
             else
                 if ak == "var"
                     if not ginfunc
                         add_var(ar)
+                    if cop != ""
+                        set ev = opfn + "(" + an + ", " + ev + ")"
                     out(an + " = " + ev + ";\n")
                 else
                     if ak == "idx"
+                        if cop != ""
+                            set ev = opfn + "(rt_index(" + ab + ", " + ai + "), " + ev + ")"
                         out("rt_arr_set(" + ab + ", " + ai + ", " + ev + ");\n")
                     else
-                        print("imporc.impor: 第", mi_line_at(gpos), "行: 不能赋值的表达式")
+                        print(gname, ": 第", mi_line_at(gpos), "行: 不能赋值的表达式")
                         set gfail = true
             return true
         out(e0 + ";\n")
         return true
-    print("imporc.impor: 第", mi_line_at(gpos), "行: 无法识别的语句 [", t, "] type=", gtype, " pos=", gpos)
+    print(gname, ": 第", mi_line_at(gpos), "行: 无法识别的语句 [", t, "] type=", gtype, " pos=", gpos)
     set gfail = true
     return false
 
@@ -1723,7 +2044,7 @@ func gen_stmt()
 var gargs = ""
 var gt2 = ""
 var gp2 = 0
-func next_arg()
+def next_arg()
     var n = len(gargs)
     while gp2 < n
         var c3 = strcut(gargs, gp2, gp2 + 1)
@@ -1756,9 +2077,9 @@ func next_arg()
     return true
 
 # ---- v4.2：编译期 import（单层模块）----
-# 口径：import mod / import mod as m；模块顶层 func/var 加前缀内联，
+# 口径：import mod / import mod as m；模块顶层 def/var 加前缀内联，
 # 再用 imporc_module 构造运行期模块值，属性/方法走 rt_getattr / rt_method。
-func mi_is_word(c)
+def mi_is_word(c)
     if c == ""
         return false
     if c >= "a" and c <= "z"
@@ -1771,7 +2092,7 @@ func mi_is_word(c)
         return true
     return false
 
-func mi_replace_word(s, old, rep)
+def mi_replace_word(s, old, rep)
     var n = len(s)
     var m = len(old)
     if m == 0
@@ -1797,7 +2118,7 @@ func mi_replace_word(s, old, rep)
             set i = i + 1
     return out
 
-func mi_trim(s)
+def mi_trim(s)
     var n = len(s)
     var a = 0
     while a < n
@@ -1815,7 +2136,7 @@ func mi_trim(s)
             break
     return strcut(s, a, b)
 
-func mi_dir_of(p)
+def mi_dir_of(p)
     var n = len(p)
     var i = n - 1
     while i >= 0
@@ -1825,7 +2146,7 @@ func mi_dir_of(p)
         set i = i - 1
     return ""
 
-func mi_sanitize(s)
+def mi_sanitize(s)
     var n = len(s)
     var i = 0
     var out = ""
@@ -1838,7 +2159,7 @@ func mi_sanitize(s)
         set i = i + 1
     return out
 
-func mi_replace_dots(s)
+def mi_replace_dots(s)
     var n = len(s)
     var i = 0
     var out = ""
@@ -1851,7 +2172,7 @@ func mi_replace_dots(s)
         set i = i + 1
     return out
 
-func mi_strip_header(src)
+def mi_strip_header(src)
     if strfind(src, "important") == 0
         var nl = strfind(src, "\n")
         if nl >= 0
@@ -1859,7 +2180,7 @@ func mi_strip_header(src)
         return ""
     return src
 
-func mi_strip_export(src)
+def mi_strip_export(src)
     var n = len(src)
     var i = 0
     var out = ""
@@ -1879,7 +2200,7 @@ func mi_strip_export(src)
             break
     return out
 
-func mi_export_symbols(src)
+def mi_export_symbols(src)
     var n = len(src)
     var i = 0
     var out = "|"
@@ -1912,7 +2233,7 @@ func mi_export_symbols(src)
             break
     return out
 
-func mi_decl_symbols(src)
+def mi_decl_symbols(src)
     var n = len(src)
     var i = 0
     var out = "|"
@@ -1925,8 +2246,8 @@ func mi_decl_symbols(src)
             set line = strcut(src, i, end)
         var t = mi_trim(line)
         var head = ""
-        if strfind(t, "func ") == 0
-            set head = strcut(t, 5, len(t))
+        if strfind(t, "def ") == 0
+            set head = strcut(t, 4, len(t))
         else
             if strfind(t, "var ") == 0
                 set head = strcut(t, 4, len(t))
@@ -1947,7 +2268,7 @@ func mi_decl_symbols(src)
             break
     return out
 
-func mi_mangle_symbols(src, syms, prefix)
+def mi_mangle_symbols(src, syms, prefix)
     var out = src
     var list = strcut(syms, 1, len(syms))
     var j = 0
@@ -1960,7 +2281,7 @@ func mi_mangle_symbols(src, syms, prefix)
         set j = j + bar + 1
     return out
 
-func mi_attrs_of(syms, prefix)
+def mi_attrs_of(syms, prefix)
     var out = "{"
     var list = strcut(syms, 1, len(syms))
     var j = 0
@@ -1977,7 +2298,7 @@ func mi_attrs_of(syms, prefix)
         set j = j + bar + 1
     return out + "}"
 
-func mi_indent_of(s)
+def mi_indent_of(s)
     var i = 0
     while i < len(s)
         var c = strcut(s, i, i + 1)
@@ -1987,7 +2308,7 @@ func mi_indent_of(s)
             break
     return strcut(s, 0, i)
 
-func mi_split_import(rest)
+def mi_split_import(rest)
     # 返回 "mod|alias"：支持 mod as alias，否则 alias 取最后一段
     var pos = strfind(rest, " as ")
     if pos >= 0
@@ -2005,7 +2326,7 @@ func mi_split_import(rest)
         set i = i - 1
     return mod2 + "|" + alias2
 
-func mi_line_at(pos)
+def mi_line_at(pos)
     var i = 0
     var line = 1
     var n = len(gsrc)
@@ -2015,7 +2336,22 @@ func mi_line_at(pos)
         set i = i + 1
     return line
 
-func mi_split_from(rest)
+def mi_src_line(no)
+    # 调试用：取展开后源码的第 no 行
+    var i = 0
+    var line = 1
+    var start = 0
+    var n = len(gsrc)
+    while i <= n
+        if i == n or strcut(gsrc, i, i + 1) == "\n"
+            if line == no
+                return strcut(gsrc, start, i)
+            set line = line + 1
+            set start = i + 1
+        set i = i + 1
+    return ""
+
+def mi_split_from(rest)
     # from mod import a, b as c → "mod|a, b as c"；缺少 import 返回 ""
     var pos = strfind(rest, " import ")
     if pos < 0
@@ -2024,19 +2360,40 @@ func mi_split_from(rest)
     var names1 = mi_trim(strcut(rest, pos + 8, len(rest)))
     return mod1 + "|" + names1
 
-func mi_prefix_of(modname)
+def mi_prefix_of(modname)
     return "mi_" + mi_sanitize(modname) + "_"
 
-func mi_read_module(modname, script)
+def mi_read_module(modname, script)
     var rel = mi_replace_dots(modname) + ".impor"
     var mpath = mi_dir_of(script) + rel
-    var msrc = fileread(mpath)
+    var msrc = ""
+    if fileexists(mpath)
+        set msrc = fileread(mpath)
     if len(msrc) == 0
         set mpath = rel
-        set msrc = fileread(mpath)
+        if fileexists(mpath)
+            set msrc = fileread(mpath)
+    if len(msrc) == 0
+        # v4.3.1：把安装目录里的 std 当第二搜索根，脚本在 examples/ 下也能 import std.x
+        set mpath = "impor/" + rel
+        if fileexists(mpath)
+            set msrc = fileread(mpath)
+    if len(msrc) == 0
+        set mpath = mi_dir_of(script) + "../impor/" + rel
+        if fileexists(mpath)
+            set msrc = fileread(mpath)
+    if len(msrc) == 0
+        # 脚本在仓库外（临时目录）时，cwd 没有 impor/；回落到 exe 所在安装目录
+        set mpath = ghome + "/impor/" + rel
+        if fileexists(mpath)
+            set msrc = fileread(mpath)
+    if len(msrc) == 0
+        set mpath = ghome + "/" + rel
+        if fileexists(mpath)
+            set msrc = fileread(mpath)
     return msrc
 
-func mi_bind_from(names, syms, prefix)
+def mi_bind_from(names, syms, prefix)
     # 生成 var a = prefixa；支持 a as b 与 *（全部导出）
     var out = ""
     if names == "*"
@@ -2074,7 +2431,50 @@ func mi_bind_from(names, syms, prefix)
         set i = i + 1
     return out
 
-func mi_expand_imports(src, script)
+def mi_bind_module_imports(body, script)
+    # 被内联的模块自己也可能 import；这些别名不会由外层展开生成，
+    # 这里把模块体内的 import 行换成 alias = imporc_module(...) 绑定。
+    var out = ""
+    var pre = ""
+    var n = len(body)
+    var i = 0
+    while i <= n
+        var nl = strfind(strcut(body, i, n), "\n")
+        var end = n
+        var line = strcut(body, i, n)
+        if nl >= 0
+            set end = i + nl
+            set line = strcut(body, i, end)
+        var t = mi_trim(line)
+        var handled = false
+        if strfind(t, "import ") == 0
+            set handled = true
+            var rest = mi_trim(strcut(t, 7, len(t)))
+            var pair = mi_split_import(rest)
+            var bar = strfind(pair, "|")
+            var modname = strcut(pair, 0, bar)
+            var alias = strcut(pair, bar + 1, len(pair))
+            var prefix = mi_prefix_of(modname)
+            var msrc = mi_read_module(modname, script)
+            var syms = "|"
+            if len(msrc) > 0
+                var mbody = mi_strip_header(msrc)
+                set syms = mi_export_symbols(mbody)
+                if syms == "|"
+                    set syms = mi_decl_symbols(mbody)
+            set pre = pre + "var " + alias + " = imporc_module(\"" + modname + "\", " + mi_attrs_of(syms, prefix) + ")\n"
+        if strfind(t, "from ") == 0
+            set handled = true
+        if not handled
+            set out = out + line
+            if end < n
+                set out = out + "\n"
+        set i = end + 1
+        if end >= n
+            break
+    return pre + out
+
+def mi_expand_imports(src, script)
     var n = len(src)
     var i = 0
     var out = ""
@@ -2156,6 +2556,7 @@ func mi_expand_imports(src, script)
                             set syms = mi_decl_symbols(body)
                         set body = mi_strip_export(body)
                         set body = mi_mangle_symbols(body, syms, prefix)
+                        set body = mi_bind_module_imports(body, script)
                         set head = head + body
                         if strfind(body, "\n") != len(body) - 1
                             set head = head + "\n"
@@ -2203,7 +2604,7 @@ var goutname = "out2.exe"
 if len(gt2) > 0
     set gmode = gt2
     if gmode == "version" or gmode == "--version"
-        print("imporc (Impor 自举编译器) v3.12.0 · 子集模式")
+        print("imporc (Impor 自举编译器) v5.6.0 · 子集模式")
         exit(0)
     if gmode == "" or gmode == "help" or gmode == "--help"
         print("用法：imporc [run|build] <脚本> [-o 输出]  或  imporc version")
@@ -2248,6 +2649,7 @@ if len(ghome) == 0
     set ghome = "."
 
 var src = fileread(gscript)
+set gname = gscript
 set src = mi_expand_imports(src, gscript)
 # 剥离重要头部行：important<<...: （第一行）
 if strfind(src, "important") == 0
@@ -2256,7 +2658,10 @@ if strfind(src, "important") == 0
         set src = strcut(src, nlpos + 1, len(src))
     else
         set src = ""
+# patch8b：花括号写法先归一化成缩进写法（纯缩进文件原样返回）
+set src = mi_brace_to_indent(src)
 set gsrc = src
+
 set gpos = 0
 set gprev_nl = true
 scan()
@@ -2281,7 +2686,7 @@ while gtype != 5
                     set cldepth = cldepth - 1
             scan()
     else
-        if gtok == "func" or gtok == "def"
+        if gtok == "def"
             scan()
             if gtype == 1
                 var fname = gtok
@@ -2318,7 +2723,7 @@ while gtype != 5 and not gfail
     gen_block()
 
 if gfail
-    print("imporc.impor: 第", mi_line_at(gpos), "行: 编译失败，不生成产物")
+    print(gname, ": 第", mi_line_at(gpos), "行: 编译失败，不生成产物")
     exit(1)
 else
     # 组装 C 源码
@@ -2372,17 +2777,20 @@ else
     set ccode = ccode + "int main(int argc, char **argv) {\n    rt_args_init(argc, argv);\n" + gout + "    return 0;\n}\n"
 
     filewrite("out2.c", ccode)
-    # v3.8.3 中文路径修复：tcc 是 ANSI 程序，直接接收中文绝对输出路径会写成 ??。
-    # 先让 tcc 输出到当前目录的 ASCII 相对文件名，再用 Unicode 文件 API 重命名到目标。
+    # v3.8.3 中文路径修复：C 编译器多半是 ANSI 程序，直接接收中文绝对输出路径会写成 ??。
+    # 先输出到当前目录的 ASCII 相对文件名，再用 Unicode 文件 API 重命名到目标。
+    # v4.6：改走 bootstrap/cc64.bat —— 优先 64 位 gcc（32 位 tcc 产物只有 2GB 地址空间，
+    #       编译本种子自身时峰值约 2.0GB，会撞上限报 MemoryError[E1013]），无 gcc 时回退内置 tcc。
     var gtccout = "out2_tcc.exe"
-    var rc = system("\"" + ghome + "\\impor\\tcc\\win32\\tcc.exe\" out2.c -o \"" + gtccout + "\"")
+    var rc = system("\"" + ghome + "\\bootstrap\\cc64.bat\" out2.c -o \"" + gtccout + "\"")
     if rc != 0
-        print("imporc.impor: 第", mi_line_at(gpos), "行: tcc 失败 rc=", rc)
+        print(gname, ": 第", mi_line_at(gpos), "行: C 编译器失败 rc=", rc)
         exit(1)
     else
         if goutname != gtccout
             filemv(gtccout, goutname)
-        print("imporc.impor: 已生成 ", goutname)
+        print(gname, ": 已生成 ", goutname)
         if gmode == "run"
             var rc2 = system("\"" + goutname + "\"")
             exit(rc2)
+

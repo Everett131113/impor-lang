@@ -18,7 +18,7 @@ import os
 import re
 
 from .ast_nodes import (
-    Num, Str, FStr, Bool, Var, Pipe, ExprStmt, AttrGet, AttrSet, BinOp, UnaryOp, TernaryExpr,
+    Num, Str, FStr, Bool, Null, Var, Pipe, ExprStmt, AttrGet, AttrSet, BinOp, UnaryOp, TernaryExpr,
     Assign, CompoundAssign, Print, If, While, For, Def, Return, Call,
     NewInstance, SuperCall, Break, Continue, ExitScript, ClsOut,
     ListLit, DictLit, IndexGet, IndexSet, Slice, ImportNode, FromImportNode,
@@ -150,6 +150,15 @@ def _scope_decls(stmts, top_names, enclosing_locals):
                 globals_needed.add(s.name)
             elif s.scope == 'nonlocal':
                 nonlocals_needed.add(s.name)
+            elif s.scope == 'update':
+                # `set x = ...`（v4.1 起可省略 set）的语义是"就近更新"：
+                # 外层函数局部优先，其次模块全局；两者都没有才落到当前作用域新建。
+                # Python 里必须靠 nonlocal / global 才能做到，否则会被当成局部声明，
+                # RHS 读到未绑定局部变量而报 UnboundLocalError。
+                if s.name in enclosing_locals:
+                    nonlocals_needed.add(s.name)
+                elif s.name in top_names:
+                    globals_needed.add(s.name)
             elif isinstance(s, CompoundAssign) and s.scope == 'local':
                 if s.name in top_names:
                     globals_needed.add(s.name)
@@ -228,6 +237,7 @@ class PyGen:
     def gen_expr(self, node):
         m = {
             Num: self.expr_Num, Str: self.expr_Str, FStr: self.expr_FStr, Bool: self.expr_Bool,
+            Null: self.expr_Null,
             Var: self.expr_Var, AttrGet: self.expr_AttrGet, BinOp: self.expr_BinOp, Pipe: self.expr_Pipe,
             UnaryOp: self.expr_UnaryOp, TernaryExpr: self.expr_TernaryExpr,
             Call: self.expr_Call, NewInstance: self.expr_NewInstance,
@@ -266,6 +276,12 @@ class PyGen:
 
     def expr_Bool(self, n):
         return "True" if n.val else "False"
+
+    def expr_Null(self, n):
+        # v4.3.1：nil / null / none 在三端统一为「空值」。C 端是 v_null()，
+        # 解释器是 None，转译端输出 None（此前缺这一项，nil 会让 compile 直接抛
+        # TranspilerError: 无法编译的表达式节点 Null）。
+        return "None"
 
     def expr_Var(self, n):
         return n.name

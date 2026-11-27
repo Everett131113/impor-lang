@@ -1,6 +1,0 @@
-export add, base
-
-func add(a, b)
-    return a + b
-
-var base = 10

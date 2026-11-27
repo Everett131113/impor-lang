@@ -1,0 +1,141 @@
+# std/image.impor — 图像读取 / 像素访问 / PNG 导出（v4.3.2）
+#
+# 依赖平台绑定 bindings/image/impor_bind_image.dll（Windows WIC）。
+# 用法：
+#   import std.image as image
+#   image.configure("bindings/image/impor_bind_image.dll")   # 或依赖自动搜索
+#   var h = image.load("assets/impor_icon.png")
+#   print(image.size(h))        # {"width": 1024, "height": 1024}
+#   print(image.pixel(h, 0, 0)) # [r, g, b, a]
+#   image.save_png(h, "out.png")
+#   image.close(h)
+#
+# 找不到绑定 DLL 时 load() 返回 0，error() 给出原因；不会因此崩溃。
+
+var __lib = nil
+var __ready = false
+var __shim = ""
+
+def _maybe(path) {
+    if __ready {
+        return true
+    }
+    if len(path) == 0 {
+        return false
+    }
+    if !fileexists(path) {
+        return false
+    }
+    set __lib = ffi_open(path)
+    if __lib == nil {
+        return false
+    }
+    set __ready = ffi_call(__lib, "impor_image_init",[], "int",[]) == 1
+    if __ready {
+        set __shim = path
+    }
+    return __ready
+}
+
+def _ensure() {
+    if __ready {
+        return true
+    }
+    if _maybe(__shim) {
+        return true
+    }
+    # 常见布局：工程根、安装根、可执行文件目录及其上级
+    if _maybe("bindings/image/impor_bind_image.dll") {
+        return true
+    }
+    if _maybe("impor/bindings/image/impor_bind_image.dll") {
+        return true
+    }
+    if _maybe(exedir() + "/bindings/image/impor_bind_image.dll") {
+        return true
+    }
+    return _maybe(exedir() + "/../bindings/image/impor_bind_image.dll")
+}
+
+export def configure(shim_path) {
+    set __shim = to_str(shim_path)
+    set __ready = false
+    return _ensure()
+}
+
+export def ready() {
+    return __ready
+}
+
+export def shim_path() {
+    return __shim
+}
+
+export def error() {
+    if __lib == nil {
+        return "未加载图像绑定（先 configure 或把 bindings/image 放到可搜索路径）"
+    }
+    return ffi_call(__lib, "impor_image_last_error",[], "cstr",[])
+}
+
+export def load(path) {
+    if !_ensure() {
+        return 0
+    }
+    return ffi_call(__lib, "impor_image_load",[path], "int",["cstr"])
+}
+
+export def width(handle) {
+    if handle <= 0 {
+        return 0
+    }
+    return ffi_call(__lib, "impor_image_width",[handle], "int",["int"])
+}
+
+export def height(handle) {
+    if handle <= 0 {
+        return 0
+    }
+    return ffi_call(__lib, "impor_image_height",[handle], "int",["int"])
+}
+
+export def size(handle) {
+    return { "width": width(handle), "height": height(handle) }
+}
+
+export def pixel(handle, x, y) {
+    return[ffi_call(__lib, "impor_image_red",[handle, x, y], "int",["int", "int", "int"]),
+            ffi_call(__lib, "impor_image_green",[handle, x, y], "int",["int", "int", "int"]),
+            ffi_call(__lib, "impor_image_blue",[handle, x, y], "int",["int", "int", "int"]),
+            ffi_call(__lib, "impor_image_alpha",[handle, x, y], "int",["int", "int", "int"])]
+}
+
+export def red(handle, x, y) {
+    return pixel(handle, x, y)[0]
+}
+
+export def green(handle, x, y) {
+    return pixel(handle, x, y)[1]
+}
+
+export def blue(handle, x, y) {
+    return pixel(handle, x, y)[2]
+}
+
+export def alpha(handle, x, y) {
+    return pixel(handle, x, y)[3]
+}
+
+export def save_png(handle, path) {
+    if handle <= 0 {
+        return false
+    }
+    return ffi_call(__lib, "impor_image_save_png",[handle, path], "int",["int", "cstr"]) == 1
+}
+
+export def close(handle) {
+    if handle <= 0 {
+        return false
+    }
+    return ffi_call(__lib, "impor_image_close",[handle], "int",["int"]) == 1
+}

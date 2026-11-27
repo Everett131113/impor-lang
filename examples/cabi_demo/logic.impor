@@ -1,0 +1,18 @@
+important<<DAY<<english("English"):
+// logic.impor —— 交付层示例：一段逻辑，四种宿主都能调用
+// 编译：impor build logic.impor --lib --c-source -o out --target win64
+// 产物：out/logic.dll（x64）+ logic.h + logic.def + logic.lib
+
+export def add(a : int, b : int) -> int {
+    return a + b
+}
+
+export def fib(n : int) -> int {
+    if n < 2
+        return n
+    return fib(n - 1) + fib(n - 2)
+}
+
+export def greet(name : str) -> str {
+    return "hello, " + name
+}

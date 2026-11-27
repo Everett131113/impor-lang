@@ -10,20 +10,40 @@ import std.text as text
 import std.mathx as mathx
 import std.collections as collections
 import std.algo as algo
+import std.csv as csv
 import std.json as json
 import std.fs as fs
 import std.path as path
 import std.regex as regex
 import std.time as time
 import std.http as http
+import std.thread as thread
+import std.atomic as atomic
+import std.sort as sort
+import std.random as random
+import std.stats as stats
+import std.channel as channel
+import std.pool as pool
+import std.sync as sync
+import std.image as image
 
 export text
 export mathx
 export collections
 export algo
+export csv
 export json
 export fs
 export path
 export regex
 export time
 export http
+export thread
+export atomic
+export sort
+export random
+export stats
+export channel
+export pool
+export sync
+export image

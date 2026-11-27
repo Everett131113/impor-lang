@@ -1,0 +1,23 @@
+// have 关键字 + 容器/类在 WASM 后端上的验证
+var a = 3
+if a have int:
+    print(a)
+print(a have float)
+print("s" have str)
+var c = [1, 2]
+print(c have list)
+var d = {"k": 1}
+print(d have dict)
+class P
+    def __init__(x)
+        set self.x = x
+    def get()
+        return self.x
+var p = new P(7)
+print(p have P, p.get(), p have object)
+# EXPECT: 3
+# EXPECT: False
+# EXPECT: True
+# EXPECT: True
+# EXPECT: True
+# EXPECT: True 7 True

@@ -1,0 +1,13 @@
+// 异常：自定义异常 / raise / catch
+exception Boom
+def check(n)
+    if n < 0
+        raise Boom("neg")
+    return n
+try
+    print(check(1))
+    print(check(-1))
+catch Boom e
+    print("caught", e.msg)
+# EXPECT: 1
+# EXPECT: caught neg

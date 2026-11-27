@@ -2,11 +2,33 @@
 // 使用：use std.text 或 import std.text
 // 提供统一、对用户友好的文本 API（隐藏宿主细节，返回类型稳定）。
 
-func split(s, sep) {
-    return s.split(sep)
+def split(s, sep) {
+    // v4.3.2：改为纯内建实现。此前 `return s.split(sep)` 依赖宿主方法，
+    // C 后端没有字符串 split 方法分派，任何 `use std.text` 的程序编 exe 都会
+    // 抛 AttributeError: 字符串无此方法 [E1006]。这里只用 len / 切片 / 比较 / arrappend，
+    // 解释器、Python 转译、C 后端三条路径都能跑。
+    var out = []
+    var n = len(s)
+    var m = len(sep)
+    if m == 0 {
+        return out
+    }
+    var start = 0
+    var i = 0
+    while i <= n - m {
+        if s[i : i + m] == sep {
+            arrappend(out, s[start : i])
+            set start = i + m
+            set i = start
+        } else {
+            set i = i + 1
+        }
+    }
+    arrappend(out, s[start : n])
+    return out
 }
 
-func join(parts, sep) {
+def join(parts, sep) {
     var out = ""
     var first = true
     for p in parts {
@@ -19,43 +41,58 @@ func join(parts, sep) {
     return out
 }
 
-func trim(s) {
+def trim(s) {
     return s.strip()
 }
 
-func upper(s) {
+def upper(s) {
     return s.upper()
 }
 
-func lower(s) {
+def lower(s) {
     return s.lower()
 }
 
-func replace(s, old, replacement) {
+def replace(s, old, replacement) {
     return s.replace(old, replacement)
 }
 
-func contains(s, sub) {
+def contains(s, sub) {
     return s.find(sub) >= 0
 }
 
-func starts_with(s, pre) {
-    return s.startswith(pre)
+def starts_with(s, pre) {
+    // v4.3.2：`.startswith` 是 Python 名，C 后端只认 starts_with/startswith 之外的
+    // 方法名表，编 exe 会抛 E1006。改用 strcut 前缀比较，三路一致。
+    if len(pre) == 0 {
+        return true
+    }
+    if len(s) < len(pre) {
+        return false
+    }
+    return strcut(s, 0, len(pre)) == pre
 }
 
-func ends_with(s, suf) {
-    return s.endswith(suf)
+def ends_with(s, suf) {
+    // v4.3.2：同上，避开 Python 专有的 `.endswith`。
+    if len(suf) == 0 {
+        return true
+    }
+    if len(s) < len(suf) {
+        return false
+    }
+    return strcut(s, len(s) - len(suf), len(s)) == suf
 }
 
-func char_at(s, i) {
+def char_at(s, i) {
     return s[i]
 }
 
-func substring(s, start, end) {
-    return s[start:end]
+def substring(s, start, end) {
+    return s[start : end]
 }
 
-func repeat(s, n) {
+def repeat(s, n) {
     var out = ""
     var i = 0
     while i < n {
@@ -66,18 +103,18 @@ func repeat(s, n) {
 }
 
 // v3.9 文本扩展：填充 / 子串定位 / 行切分（不依赖宿主方法，除 trim 外均为纯内建实现）
-func pad_left(s, width, ch) {
+def pad_left(s, width, ch) {
     return strpad(s, width, ch)
 }
 
-func pad_right(s, width, ch) {
+def pad_right(s, width, ch) {
     if len(s) >= width {
         return s
     }
     return s + repeat(ch, width - len(s))
 }
 
-func index_of(s, sub) {
+def index_of(s, sub) {
     if len(sub) == 0 {
         return 0
     }
@@ -88,10 +125,10 @@ func index_of(s, sub) {
         }
         i += 1
     }
-    return -1
+    return - 1
 }
 
-func count_sub(s, sub) {
+def count_sub(s, sub) {
     if len(sub) == 0 {
         return 0
     }
@@ -108,7 +145,7 @@ func count_sub(s, sub) {
     return c
 }
 
-func split_lines(s) {
+def split_lines(s) {
     var out = []
     var start = 0
     var i = 0
@@ -123,7 +160,7 @@ func split_lines(s) {
     return out
 }
 
-func is_blank(s) {
+def is_blank(s) {
     return trim(s) == ""
 }
 
